@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doctor Visibility Score Explained | 7 Pillars | The Doc Mirror</title>
+<meta name="description" content="How the Doctor Visibility Score is calculated. 7 pillars across Google Business Profile, ratings, reviews, photos, search rank, AI visibility, and directories.">
+<meta property="og:title" content="Doctor Visibility Score Explained | 7 Pillars | The Doc Mirror">
+<meta property="og:description" content="How the Doctor Visibility Score is calculated. 7 pillars across Google Business Profile, ratings, reviews, photos, search rank, AI visibility, and directories.">
+<meta property="og:type" content="article">
+<link rel="canonical" href="https://thedocmirror.com/doctor-visibility-score">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is the Doctor Visibility Score the same as Google's ranking?", "acceptedAnswer": {"@type": "Answer", "text": "No. Google's local pack rank is one of seven pillars that feed the score. The Doctor Visibility Score is a composite that also reflects rating quality, review volume, photos, profile completeness, AI visibility signals, and directory presence."}}, {"@type": "Question", "name": "Why is 70 considered moderate, not good?", "acceptedAnswer": {"@type": "Answer", "text": "We benchmarked the score against several thousand US doctor profiles. A score of 70 means you've fixed the obvious gaps but you're still being outranked by competitors who have invested in directory depth, photo libraries, and recent review velocity. 85+ is where competitive visibility actually compounds."}}, {"@type": "Question", "name": "Can I get to 100?", "acceptedAnswer": {"@type": "Answer", "text": "Practically, very few doctors will. The score is calibrated so that perfection requires sustained activity &mdash; ongoing review acquisition, current photos, fresh GMB posts, and active citation building. A score of 90+ is excellent and achievable; 100 is theoretical."}}, {"@type": "Question", "name": "How quickly can my score change?", "acceptedAnswer": {"@type": "Answer", "text": "Some pillars move within a week (adding photos, fixing hours). Others take longer (review volume builds over months; AI visibility signals depend on citation cycles). Doctors who follow the 90-day plan in the $19 report typically see 15-25 points improvement in 90 days."}}]}</script>
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;--warm:#F7F6F3;--warm-white:#FEFCF7;--slate:#3D4D5C;--slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:#fff;-webkit-font-smoothing:antialiased;line-height:1.7}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 1.5rem;background:#fff;border-bottom:.5px solid var(--border);position:sticky;top:0;z-index:50;max-width:1100px;margin:0 auto}
+.nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;color:var(--navy)}
+.logo-mark{width:24px;height:24px}
+.logo-word{font-size:16px;font-weight:700;letter-spacing:-.02em}
+.logo-word span{color:var(--green)}
+.nav-mid{display:flex;gap:1.5rem}
+.nav-mid a{color:var(--slate);text-decoration:none;font-size:14px;font-weight:500;transition:color .15s}
+.nav-mid a:hover{color:var(--green)}
+.nav-cta{background:var(--navy);color:#fff;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s}
+.nav-cta:hover{background:var(--green)}
+main{max-width:780px;margin:0 auto;padding:3rem 1.5rem 4rem}
+.eyebrow{font-size:12px;font-weight:600;color:var(--green-dark);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+h1{font-size:clamp(1.8rem,3.5vw,2.5rem);font-weight:700;color:var(--navy);letter-spacing:-.02em;line-height:1.2;margin-bottom:1rem}
+.lede{font-size:1.1rem;color:var(--slate-light);line-height:1.65;margin-bottom:2.5rem}
+h2{font-size:1.5rem;font-weight:700;color:var(--navy);letter-spacing:-.01em;margin:2.5rem 0 .75rem}
+h3{font-size:1.15rem;font-weight:600;color:var(--navy);margin:1.5rem 0 .5rem}
+p{margin-bottom:1rem;color:var(--slate)}
+ul,ol{margin:0 0 1rem 1.25rem;color:var(--slate)}
+li{margin-bottom:.3rem}
+strong{color:var(--navy);font-weight:600}
+.callout{background:var(--warm-white);border-left:3px solid var(--green);padding:1rem 1.25rem;border-radius:0 8px 8px 0;margin:1.5rem 0;font-size:.95rem}
+.callout strong{color:var(--green-dark)}
+.cta-block{background:var(--navy);color:#fff;border-radius:14px;padding:2rem 1.5rem;text-align:center;margin:3rem 0 2rem}
+.cta-block h2{color:#fff;margin-top:0;font-size:1.4rem}
+.cta-block p{color:rgba(255,255,255,.7);max-width:480px;margin:0 auto 1.5rem}
+.cta-btn{display:inline-block;background:var(--green);color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;font-size:15px;text-decoration:none;transition:background .15s}
+.cta-btn:hover{background:#fff;color:var(--navy)}
+.faq-item{border-bottom:.5px solid var(--border);padding:1rem 0}
+.faq-item h3{margin-top:0;font-size:1.05rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.faq-item h3::after{content:'+';color:var(--green);font-weight:400;font-size:1.5rem;transition:transform .15s}
+.faq-item.open h3::after{transform:rotate(45deg)}
+.faq-item p{display:none;margin-top:.5rem;color:var(--slate-light)}
+.faq-item.open p{display:block}
+footer{max-width:1100px;margin:0 auto;padding:2rem 1.5rem;text-align:center;border-top:.5px solid var(--border);color:var(--slate-light);font-size:13px}
+footer a{color:var(--slate-light);text-decoration:none;margin:0 8px}
+footer a:hover{color:var(--green)}
+.related{background:var(--warm);border-radius:14px;padding:1.5rem;margin:3rem 0 1rem}
+.related h3{font-size:.85rem;text-transform:uppercase;letter-spacing:.07em;color:var(--slate-light);font-weight:700;margin:0 0 .75rem}
+.related-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.75rem}
+.related-links a{background:#fff;border:.5px solid var(--border);border-radius:10px;padding:12px 14px;text-decoration:none;color:var(--navy);font-weight:600;font-size:14px;transition:border-color .15s}
+.related-links a:hover{border-color:var(--green)}
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-top:2rem}
+.r-card{background:#fff;border:.5px solid var(--border);border-radius:14px;padding:1.5rem;text-decoration:none;color:inherit;transition:transform .15s,border-color .15s}
+.r-card:hover{border-color:var(--green);transform:translateY(-2px)}
+.r-card h3{margin:0 0 .5rem;font-size:1.1rem}
+.r-card p{font-size:13px;color:var(--slate-light);margin:0}
+.r-card-icon{font-size:1.5rem;margin-bottom:.75rem}
+@media(max-width:680px){nav .nav-mid{display:none}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#0A2540" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
+    <div class="logo-word">The Doc <span>Mirror</span></div>
+  </a>
+  <div class="nav-mid">
+    <a href="/#how-it-works">How it works</a>
+    <a href="/#pricing">Pricing</a>
+    <a href="/resources">Resources</a>
+    <a href="/#faq">FAQ</a>
+  </div>
+  <a class="nav-cta" href="/#tool">Check my listing free</a>
+</nav>
+<main>
+
+<div class="eyebrow">Doctor Visibility Score</div>
+<h1>The Doctor Visibility Score, explained</h1>
+<p class="lede">A single 0&ndash;100 number that captures how easily a new patient can find and choose your practice across Google Search, Google Maps, and AI search.</p>
+
+<p>Most visibility tools give you a long list of issues with no priority. The Doctor Visibility Score reduces that complexity to one number so you immediately know where you stand &mdash; and then breaks it down into seven pillars so you know exactly what to fix.</p>
+
+<h2>The 7 pillars</h2>
+<p>The score is computed as a weighted composite across seven pillars. Each pillar is independently measurable and independently improvable.</p>
+
+<h3>1. Google Business Profile (30 points)</h3>
+<p>Completeness of your Google listing: name, address, phone, hours, website, description, and category accuracy. The largest single pillar because GMB is still the highest-volume patient discovery channel.</p>
+
+<h3>2. Star Rating (20 points)</h3>
+<p>The average star rating on your Google profile. Scored on a curve: 4.8+ is full credit, 4.5 is 17 points, 4.0 is 14, 3.5 is 10, and below 3.0 is essentially zero. Patients filter aggressively at this threshold.</p>
+
+<h3>3. Review Volume (15 points)</h3>
+<p>Total number of recent reviews. A practice with 50+ reviews collected within the last 12 months scores full marks. Volume alone doesn't matter &mdash; recency does. A profile with 200 stale reviews loses to one with 50 fresh ones.</p>
+
+<h3>4. Photos (10 points)</h3>
+<p>Photo presence and depth. 10+ photos (exterior, reception, consultation room, doctor portrait) is full credit. Practices with zero photos lose this entire pillar and visibly underperform on Google Maps clicks.</p>
+
+<h3>5. Search Ranking (15 points)</h3>
+<p>Your position in the local pack when patients search "[specialty] in [your city]". Position #1 is full credit; positions 4-10 score partially; positions beyond #10 score zero.</p>
+
+<h3>6. AI Visibility Signals (5 points)</h3>
+<p>A composite signal score reflecting whether your practice is likely to be surfaced by AI tools. Driven by Wikipedia presence, citations in healthcare media, schema markup depth, and consistency of identity across the web.</p>
+
+<h3>7. Directory &amp; Citation Presence (5 points)</h3>
+<p>Verified presence on Healthgrades, Zocdoc, Vitals, WebMD, Doximity. Each major directory has equal weight. Missing all of them is a strong negative signal both to patients and to AI systems.</p>
+
+<h2>How the score is calculated</h2>
+<div class="callout"><strong>The formula:</strong> Doctor Visibility Score = GMB(30) + Rating(20) + Reviews(15) + Photos(10) + Rank(15) + AI(5) + Directories(5) = 0&ndash;100.</div>
+
+<p>Free tier checks use signal-based estimates for the AI pillar. The $19 full report runs real queries against ChatGPT, Gemini, Claude, and Perplexity for a true measured AI score.</p>
+
+<h2>What your score means</h2>
+<ul>
+  <li><strong>0&ndash;49 (Critical):</strong> Patients are finding your competitors. Multiple foundational gaps need urgent attention.</li>
+  <li><strong>50&ndash;69 (Needs attention):</strong> Patients can find you, but most are choosing someone visible above you.</li>
+  <li><strong>70&ndash;84 (Moderate):</strong> Decent foundation. Specific pillars are pulling the rest down. Targeted improvements yield quick wins.</li>
+  <li><strong>85+ (Strong):</strong> You are winning patient discovery in your market. Focus on maintaining the lead.</li>
+</ul>
+<div class="cta-block">
+  <h2>Check your visibility now</h2>
+  <p>See your Doctor Visibility Score across Google, ChatGPT, Gemini, and Claude. Free, in 60 seconds.</p>
+  <a class="cta-btn" href="/#tool">Run free check &rarr;</a>
+</div><h2>Frequently asked questions</h2><div class="faq-item"><h3>Is the Doctor Visibility Score the same as Google's ranking?</h3><p>No. Google's local pack rank is one of seven pillars that feed the score. The Doctor Visibility Score is a composite that also reflects rating quality, review volume, photos, profile completeness, AI visibility signals, and directory presence.</p></div><div class="faq-item"><h3>Why is 70 considered moderate, not good?</h3><p>We benchmarked the score against several thousand US doctor profiles. A score of 70 means you've fixed the obvious gaps but you're still being outranked by competitors who have invested in directory depth, photo libraries, and recent review velocity. 85+ is where competitive visibility actually compounds.</p></div><div class="faq-item"><h3>Can I get to 100?</h3><p>Practically, very few doctors will. The score is calibrated so that perfection requires sustained activity &mdash; ongoing review acquisition, current photos, fresh GMB posts, and active citation building. A score of 90+ is excellent and achievable; 100 is theoretical.</p></div><div class="faq-item"><h3>How quickly can my score change?</h3><p>Some pillars move within a week (adding photos, fixing hours). Others take longer (review volume builds over months; AI visibility signals depend on citation cycles). Doctors who follow the 90-day plan in the $19 report typically see 15-25 points improvement in 90 days.</p></div><div class="related">
+  <h3>Related guides</h3>
+  <div class="related-links"><a href="/ai-visibility-for-doctors">AI Visibility for Doctors &rarr;</a><a href="/how-doctors-rank-in-chatgpt">How Doctors Rank in ChatGPT &rarr;</a><a href="/google-visibility-for-doctors">Google Visibility for Doctors &rarr;</a></div>
+</div>
+</main>
+<footer>
+  <div><strong style="color:var(--navy)">The Doc Mirror</strong> &middot; How do Google and AI see you? Find out, free.</div>
+  <div style="margin-top:8px"><a href="/">Home</a><a href="/resources">Resources</a><a href="/#pricing">Pricing</a><a href="mailto:hello@thedocmirror.com">Contact</a></div>
+  <div style="margin-top:1rem;opacity:.7">&copy; 2026 The Doc Mirror</div>
+</footer>
+<script>
+document.querySelectorAll('.faq-item h3').forEach(function(h){
+  h.addEventListener('click',function(){h.parentNode.classList.toggle('open');});
+});
+</script>
+</body>
+</html>

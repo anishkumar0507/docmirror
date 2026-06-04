@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doctor Visibility Report | The Doc Mirror</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Print-optimised — rendered by Puppeteer/html-pdf-node server-side */
+:root{
+  --navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;
+  --warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;
+  --red:#DC2626;--red-light:#FEF2F2;--amber:#D97706;--amber-light:#FFFBEB;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;font-size:11pt;line-height:1.5;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:297mm;padding:12mm 14mm;page-break-after:always}
+.page:last-child{page-break-after:auto}
+
+/* Cover page */
+.cover{background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.cover::before{content:'';position:absolute;top:-60px;right:-60px;width:260px;height:260px;border-radius:50%;background:rgba(0,168,120,.1);pointer-events:none}
+.cover-top{z-index:1}
+.logo{font-size:18pt;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+.logo span{color:var(--green)}
+.logo-tag{font-size:10pt;color:rgba(255,255,255,.45);margin-bottom:40px}
+.cover h1{font-size:22pt;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:8px}
+.cover h1 em{color:var(--green);font-style:normal}
+.cover-sub{font-size:11pt;color:rgba(255,255,255,.6);line-height:1.6;max-width:380px}
+.cover-meta{margin-top:28px;display:grid;grid-template-columns:1fr 1fr;gap:12px;z-index:1}
+.meta-item{background:rgba(255,255,255,.07);border-radius:8px;padding:10px 14px}
+.meta-item .lbl{font-size:8.5pt;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.meta-item .val{font-size:12pt;font-weight:600;color:#fff}
+.cover-bottom{z-index:1}
+.cover-score-block{background:rgba(255,255,255,.07);border-radius:12px;padding:16px;text-align:center;border:1px solid rgba(0,168,120,.3)}
+.cs-label{font-size:9pt;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.cs-num{font-size:52pt;font-weight:700;color:#fff;letter-spacing:-.04em;line-height:1;font-family:'DM Mono',monospace}
+.cs-verdict{font-size:10pt;font-weight:600;color:var(--green);margin-top:4px}
+.cover-date{font-size:9pt;color:rgba(255,255,255,.3);margin-top:12px;text-align:center}
+
+/* Section headers */
+.section-hd{display:flex;align-items:center;gap:10px;margin-bottom:16px;padding-bottom:8px;border-bottom:2px solid var(--navy)}
+.section-hd h2{font-size:14pt;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.section-num{width:26px;height:26px;background:var(--navy);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11pt;font-weight:700;flex-shrink:0}
+
+/* 5-pillar table */
+.pillar-table{width:100%;border-collapse:collapse;margin-bottom:16px}
+.pillar-table th{font-size:8.5pt;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;padding:7px 10px;background:var(--warm);text-align:left;border-bottom:1px solid var(--border)}
+.pillar-table td{padding:9px 10px;border-bottom:0.5px solid var(--border);font-size:10.5pt;vertical-align:middle}
+.pillar-table tr:nth-child(even) td{background:#fafafa}
+.bar-cell{min-width:120px}
+.bar-wrap{height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.bar-fill{height:100%;border-radius:4px}
+.bar-strong{background:#1D9E75}
+.bar-mod{background:#EF9F27}
+.bar-weak{background:var(--red)}
+.score-cell{font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;white-space:nowrap}
+.status-badge{font-size:8.5pt;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.sb-strong{background:var(--green-light);color:#085041}
+.sb-mod{background:var(--amber-light);color:#633806}
+.sb-weak{background:var(--red-light);color:var(--red)}
+
+/* Issues */
+.issues-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
+.issue-item{padding:10px 14px;border-radius:8px;border-left:4px solid;display:flex;gap:10px;align-items:flex-start}
+.issue-crit{background:var(--red-light);border-left-color:var(--red)}
+.issue-warn{background:var(--amber-light);border-left-color:var(--amber)}
+.issue-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.id-red{background:var(--red)}
+.id-amber{background:var(--amber)}
+.issue-body h4{font-size:10.5pt;font-weight:700;color:var(--navy);margin-bottom:2px}
+.issue-body p{font-size:9.5pt;color:var(--slate);line-height:1.5}
+
+/* Fix guide */
+.fix-item{background:var(--warm);border-radius:8px;padding:12px 14px;margin-bottom:10px}
+.fix-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.fix-num{width:22px;height:22px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0}
+.fix-title{font-size:11pt;font-weight:700;color:var(--navy)}
+.fix-impact{font-size:8pt;font-weight:600;padding:2px 7px;border-radius:20px;margin-left:auto}
+.fi-high{background:#E74C3C;color:#fff}
+.fi-med{background:#EF9F27;color:#fff}
+.fi-low{background:#1D9E75;color:#fff}
+.fix-steps{font-size:9.5pt;color:var(--slate);line-height:1.65;background:#fff;border-radius:6px;padding:10px;border:0.5px solid var(--border);font-family:'DM Mono',monospace}
+
+/* Competitor table */
+.comp-table{width:100%;border-collapse:collapse;margin-bottom:16px;font-size:10pt}
+.comp-table th{font-size:8.5pt;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;padding:7px 10px;background:var(--warm);text-align:left}
+.comp-table td{padding:8px 10px;border-bottom:0.5px solid var(--border)}
+.comp-table tr.you-row td{background:rgba(0,168,120,.06);font-weight:600}
+.ct-win{color:#085041;font-weight:600}
+.ct-lose{color:var(--red)}
+.comp-badge{font-size:8.5pt;font-weight:700;padding:2px 8px;border-radius:20px}
+.cb-you{background:var(--green-light);color:#085041}
+.cb-them{background:var(--red-light);color:var(--red)}
+
+/* Sentiment */
+.sentiment-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.sc-col h3{font-size:9pt;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.sc-col.pos h3{color:#085041}
+.sc-col.neg h3{color:var(--red)}
+.word-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.w-tag{font-size:10pt;padding:4px 11px;border-radius:20px;font-weight:500}
+.w-pos{background:var(--green-light);color:#085041}
+.w-neg{background:var(--red-light);color:var(--red)}
+.w-lg{font-size:12pt;padding:5px 14px}
+.w-sm{font-size:9pt;padding:3px 8px}
+
+/* Footer */
+.footer{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;border-top:1px solid var(--border);font-size:8.5pt;color:var(--slate-light)}
+.footer .brand{font-weight:700;color:var(--navy)}
+.footer .brand span{color:var(--green)}
+
+/* Callout */
+.callout{background:var(--navy);color:#fff;border-radius:10px;padding:14px 16px;margin-bottom:14px}
+.callout h3{font-size:11pt;font-weight:700;margin-bottom:5px}
+.callout p{font-size:9.5pt;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:10px}
+.callout a{color:var(--green);font-weight:600}
+.data-note{font-size:8.5pt;color:var(--slate-light);font-style:italic;margin-top:8px}
+
+
+.kw-span-primary{background:#E6F1FB;color:#0C447C;border-color:#85B7EB}
+.kw-span-secondary{background:#E1F5EE;color:#085041;border-color:var(--green)}
+.kw-span-longtail{background:var(--warm);color:var(--slate);border-color:var(--border)}
+
+/* Injected data placeholder — replaced by server before PDF generation */
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page cover">
+  <div class="cover-top">
+    <div class="logo">The Doc <span>Mirror</span></div>
+    <div class="logo-tag">Doctor Visibility Report</div>
+    <h1><em>{{DOCTOR_NAME}}</em></h1>
+    <p class="cover-sub">{{SPECIALTY}} &middot; {{CITY}}, {{STATE}}<br>Your complete Doctor Visibility Score breakdown &mdash; all 5 pillars scored, all issues identified, all fixes prioritised.</p>
+    <div class="cover-meta">
+      <div class="meta-item"><div class="lbl">Report date</div><div class="val">{{REPORT_DATE}}</div></div>
+      <div class="meta-item"><div class="lbl">Report type</div><div class="val">Full 5-Pillar Audit</div></div>
+      <div class="meta-item"><div class="lbl">Specialty</div><div class="val">{{SPECIALTY}}</div></div>
+      <div class="meta-item"><div class="lbl">Market</div><div class="val">{{CITY}}, {{STATE}}</div></div>
+    </div>
+  </div>
+  <div class="cover-bottom">
+    <div class="cover-score-block">
+      <div class="cs-label">{{SPECIALTY}} Doctor Visibility Score</div>
+      <div class="cs-num">{{SCORE}}</div>
+      <div class="cs-verdict">{{VERDICT}}</div>
+    </div>
+    <div class="cover-date">Generated {{REPORT_DATE}} &middot; thedocmirror.com</div>
+  </div>
+</div>
+
+<!-- PAGE 2: 5-PILLAR BREAKDOWN + ISSUES -->
+<div class="page">
+  <div class="section-hd"><div class="section-num">1</div><h2>5-Pillar Visibility Breakdown</h2></div>
+  <table class="pillar-table">
+    <thead><tr><th>Pillar</th><th>Score</th><th style="min-width:120px">Performance</th><th>Max</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>Google Business Profile</strong><br><span style="font-size:9pt;color:var(--slate-light)">Completeness, accuracy, category</span></td>
+        <td class="score-cell">{{GMB_SCORE}}</td>
+        <td class="bar-cell"><div class="bar-wrap"><div class="bar-fill {{GMB_BAR_CLASS}}" style="width:{{GMB_PCT}}%"></div></div></td>
+        <td style="color:var(--slate-light);font-size:9.5pt">30</td>
+        <td><span class="status-badge {{GMB_STATUS_CLASS}}">{{GMB_STATUS}}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Star Rating Quality</strong><br><span style="font-size:9pt;color:var(--slate-light)">Average rating, rating threshold</span></td>
+        <td class="score-cell">{{RATING_SCORE}}</td>
+        <td class="bar-cell"><div class="bar-wrap"><div class="bar-fill {{RATING_BAR_CLASS}}" style="width:{{RATING_PCT}}%"></div></div></td>
+        <td style="color:var(--slate-light);font-size:9.5pt">20</td>
+        <td><span class="status-badge {{RATING_STATUS_CLASS}}">{{RATING_STATUS}}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Review Volume</strong><br><span style="font-size:9pt;color:var(--slate-light)">Total reviews, recency</span></td>
+        <td class="score-cell">{{REVIEW_SCORE}}</td>
+        <td class="bar-cell"><div class="bar-wrap"><div class="bar-fill {{REVIEW_BAR_CLASS}}" style="width:{{REVIEW_PCT}}%"></div></div></td>
+        <td style="color:var(--slate-light);font-size:9.5pt">15</td>
+        <td><span class="status-badge {{REVIEW_STATUS_CLASS}}">{{REVIEW_STATUS}}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Photo Presence</strong><br><span style="font-size:9pt;color:var(--slate-light)">Photo count, quality</span></td>
+        <td class="score-cell">{{PHOTO_SCORE}}</td>
+        <td class="bar-cell"><div class="bar-wrap"><div class="bar-fill {{PHOTO_BAR_CLASS}}" style="width:{{PHOTO_PCT}}%"></div></div></td>
+        <td style="color:var(--slate-light);font-size:9.5pt">15</td>
+        <td><span class="status-badge {{PHOTO_STATUS_CLASS}}">{{PHOTO_STATUS}}</span></td>
+      </tr>
+      <tr>
+        <td><strong>Competitive Search Rank</strong><br><span style="font-size:9pt;color:var(--slate-light)">Local pack position</span></td>
+        <td class="score-cell">{{RANK_SCORE}}</td>
+        <td class="bar-cell"><div class="bar-wrap"><div class="bar-fill {{RANK_BAR_CLASS}}" style="width:{{RANK_PCT}}%"></div></div></td>
+        <td style="color:var(--slate-light);font-size:9.5pt">20</td>
+        <td><span class="status-badge {{RANK_STATUS_CLASS}}">{{RANK_STATUS}}</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="section-hd" style="margin-top:20px"><div class="section-num">2</div><h2>Issues Found</h2></div>
+  <div class="issues-list">
+    {{ISSUES_HTML}}
+  </div>
+
+  <div class="footer">
+    <span class="brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME}} &middot; {{REPORT_DATE}}</span>
+    <span>Page 2 of 4</span>
+  </div>
+</div>
+
+<!-- PAGE 3: FIX GUIDE + COMPETITOR COMPARISON -->
+<div class="page">
+  <div class="section-hd"><div class="section-num">3</div><h2>Prioritised Fix Guide</h2></div>
+  <p style="font-size:10pt;color:var(--slate-light);margin-bottom:14px">Fixes are ordered by Doctor Visibility Score impact. Completing the top 2 fixes typically adds 8&ndash;15 points to your score within 4 weeks.</p>
+  {{FIXES_HTML}}
+
+  <div class="section-hd" style="margin-top:20px"><div class="section-num">4</div><h2>Competitor Comparison</h2></div>
+  <table class="comp-table">
+    <thead><tr><th>Practice</th><th>DVS Score</th><th>Rating</th><th>Reviews</th><th>Photos</th><th>Rank</th></tr></thead>
+    <tbody>
+      {{COMPETITOR_ROWS}}
+    </tbody>
+  </table>
+
+  <div class="footer">
+    <span class="brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME}} &middot; {{REPORT_DATE}}</span>
+    <span>Page 3 of 4</span>
+  </div>
+</div>
+
+<!-- PAGE 4: SENTIMENT + NEXT STEPS -->
+<div class="page">
+  <div class="section-hd"><div class="section-num">5</div><h2>Review Sentiment Analysis</h2></div>
+  <div class="sentiment-cols">
+    <div class="sc-col pos">
+      <h3>Patients consistently praise</h3>
+      <div class="word-wrap">{{POS_WORDS_HTML}}</div>
+    </div>
+    <div class="sc-col neg">
+      <h3>Patients consistently flag</h3>
+      <div class="word-wrap">{{NEG_WORDS_HTML}}</div>
+    </div>
+  </div>
+  <p class="data-note">Sentiment based on analysis of your {{REVIEW_COUNT}} Google reviews using Claude AI. Larger text indicates higher mention frequency.</p>
+
+  <div class="section-hd" style="margin-top:20px"><div class="section-num">6</div><h2>Your 30-Day Action Plan</h2></div>
+  <div class="fix-item">
+    <div class="fix-header"><div class="fix-num">W1</div><div class="fix-title">Week 1 &mdash; Quick wins (1&ndash;2 hours total)</div></div>
+    <div class="fix-steps">1. Add business hours for all 7 days in Google Business Profile
+2. Upload minimum 5 photos: exterior, reception, consultation room
+3. Verify phone number is correct and click-to-call
+4. Check and correct your primary category to your exact specialty</div>
+  </div>
+  <div class="fix-item">
+    <div class="fix-header"><div class="fix-num">W2</div><div class="fix-title">Week 2 &mdash; Content (30 minutes)</div></div>
+    <div class="fix-steps">5. Write a 150-word practice description mentioning specialty + city + conditions treated
+6. Upload 5 more photos to reach 10 total
+7. Add services list to your Google profile</div>
+  </div>
+  <div class="fix-item">
+    <div class="fix-header"><div class="fix-num">W3+</div><div class="fix-title">Ongoing &mdash; Review acquisition (5 minutes per week)</div></div>
+    <div class="fix-steps">8. After each appointment, send satisfied patients your review link via text/email
+9. Respond to all existing reviews within 48 hours
+10. Set a calendar reminder to check your listing for auto-suggested edits monthly</div>
+  </div>
+
+  <div class="callout" style="margin-top:16px">
+    <h3>Want this handled for you?</h3>
+    <p>The Monitor plan re-runs this full audit every Monday automatically, tracks your score over time, and alerts you when a competitor moves up — including their AI search ranking on ChatGPT, Gemini, and Claude.</p>
+    <a href="mailto:hello@thedocmirror.com?subject=Monitor plan enquiry">hello@thedocmirror.com &rarr;</a>
+  </div>
+
+  <div class="footer">
+    <span class="brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME}} &middot; {{REPORT_DATE}}</span>
+    <span>Page 4 of 6</span>
+  </div>
+</div>
+
+
+<!-- PAGE 5: YOUTUBE + BRAND SEARCH + SOCIAL + SEO KEYWORDS -->
+<div class="page">
+  <div class="section-hd"><div class="section-num">7</div><h2>YouTube &amp; Brand Search Analysis</h2></div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    <div>
+      <p style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">YouTube Channel</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt">
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Channel found</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{YOUTUBE_FOUND}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Total views</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{YOUTUBE_VIEWS}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Subscribers</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{YOUTUBE_SUBSCRIBERS}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Videos</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{YOUTUBE_VIDEOS}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Shorts ratio</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{YOUTUBE_SHORTS_RATIO}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy)">Last upload</td><td style="padding:5px 8px">{{YOUTUBE_LAST_UPLOAD}}</td></tr>
+      </table>
+    </div>
+    <div>
+      <p style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">Brand Search Trend</p>
+      <table style="width:100%;border-collapse:collapse;font-size:10pt">
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Avg monthly searches</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{BRAND_SEARCH_MONTHLY}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">3-month change</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{BRAND_SEARCH_3M}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy);border-bottom:.5px solid var(--border)">Year-on-year</td><td style="padding:5px 8px;border-bottom:.5px solid var(--border)">{{BRAND_SEARCH_YOY}}</td></tr>
+        <tr><td style="padding:5px 8px;background:var(--warm);font-weight:600;color:var(--navy)">Trend direction</td><td style="padding:5px 8px">{{BRAND_SEARCH_TREND}}</td></tr>
+      </table>
+      <p style="font-size:8.5pt;color:var(--slate-light);margin-top:8px;line-height:1.5">Brand search measures how often patients search your name directly. Declining trend means your PR and content activity needs to increase.</p>
+    </div>
+  </div>
+
+  <div class="section-hd" style="margin-top:16px"><div class="section-num">8</div><h2>Social &amp; Directory Presence</h2></div>
+  <table class="comp-table" style="margin-bottom:16px">
+    <thead><tr><th>Platform</th><th>Status</th><th>Detail</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Instagram</strong></td><td>{{INSTAGRAM_STATUS}}</td><td>{{INSTAGRAM_DETAIL}}</td></tr>
+      <tr><td><strong>LinkedIn</strong></td><td>{{LINKEDIN_STATUS}}</td><td>{{LINKEDIN_DETAIL}}</td></tr>
+      <tr><td><strong>Healthgrades</strong></td><td>{{HEALTHGRADES_STATUS}}</td><td>{{HEALTHGRADES_DETAIL}}</td></tr>
+      <tr><td><strong>Zocdoc</strong></td><td>{{ZOCDOC_STATUS}}</td><td>{{ZOCDOC_DETAIL}}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="section-hd" style="margin-top:16px"><div class="section-num">9</div><h2>SEO Keyword Strategy</h2></div>
+  <div style="margin-bottom:8px">
+    <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:5px">Primary keywords — high intent, high volume</p>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">{{SEO_PRIMARY_HTML}}</div>
+    <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:5px">Secondary keywords</p>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">{{SEO_SECONDARY_HTML}}</div>
+    <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:5px">Long-tail keywords — low competition, high conversion</p>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">{{SEO_LONGTAIL_HTML}}</div>
+  </div>
+  <p class="data-note">Use primary keywords in your Google Business description, website page titles, and YouTube video titles for maximum ranking impact.</p>
+
+  <div class="footer">
+    <span class="brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME}} &middot; {{REPORT_DATE}}</span>
+    <span>Page 5 of 6</span>
+  </div>
+</div>
+
+<!-- PAGE 6: CONTENT STRATEGY + PATIENT JOURNEY + 90-DAY PLAN -->
+<div class="page">
+  <div class="section-hd"><div class="section-num">10</div><h2>Content Strategy Brief</h2></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div>
+      <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:6px">Content pillars</p>
+      {{CONTENT_PILLARS_HTML}}
+    </div>
+    <div>
+      <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:6px">Ready-to-film Reel ideas</p>
+      {{CONTENT_REELS_HTML}}
+    </div>
+  </div>
+  <p style="font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:5px">Recommended posting cadence</p>
+  <div style="background:var(--navy);color:#fff;border-radius:8px;padding:8px 12px;font-size:10pt;margin-bottom:12px">{{CONTENT_CADENCE}}</div>
+
+  <div class="section-hd" style="margin-top:12px"><div class="section-num">11</div><h2>Patient Journey Audit</h2></div>
+  <p style="font-size:9.5pt;color:var(--slate-light);margin-bottom:10px">Where you are winning and losing patients across their 5 decision stages</p>
+  {{PATIENT_JOURNEY_HTML}}
+
+  <div class="section-hd" style="margin-top:12px"><div class="section-num">12</div><h2>Your 90-Day Action Plan</h2></div>
+  <p style="font-size:9.5pt;color:var(--slate-light);margin-bottom:10px">Every action is completable without hiring anyone. No agency required.</p>
+  {{PLAN_HTML}}
+
+  <div style="background:var(--navy);color:#fff;border-radius:8px;padding:10px 14px;margin-top:10px;display:flex;align-items:center;justify-content:space-between">
+    <span style="font-size:11pt;color:rgba(255,255,255,.6)">Current score: <strong style="color:#fff">{{SCORE}}/100</strong></span>
+    <span style="color:var(--green);font-size:18pt">&rarr;</span>
+    <div style="text-align:right"><div style="font-size:22pt;font-weight:700;font-family:'DM Mono',monospace;line-height:1">{{PROJECTED_SCORE}}</div><div style="font-size:9pt;color:rgba(255,255,255,.5)">Projected score at day 90</div></div>
+  </div>
+
+  <div class="footer">
+    <span class="brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME}} &middot; {{REPORT_DATE}}</span>
+    <span>Page 6 of 6</span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /_next/
+Disallow: /dashboard
+
+Sitemap: https://thedocmirror.com/sitemap.xml
