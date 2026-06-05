@@ -589,11 +589,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .c-green:hover{background:var(--green-dark)}
 .faq-list{max-width:660px}
 .faq-item{border-bottom:1px solid var(--border)}
-.faq-q{width:100%;background:none;border:none;padding:1.1rem 0;text-align:left;font-size:15px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;gap:1rem}
-.faq-q .ch{font-size:20px;color:var(--slate-light);transition:transform .2s;flex-shrink:0;line-height:1}
-.faq-q.open .ch{transform:rotate(180deg);color:var(--green)}
-.faq-a{font-size:14px;color:var(--slate);line-height:1.72;padding-bottom:1rem;display:none}
-.faq-a.open{display:block}
+.faq-question{width:100%;background:none;border:none;padding:1.1rem 0;text-align:left;font-size:15px;font-weight:600;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;gap:1rem}
+.faq-answer{max-height:0;overflow:hidden;transition:max-height 0.3s ease;color:#64748b;line-height:1.6;padding-right:32px;font-size:14px}
+.faq-item.active .faq-answer{margin-top:12px}
+.faq-item .faq-arrow{font-size:20px;color:var(--slate-light);transition:transform 0.3s ease;flex-shrink:0;line-height:1}
+.faq-item.active .faq-arrow{transform:rotate(90deg);color:var(--green)}
 
 /* Footer */
 .site-footer{width:100%;background:#0D1B35;padding:56px 1rem 24px;display:flex;justify-content:center}
@@ -608,8 +608,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .footer-links a{color:rgba(255,255,255,.82);text-decoration:none;font-size:0.95rem;transition:color .15s}
 .footer-links a:hover{color:#00A878}
 .footer-social{display:flex;gap:0.75rem;margin-top:0.5rem}
-.social-chip{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);color:#fff;font-size:0.9rem;font-weight:700;text-decoration:none;transition:background .15s}
-.social-chip:hover{background:rgba(0,168,120,.18)}
+.social-chip{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);color:#c8d4e0;text-decoration:none;transition:background .15s,color .15s}
+.social-chip svg{width:18px;height:18px}
+.social-chip:hover{background:rgba(0,168,120,.18);color:#00A878}
 .footer-divider{height:1px;background:rgba(255,255,255,.12);margin:24px 0 0}
 .footer-bottom{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.95rem;text-align:center;max-width:1200px;width:100%}
 @media(max-width:960px){.footer-grid{grid-template-columns:repeat(2,minmax(140px,1fr));gap:28px}}
@@ -1693,12 +1694,12 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
     <div class="sec-label">Questions</div>
     <h2 class="sec-h2">Everything you need to know</h2>
     <div class="faq-list" style="margin-top:2rem">
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">Is this really free?<span class="ch">&rsaquo;</span></button><div class="faq-a">Yes, completely. The patient view snapshot, your 3 critical issues, and the competitor comparison are all free &mdash; no credit card, no signup. You only need an email address to receive your personalised fix guide.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">Will this change my Google listing?<span class="ch">&rsaquo;</span></button><div class="faq-a">Never. The Doc Mirror reads publicly available data only &mdash; the same information any patient can see when they search for you. We never access your Google account or make any changes on your behalf. You apply the fixes yourself inside your Google Business dashboard.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">What data do you use?<span class="ch">&rsaquo;</span></button><div class="faq-a">We use Google&rsquo;s public Places API to read your publicly visible listing information &mdash; the same data a patient sees when they Google your name. We also check your Google Maps position relative to nearby competitors. No private data. No HIPAA-covered information. No patient records are ever accessed.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">My listing doesn&rsquo;t appear. Why?<span class="ch">&rsaquo;</span></button><div class="faq-a">If we can&rsquo;t find your listing, it likely means you haven&rsquo;t claimed your Google Business Profile, or it isn&rsquo;t verified. This is actually critical &mdash; if we can&rsquo;t find you, your patients can&rsquo;t either. Your fix guide includes step-by-step instructions to claim and verify your listing in under 15 minutes.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">How is this different from just Googling myself?<span class="ch">&rsaquo;</span></button><div class="faq-a">When you Google yourself, results are personalised based on your search history and location. Patients searching from a different device or city see something completely different. The Doc Mirror simulates a cold patient search &mdash; no history, no personalisation &mdash; showing you exactly what a first-time searcher finds.</div></div>
-      <div class="faq-item"><button class="faq-q" onclick="tFaq(this)" aria-expanded="false">How often should I check?<span class="ch">&rsaquo;</span></button><div class="faq-a">Monthly at minimum. Google listings change &mdash; hours get auto-suggested incorrectly, competitors update their profiles, your rating shifts with new reviews. The Monitor plan ($49/month) checks automatically every week and alerts you when something changes, so you never have to remember to check.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">Is this really free?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">Yes. Your initial visibility check is completely free. You only pay if you decide to unlock the detailed report with competitor analysis and personalized recommendations.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">Will this change my Google listing?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">No. The Doc Mirror does not modify your Google Business Profile. We simply analyze your current visibility and show opportunities for improvement.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">What data do you use?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">We analyze publicly available information from Google Search, Google Maps, business listings, reviews, and other online sources that patients and AI systems may reference.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">My listing doesn&rsquo;t appear. Why?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">Some profiles may have incomplete information, inconsistent listings, or limited online visibility. The report helps identify the most common reasons your practice may not appear prominently.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">How is this different from just Googling myself?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">The Doc Mirror combines Google visibility, AI visibility, competitor analysis, review strength, and other ranking signals into one report, saving hours of manual research.</div></div>
+      <div class="faq-item"><button class="faq-question" aria-expanded="false">How often should I check?<span class="faq-arrow">&rsaquo;</span></button><div class="faq-answer">Most practices should review their visibility every 1&ndash;3 months, especially after profile updates, new reviews, or website changes.</div></div>
     </div>
   </div>
 </section>
@@ -1710,10 +1711,10 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <div class="footer-logo">The Doc Mirror</div>
         <p>Get more patients to your practice by improving your visibility where patients are searching.</p>
         <div class="footer-social">
-          <a class="social-chip" href="#" aria-label="Facebook">F</a>
-          <a class="social-chip" href="#" aria-label="X">X</a>
-          <a class="social-chip" href="#" aria-label="LinkedIn">in</a>
-          <a class="social-chip" href="#" aria-label="Instagram">IG</a>
+          <a class="social-chip" href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
+          <a class="social-chip" href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+          <a class="social-chip" href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
+          <a class="social-chip" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
         </div>
       </div>
       <div class="footer-col">
@@ -1741,15 +1742,15 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <div class="footer-links">
           <a href="#about">About us</a>
           <a href="mailto:hello@thedocmirror.com">Contact</a>
-          <a href="/privacy">Privacy</a>
-          <a href="/terms">Terms</a>
+          <a href="./pages/privacy.html">Privacy</a>
+          <a href="./pages/terms.html">Terms</a>
         </div>
       </div>
       <div class="footer-col">
         <h4>SUPPORT</h4>
         <div class="footer-links">
           <a href="#faq">FAQ</a>
-          <a href="#">Help Center</a>
+          <a href="./pages/help-center.html">Help Center</a>
           <a href="mailto:hello@thedocmirror.com">Contact Support</a>
         </div>
       </div>
@@ -2379,13 +2380,36 @@ function toggleURL(btn){
   btn.setAttribute('aria-expanded',String(open));
 }
 
-// ── FAQ ────────────────────────────────────────────────────────────────────
-function tFaq(btn){
-  var a=btn.nextElementSibling,isOpen=a.classList.contains('open');
-  document.querySelectorAll('.faq-a').forEach(function(x){x.classList.remove('open');});
-  document.querySelectorAll('.faq-q').forEach(function(x){x.classList.remove('open');x.setAttribute('aria-expanded','false');});
-  if(!isOpen){a.classList.add('open');btn.classList.add('open');btn.setAttribute('aria-expanded','true');}
-}
+</script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const faqItems = document.querySelectorAll(".faq-item");
+
+  faqItems.forEach((item) => {
+    const question = item.querySelector(".faq-question");
+    const answer = item.querySelector(".faq-answer");
+
+    if (!question || !answer) return;
+
+    question.addEventListener("click", function () {
+      faqItems.forEach((otherItem) => {
+        if (otherItem !== item) {
+          otherItem.classList.remove("active");
+          const otherAnswer = otherItem.querySelector(".faq-answer");
+          if (otherAnswer) otherAnswer.style.maxHeight = null;
+        }
+      });
+
+      item.classList.toggle("active");
+
+      if (item.classList.contains("active")) {
+        answer.style.maxHeight = answer.scrollHeight + "px";
+      } else {
+        answer.style.maxHeight = null;
+      }
+    });
+  });
+});
 </script>
 </body>
 </html>

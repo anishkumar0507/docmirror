@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Help Center | The Doc Mirror</title>
+<meta name="description" content="Answers to common questions about The Doc Mirror visibility audits, scores, reports, and billing.">
+<meta property="og:title" content="Help Center | The Doc Mirror">
+<meta property="og:description" content="Answers to common questions about The Doc Mirror visibility audits, scores, reports, and billing.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://thedocmirror.com/pages/help-center.html">
+<link rel="canonical" href="https://thedocmirror.com/pages/help-center.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;--warm:#F7F6F3;--warm-white:#FEFCF7;--slate:#3D4D5C;--slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);-webkit-font-smoothing:antialiased;line-height:1.7}
+
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2.5rem);height:60px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-0.02em}
+.logo-word span{color:var(--green)}
+.nav-mid{display:flex;align-items:center;gap:1.75rem}
+.nav-mid a{font-size:14px;color:var(--slate);text-decoration:none;font-weight:500}
+.nav-mid a:hover{color:var(--navy)}
+.nav-cta{background:var(--navy);color:#fff;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s;white-space:nowrap}
+.nav-cta:hover{background:var(--green);color:#fff}
+@media(max-width:640px){.nav-mid{display:none}}
+
+main{width:min(100% - 2rem,800px);margin:0 auto;padding:clamp(2rem,5vw,3.5rem) 0 4rem;display:flex;flex-direction:column;gap:0}
+.eyebrow{display:inline-flex;align-items:center;gap:.65rem;background:rgba(0,168,120,.12);border:1px solid rgba(0,168,120,.2);color:var(--green-dark);font-size:11px;font-weight:700;padding:7px 12px;border-radius:999px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:1rem;width:fit-content}
+h1{font-size:clamp(1.8rem,4vw,2.6rem);line-height:1.1;color:var(--navy);margin-bottom:.5rem;letter-spacing:-.02em}
+.lede{font-size:1.05rem;color:var(--slate-light);line-height:1.75;margin-bottom:2rem}
+
+.search-wrap{position:relative;margin-bottom:2.5rem}
+.search-wrap svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--slate-muted);pointer-events:none}
+#faq-search{width:100%;padding:13px 14px 13px 42px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--navy);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s}
+#faq-search:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,120,.1)}
+#faq-search::placeholder{color:var(--slate-muted)}
+#no-results{display:none;text-align:center;padding:2rem;color:var(--slate-muted);font-size:.95rem}
+
+.faq-section{margin-bottom:2.5rem}
+.section-label{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.section-label-icon{width:34px;height:34px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.section-label h2{font-size:1.05rem;font-weight:700;color:var(--navy)}
+
+.faq-list{background:#fff;border:1px solid var(--border);border-radius:14px;overflow:hidden}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-item:last-child{border-bottom:none}
+.faq-item.hidden{display:none}
+.faq-question{width:100%;background:none;border:none;padding:1rem 1.1rem;text-align:left;font-size:.97rem;font-weight:600;color:var(--navy);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:'DM Sans',sans-serif;gap:1rem;transition:background .1s}
+.faq-question:hover{background:var(--warm)}
+.faq-arrow{font-size:18px;color:var(--slate-muted);transition:transform .25s;flex-shrink:0;line-height:1}
+.faq-item.active .faq-arrow{transform:rotate(90deg);color:var(--green)}
+.faq-answer{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.faq-answer-inner{padding:0 1.1rem 1rem;font-size:.94rem;color:var(--slate);line-height:1.75}
+.faq-answer-inner p{margin-bottom:.5rem}
+.faq-answer-inner p:last-child{margin-bottom:0}
+.faq-answer-inner a{color:var(--green-dark);text-decoration:underline;text-decoration-color:rgba(0,122,87,.3)}
+.faq-answer-inner a:hover{color:var(--navy)}
+
+.support-card{background:var(--navy);border-radius:18px;padding:2rem 1.75rem;display:flex;align-items:center;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;margin-top:1rem}
+.support-card-left{display:flex;flex-direction:column;gap:.5rem}
+.support-card-left h2{font-size:1.15rem;font-weight:700;color:#fff}
+.support-card-left p{font-size:.93rem;color:rgba(255,255,255,.65);line-height:1.6}
+.support-email{display:inline-flex;align-items:center;gap:6px;background:var(--green);color:#fff;padding:11px 20px;border-radius:999px;font-size:.93rem;font-weight:600;text-decoration:none;transition:background .15s;white-space:nowrap;flex-shrink:0}
+.support-email:hover{background:var(--green-dark)}
+.support-email svg{width:16px;height:16px}
+
+footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 1.5rem;margin-top:3rem}
+.footer-inner{max-width:1040px;margin:0 auto}
+.footer-cols{display:grid;grid-template-columns:1.8fr 1fr 1.4fr 1fr 1fr;gap:2.5rem;padding-bottom:2rem}
+.footer-brand{display:flex;flex-direction:column;gap:.6rem}
+.footer-brand-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.footer-brand-mark{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.footer-brand-mark svg{width:16px;height:16px}
+.footer-brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
+.footer-brand-name span{color:var(--green)}
+.footer-tagline{font-size:.875rem;color:#8fa3b8;line-height:1.6;margin:0}
+.footer-col h4{font-size:.75rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .85rem;padding-bottom:.45rem;border-bottom:2px solid var(--green);display:inline-block}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:.55rem;margin:0;padding:0}
+.footer-col a{color:#8fa3b8;text-decoration:none;font-size:.875rem;transition:color .15s}
+.footer-col a:hover{color:var(--green)}
+.footer-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:0 0 1.25rem}
+.footer-bottom{display:flex;justify-content:center}
+.footer-bottom p{font-size:.8rem;color:#5a7080;margin:0}
+@media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
+@media(max-width:480px){.footer-cols{grid-template-columns:1fr}.support-card{flex-direction:column;align-items:stretch}.support-email{text-align:center;justify-content:center}}
+</style>
+</head>
+<body>
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
+    <div class="logo-word">The Doc <span>Mirror</span></div>
+  </a>
+  <div class="nav-mid">
+    <a href="../index.html#how-it-works">How it works</a>
+    <a href="../index.html#tool">Free audit</a>
+    <a href="../index.html#pricing">Pricing</a>
+    <a href="./resources.html">Resources</a>
+    <a href="../index.html#about">About</a>
+    <a href="../index.html#faq">FAQ</a>
+  </div>
+  <a class="nav-cta" href="../index.html#tool">Check my listing free</a>
+</nav>
+
+<main>
+  <div class="eyebrow">Support</div>
+  <h1>Help Center</h1>
+  <p class="lede">Everything you need to get the most out of The Doc Mirror.</p>
+
+  <div class="search-wrap">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input type="text" id="faq-search" placeholder="Search questions&hellip;" autocomplete="off">
+  </div>
+
+  <div id="no-results">No questions match your search. Try different keywords or <a href="mailto:support@thedocmirror.com">email us</a>.</div>
+
+  <!-- Getting Started -->
+  <div class="faq-section" data-section>
+    <div class="section-label">
+      <div class="section-label-icon">&#x1F680;</div>
+      <h2>Getting Started</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          How do I run a visibility check?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>Go to <a href="/../index.html#tool">thedocmirror.com</a> and enter your name, specialty, and city in the audit tool. Hit "Check my listing" and the audit runs automatically — no account required.</p>
+            <p>The audit queries Google Search, Google Maps, and AI platforms to simulate what a patient would find when searching for your practice. Results appear in under 60 seconds.</p>
+          </div>
+        </div>
+      </div>
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          What is the Doctor Visibility Score?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>Your Doctor Visibility Score is a number from 0 to 100 that reflects how visible your practice is across Google and AI search. It combines five pillars: Google Search presence, Google Maps presence, AI platform mentions, online reviews, and website quality.</p>
+            <p>A score below 40 means patients searching for you are likely finding competitors first. Scores above 70 indicate strong visibility across the channels patients use most.</p>
+            <p>Read the full explanation in <a href="./doctor-visibility-score.html">Doctor Visibility Score Explained</a>.</p>
+          </div>
+        </div>
+      </div>
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          How long does a report take?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>Most audits complete in under 60 seconds. If results take longer it usually means one of the data sources is responding slowly — the tool will keep trying and notify you when the report is ready.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reports & Scores -->
+  <div class="faq-section" data-section>
+    <div class="section-label">
+      <div class="section-label-icon">&#x1F4CA;</div>
+      <h2>Reports &amp; Scores</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          What does AI Visibility mean?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>AI Visibility measures whether your practice is being mentioned and recommended by AI tools like ChatGPT, Gemini, and Claude when a patient asks for a doctor in your specialty and city.</p>
+            <p>As more patients use AI to find healthcare providers, this signal is increasingly important. Practices with poor AI visibility can lose patients to competitors even when their Google rankings are strong.</p>
+            <p>Learn more in <a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a>.</p>
+          </div>
+        </div>
+      </div>
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          What does Competitor Gap mean?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>Competitor Gap shows the difference between your visibility score and the top-performing competitor in your area and specialty. A high competitor gap means patients searching for your type of doctor are being directed to a competing practice instead of yours.</p>
+            <p>The full report breaks down exactly which channels your competitor is winning on so you can close the gap efficiently.</p>
+          </div>
+        </div>
+      </div>
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          How often should I check my visibility?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>We recommend running a visibility check at least once a month. Search rankings and AI recommendations change frequently, and catching a drop early gives you time to recover before it affects patient volume.</p>
+            <p>The Monitor plan runs this automatically on a weekly schedule and alerts you to significant changes.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Billing -->
+  <div class="faq-section" data-section>
+    <div class="section-label">
+      <div class="section-label-icon">&#x1F4B3;</div>
+      <h2>Billing</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item" data-faq>
+        <button class="faq-question">
+          How do I unlock the full report?
+          <span class="faq-arrow">&#x203A;</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">
+            <p>The free audit shows your overall score and top visibility flags. To unlock the full report — including your complete AI visibility breakdown, competitor deep-compare, keyword gaps, and 90-day action plan — click "Unlock Full Report" on your results page.</p>
+            <p>You can pay once for a single full report, or subscribe to the Monitor plan for monthly reports plus email alerts.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Support -->
+  <div class="faq-section" data-section>
+    <div class="section-label">
+      <div class="section-label-icon">&#x1F4AC;</div>
+      <h2>Still need help?</h2>
+    </div>
+    <div class="support-card">
+      <div class="support-card-left">
+        <h2>Talk to the team</h2>
+        <p>Can't find what you're looking for? We respond to every email, usually within one business day.</p>
+      </div>
+      <a class="support-email" href="mailto:support@thedocmirror.com">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        support@thedocmirror.com
+      </a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-cols">
+      <div class="footer-brand">
+        <a class="footer-brand-logo" href="/">
+          <div class="footer-brand-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#fff" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#fff"/></svg></div>
+          <span class="footer-brand-name">The Doc <span>Mirror</span></span>
+        </a>
+        <p class="footer-tagline">How do Google and AI see you?<br>Find out, free.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="./resources.html">Resources</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="mailto:hello@thedocmirror.com">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a></li>
+          <li><a href="./doctor-visibility-score.html">Doctor Visibility Score</a></li>
+          <li><a href="./how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a></li>
+          <li><a href="./google-visibility-for-doctors.html">Google Visibility for Doctors</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/#about">About</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./terms.html">Terms</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="/#faq">FAQ</a></li>
+          <li><a href="./help-center.html">Help Center</a></li>
+          <li><a href="mailto:support@thedocmirror.com">Contact Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <hr class="footer-divider">
+    <div class="footer-bottom">
+      <p>&copy; 2026 The Doc Mirror. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+var searchInput = document.getElementById('faq-search');
+var noResults = document.getElementById('no-results');
+var allItems = document.querySelectorAll('[data-faq]');
+var allSections = document.querySelectorAll('[data-section]');
+
+searchInput.addEventListener('input', function() {
+  var q = this.value.trim().toLowerCase();
+  var visibleCount = 0;
+
+  allItems.forEach(function(item) {
+    var text = item.textContent.toLowerCase();
+    if (!q || text.includes(q)) {
+      item.classList.remove('hidden');
+      visibleCount++;
+    } else {
+      item.classList.add('hidden');
+    }
+  });
+
+  allSections.forEach(function(section) {
+    var hasVisible = section.querySelectorAll('[data-faq]:not(.hidden)').length > 0;
+    section.style.display = hasVisible ? '' : 'none';
+  });
+
+  noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+});
+
+document.querySelectorAll('.faq-question').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var item = btn.closest('.faq-item');
+    var answer = item.querySelector('.faq-answer');
+    var wasActive = item.classList.contains('active');
+
+    item.classList.toggle('active');
+    answer.style.maxHeight = wasActive ? '0' : answer.scrollHeight + 'px';
+  });
+});
+</script>
+</body>
+</html>
