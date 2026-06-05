@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Visibility Preview Report | The Doc Mirror</title>
+<meta name="description" content="Your free Doctor Visibility Preview — signal-based estimate across Google, ChatGPT, Gemini, and Claude.">
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0A2540;--navy-light:#1a3a5c;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0;--red:#DC2626;--red-light:#FEF2F2;--amber:#D97706;--amber-light:#FFFBEB}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);-webkit-font-smoothing:antialiased;line-height:1.6}
+
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2.5rem);height:60px;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-0.02em}
+.logo-word span{color:var(--green)}
+.nav-mid{display:flex;align-items:center;gap:1.75rem}
+.nav-mid a{font-size:14px;color:var(--slate);text-decoration:none;font-weight:500}
+.nav-mid a:hover{color:var(--navy)}
+.nav-cta{background:var(--navy);color:#fff;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s;white-space:nowrap}
+.nav-cta:hover{background:var(--green);color:#fff}
+@media(max-width:640px){.nav-mid{display:none}}
+
+/* ── HERO ── */
+.report-hero{background:linear-gradient(135deg,#0A2540 0%,#142E50 100%);padding:clamp(2rem,5vw,3.5rem) clamp(1rem,4vw,2.5rem);text-align:center;position:relative;overflow:hidden}
+.report-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,rgba(0,168,120,.15) 0%,transparent 65%);pointer-events:none}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(0,168,120,.15);border:1px solid rgba(0,168,120,.25);color:var(--green);font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;letter-spacing:.08em;text-transform:uppercase;margin-bottom:1rem;position:relative}
+.report-hero h1{font-size:clamp(1.5rem,4vw,2.6rem);font-weight:700;color:#fff;letter-spacing:-.03em;line-height:1.1;margin-bottom:.4rem;position:relative}
+.report-hero .hero-sub{font-size:.97rem;color:rgba(255,255,255,.55);position:relative}
+
+/* ── NOTICE ── */
+.preview-notice{background:#fff;border-bottom:1px solid var(--border);padding:.65rem clamp(1rem,4vw,2.5rem);display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--slate-muted)}
+.preview-notice svg{width:14px;height:14px;flex-shrink:0;color:var(--slate-muted)}
+.preview-notice strong{color:var(--slate);font-weight:600}
+
+/* ── LAYOUT ── */
+main{max-width:860px;margin:0 auto;padding:1.5rem clamp(1rem,3vw,1.5rem) 4rem;display:flex;flex-direction:column;gap:1.25rem}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;overflow:hidden}
+.card-inner{padding:1.5rem}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:1.25rem}
+.card-head-icon{width:36px;height:36px;border-radius:10px;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.card-head-title{font-size:1rem;font-weight:700;color:var(--navy)}
+.card-head-sub{font-size:.8rem;color:var(--slate-muted);margin-top:1px}
+.tag-estimated{display:inline-block;font-size:10px;font-weight:700;background:var(--amber-light);color:var(--amber);border:1px solid #FCD34D;padding:2px 8px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;margin-left:8px;vertical-align:middle}
+
+/* ── NO DATA STATE ── */
+#no-data{max-width:540px;margin:4rem auto;text-align:center;padding:2rem}
+#no-data h2{font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:.75rem}
+#no-data p{color:var(--slate-light);font-size:.95rem;margin-bottom:1.5rem;line-height:1.7}
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:#fff;padding:12px 24px;border-radius:10px;font-size:.95rem;font-weight:600;text-decoration:none;transition:background .15s}
+.back-btn:hover{background:var(--green)}
+
+/* ── SCORE CARD ── */
+.score-main{display:flex;align-items:flex-end;gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.score-number{font-size:clamp(3rem,8vw,4.5rem);font-weight:800;line-height:1;letter-spacing:-.05em;font-family:'DM Mono',monospace}
+.score-denom{font-size:1.5rem;font-weight:600;color:var(--slate-muted);margin-bottom:.5rem}
+.score-right{display:flex;flex-direction:column;gap:.4rem;margin-bottom:.5rem}
+.score-lbl{font-size:.78rem;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.07em}
+.score-status{display:inline-block;font-size:.85rem;font-weight:700;padding:4px 12px;border-radius:20px}
+.status-critical{background:var(--red-light);color:var(--red);border:1px solid #FCA5A5}
+.status-warn{background:var(--amber-light);color:var(--amber);border:1px solid #FCD34D}
+.status-moderate{background:#FFF7ED;color:#92400E;border:1px solid #FCD34D}
+.status-good{background:var(--green-light);color:var(--green-dark);border:1px solid #6EE7B7}
+.score-color-critical{color:var(--red)}
+.score-color-warn{color:var(--amber)}
+.score-color-good{color:var(--green)}
+.score-pills{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin:1.25rem 0 1rem}
+.score-pill{background:var(--warm);border-radius:10px;padding:.75rem .6rem;text-align:center}
+.pill-platform{font-size:.72rem;font-weight:700;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem}
+.pill-val{font-size:1.35rem;font-weight:800;font-family:'DM Mono',monospace;letter-spacing:-.03em}
+.pill-val.pv-strong{color:var(--green)}
+.pill-val.pv-mid{color:var(--amber)}
+.pill-val.pv-weak{color:var(--red)}
+.score-note{font-size:.78rem;color:var(--slate-muted);border-top:1px solid var(--border);padding-top:.85rem;line-height:1.5}
+@media(max-width:480px){.score-pills{grid-template-columns:repeat(2,1fr)}}
+
+/* ── AI SNAPSHOT CARD ── */
+.dark-card{background:linear-gradient(135deg,#0A2540 0%,#142E50 100%);border:none}
+.dark-card .card-inner{color:#fff}
+.dark-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);margin-bottom:3px}
+.dark-title{font-size:1rem;font-weight:700;color:#fff;margin-bottom:1.25rem}
+.ai-row{display:flex;align-items:center;gap:12px;margin-bottom:.9rem}
+.ai-row:last-of-type{margin-bottom:0}
+.ai-platform-name{font-size:.82rem;font-weight:600;color:rgba(255,255,255,.75);min-width:80px;flex-shrink:0}
+.ai-score-val{font-size:1.15rem;font-weight:700;font-family:'DM Mono',monospace;min-width:36px;text-align:right;flex-shrink:0}
+.ai-score-out{font-size:.72rem;color:rgba(255,255,255,.35);margin-left:1px;flex-shrink:0}
+.ai-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.ai-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
+.fill-strong{background:#1D9E75}
+.fill-mid{background:#EF9F27}
+.fill-weak{background:#E24B4A}
+.score-strong{color:#4ADE80}
+.score-mid{color:#FCD34D}
+.score-weak{color:#F87171}
+.ai-divider{height:1px;background:rgba(255,255,255,.1);margin:1rem 0}
+.ai-disclaimer{font-size:.78rem;color:rgba(255,255,255,.38);line-height:1.6;font-style:italic}
+
+/* ── AI RECS CARD ── */
+.recs-query{font-size:.9rem;color:var(--slate);font-style:italic;background:var(--warm);border-radius:8px;border-left:3px solid var(--green);padding:8px 12px;margin-bottom:1rem;font-family:'DM Mono',monospace}
+.recs-list{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem}
+.rec-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--warm);border-radius:10px;border:1px solid var(--border)}
+.rec-rank{width:26px;height:26px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.rec-name{font-size:.93rem;color:var(--slate);font-weight:500}
+.recs-warning{display:flex;align-items:flex-start;gap:8px;background:var(--red-light);border:1px solid #FCA5A5;border-radius:10px;padding:10px 12px;font-size:.85rem;color:#991b1b;line-height:1.5}
+.recs-warning svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
+
+/* ── LEADERBOARD ── */
+.table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table.ldr-table{width:100%;border-collapse:collapse;min-width:440px}
+table.ldr-table th{font-size:.72rem;font-weight:700;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.06em;padding:8px 12px;background:var(--warm);text-align:center;white-space:nowrap}
+table.ldr-table th:first-child{text-align:left}
+table.ldr-table td{font-size:.9rem;padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;color:var(--slate);font-family:'DM Mono',monospace}
+table.ldr-table tr:last-child td{border-bottom:none}
+table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;color:var(--navy);text-align:left}
+.you-row td{background:rgba(220,38,38,.05)!important;color:#991b1b!important}
+.you-row td:first-child{color:#991b1b!important}
+.you-badge{font-size:10px;font-weight:700;background:rgba(220,38,38,.12);color:var(--red);padding:1px 6px;border-radius:10px;margin-left:5px;font-family:'DM Sans',sans-serif}
+.table-note{font-size:.76rem;color:var(--slate-muted);padding:.75rem 1.5rem 1.25rem;border-top:1px solid var(--border)}
+
+/* ── LOCKED CARDS ── */
+.locked-card{position:relative;overflow:hidden}
+.locked-content{padding:1.5rem;filter:blur(5px);user-select:none;pointer-events:none;min-height:160px}
+.locked-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.88);backdrop-filter:blur(2px);text-align:center;padding:1.5rem;gap:.65rem}
+.lock-icon{font-size:1.75rem;line-height:1}
+.lock-title{font-size:1rem;font-weight:700;color:var(--navy)}
+.lock-sub{font-size:.85rem;color:var(--slate-light);max-width:280px;line-height:1.55}
+.lock-cta{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;margin-top:.25rem}
+.lock-cta:hover{background:var(--green)}
+
+/* Locked placeholder content */
+.fake-big-num{font-size:2.8rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--red);letter-spacing:-.04em;line-height:1}
+.fake-lbl{font-size:.8rem;color:var(--slate-muted);margin-top:3px;margin-bottom:1rem}
+.fake-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:.6rem;font-size:.82rem;color:var(--slate)}
+.fake-bar-track{flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden}
+.fake-bar-fill{height:100%;border-radius:4px;background:var(--green)}
+.fake-bar-fill.fb-mid{background:var(--amber)}
+.fake-bar-fill.fb-weak{background:var(--red)}
+.fake-action{display:flex;gap:8px;align-items:flex-start;padding:8px 10px;border-radius:8px;background:var(--warm);margin-bottom:.5rem;font-size:.85rem;color:var(--slate)}
+.fake-action-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:4px}
+.fake-phone-bar{background:var(--warm);border-radius:6px;padding:4px 10px;font-size:.72rem;color:var(--slate-muted);margin-bottom:.65rem;font-family:'DM Mono',monospace}
+.fake-result-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.82rem}
+.fake-result-row:last-child{border-bottom:none}
+
+/* ── CTA BANNER ── */
+.cta-banner{background:linear-gradient(135deg,#0A2540 0%,#1a3a5c 100%);border-radius:16px;padding:2rem 1.75rem;color:#fff;text-align:center}
+.cta-banner h2{font-size:1.35rem;font-weight:700;letter-spacing:-.02em;margin-bottom:.5rem}
+.cta-banner p{font-size:.93rem;color:rgba(255,255,255,.6);margin-bottom:1.5rem;line-height:1.6}
+.cta-features{display:flex;flex-wrap:wrap;justify-content:center;gap:.5rem .85rem;margin-bottom:1.5rem}
+.cta-feat{font-size:.8rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:5px}
+.cta-feat::before{content:'✓';color:var(--green);font-weight:700}
+.cta-price{font-size:.85rem;color:rgba(255,255,255,.45);margin-bottom:1.25rem}
+.cta-btn{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#fff;border:none;border-radius:10px;padding:14px 28px;font-size:1rem;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;text-decoration:none}
+.cta-btn:hover{background:var(--green-dark)}
+.cta-back{display:block;margin-top:1rem;font-size:.8rem;color:rgba(255,255,255,.35);cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif}
+.cta-back:hover{color:rgba(255,255,255,.6)}
+
+/* ── GOOGLE LISTING CARD ── */
+.real-badge{display:inline-flex;align-items:center;gap:4px;background:rgba(0,168,120,.12);border:1px solid rgba(0,168,120,.25);color:var(--green-dark);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;margin-left:8px;vertical-align:middle}
+.gbp-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;margin-bottom:1.25rem}
+.gbp-stat{background:var(--warm);border-radius:10px;padding:.85rem .6rem;text-align:center}
+.gbp-stat-val{font-size:1.6rem;font-weight:800;font-family:'DM Mono',monospace;color:var(--navy);line-height:1}
+.gbp-stat-label{font-size:.72rem;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.3rem}
+.gbp-stars{font-size:.88rem;color:#F59E0B;letter-spacing:.5px;margin-top:.2rem}
+.gbp-row{display:flex;align-items:flex-start;gap:8px;font-size:.88rem;color:var(--slate);padding:.6rem 0;border-top:1px solid var(--border)}
+.gbp-row svg{width:14px;height:14px;flex-shrink:0;margin-top:2px;color:var(--slate-muted)}
+.gbp-row a{color:var(--green-dark);text-decoration:none;word-break:break-all}
+.gbp-row a:hover{text-decoration:underline}
+.gbp-hours-status{font-size:.75rem;font-weight:600;padding:2px 7px;border-radius:12px;white-space:nowrap;margin-left:auto;flex-shrink:0}
+.gbp-open{background:var(--green-light);color:var(--green-dark)}
+.gbp-closed{background:var(--red-light);color:var(--red)}
+.gbp-hours-warn{color:#7C5C00;font-size:.82rem}
+
+/* ── FOOTER ── */
+footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 1.5rem;margin-top:3rem}
+.footer-inner{max-width:1040px;margin:0 auto}
+.footer-cols{display:grid;grid-template-columns:1.8fr 1fr 1.4fr 1fr 1fr;gap:2.5rem;padding-bottom:2rem}
+.footer-brand{display:flex;flex-direction:column;gap:.6rem}
+.footer-brand-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
+.footer-brand-mark{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.footer-brand-mark svg{width:16px;height:16px}
+.footer-brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
+.footer-brand-name span{color:var(--green)}
+.footer-tagline{font-size:.875rem;color:#8fa3b8;line-height:1.6;margin:0}
+.footer-col h4{font-size:.75rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .85rem;padding-bottom:.45rem;border-bottom:2px solid var(--green);display:inline-block}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:.55rem;margin:0;padding:0}
+.footer-col a{color:#8fa3b8;text-decoration:none;font-size:.875rem;transition:color .15s}
+.footer-col a:hover{color:var(--green)}
+.footer-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:0 0 1.25rem}
+.footer-bottom{display:flex;justify-content:center}
+.footer-bottom p{font-size:.8rem;color:#5a7080;margin:0}
+@media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
+@media(max-width:480px){.footer-cols{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="/">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
+    <div class="logo-word">The Doc <span>Mirror</span></div>
+  </a>
+  <div class="nav-mid">
+    <a href="../index.html#how-it-works">How it works</a>
+    <a href="../index.html#tool">Free audit</a>
+    <a href="../index.html#pricing">Pricing</a>
+    <a href="./resources.html">Resources</a>
+    <a href="../index.html#about">About</a>
+    <a href="../index.html#faq">FAQ</a>
+  </div>
+  <a class="nav-cta" href="../index.html#tool">Check my listing free</a>
+</nav>
+
+<!-- Hero — populated by JS -->
+<div class="report-hero" id="report-hero">
+  <div class="hero-badge">Preview Report &middot; Signal-based estimate</div>
+  <h1 id="hero-name">Your Visibility Preview</h1>
+  <p class="hero-sub" id="hero-sub">&nbsp;</p>
+</div>
+
+<!-- Notice bar -->
+<div class="preview-notice">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+  <span><strong>Preview only.</strong> Scores are signal-based estimates derived from publicly visible profile data — not from direct Google, ChatGPT, Gemini, or Claude APIs. Unlock the full report for verified data.</span>
+</div>
+
+<!-- No-data fallback -->
+<div id="no-data" style="display:none">
+  <h2>No preview data found</h2>
+  <p>It looks like you arrived here directly. Run the free visibility check first and we&rsquo;ll generate your preview automatically.</p>
+  <a class="back-btn" href="../index.html#tool">&larr; Run the free check</a>
+</div>
+
+<!-- Report body -->
+<main id="report-content" style="display:none">
+
+  <!-- 1. Overall Score -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="score-main">
+        <span class="score-number" id="score-num">--</span>
+        <span class="score-denom">/100</span>
+        <div class="score-right">
+          <div class="score-lbl">Estimated Overall Visibility Score <span class="tag-estimated">Estimated</span></div>
+          <div class="score-status" id="score-status">--</div>
+        </div>
+      </div>
+      <div class="score-pills">
+        <div class="score-pill">
+          <div class="pill-platform">Google</div>
+          <div class="pill-val" id="pill-google">--</div>
+        </div>
+        <div class="score-pill">
+          <div class="pill-platform">ChatGPT</div>
+          <div class="pill-val" id="pill-chatgpt">--</div>
+        </div>
+        <div class="score-pill">
+          <div class="pill-platform">Gemini</div>
+          <div class="pill-val" id="pill-gemini">--</div>
+        </div>
+        <div class="score-pill">
+          <div class="pill-platform">Claude</div>
+          <div class="pill-val" id="pill-claude">--</div>
+        </div>
+      </div>
+      <div class="score-note">Signal-based preview &middot; Derived from publicly visible profile signals, not official APIs &middot; Results vary by practice</div>
+    </div>
+  </div>
+
+  <!-- 2. Google Listing (only shown when real Places data is available) -->
+  <div class="card" id="card-google-listing" style="display:none">
+    <div class="card-inner">
+      <div class="card-head">
+        <div class="card-head-icon">&#x1F4CD;</div>
+        <div>
+          <div class="card-head-title">Google Business Profile <span class="real-badge">&#x2714; Real Data</span></div>
+          <div class="card-head-sub" id="gbp-business-name"></div>
+        </div>
+      </div>
+      <div class="gbp-stat-grid">
+        <div class="gbp-stat">
+          <div class="gbp-stat-val" id="gbp-rating">--</div>
+          <div class="gbp-stars" id="gbp-stars"></div>
+          <div class="gbp-stat-label">Rating</div>
+        </div>
+        <div class="gbp-stat">
+          <div class="gbp-stat-val" id="gbp-reviews">--</div>
+          <div class="gbp-stat-label">Reviews</div>
+        </div>
+        <div class="gbp-stat">
+          <div class="gbp-stat-val" id="gbp-photos">--</div>
+          <div class="gbp-stat-label">Photos</div>
+        </div>
+      </div>
+      <div class="gbp-row" id="gbp-address-row" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span id="gbp-address"></span>
+      </div>
+      <div class="gbp-row" id="gbp-website-row" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        <a id="gbp-website" href="#" target="_blank" rel="noopener noreferrer"></a>
+      </div>
+      <div class="gbp-row" id="gbp-hours-row">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span id="gbp-hours-text">Hours not listed</span>
+        <span class="gbp-hours-status" id="gbp-hours-status" style="display:none"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. AI Visibility Snapshot -->
+  <div class="card dark-card">
+    <div class="card-inner">
+      <div class="dark-label">AI Search Visibility Snapshot</div>
+      <div class="dark-title">Visibility Signal Scores across AI platforms</div>
+      <div class="ai-row">
+        <div class="ai-platform-name">ChatGPT</div>
+        <div class="ai-score-val score-weak" id="ai-chatgpt">--</div>
+        <div class="ai-score-out">/100</div>
+        <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-chatgpt" style="width:0%"></div></div>
+      </div>
+      <div class="ai-row">
+        <div class="ai-platform-name">Gemini</div>
+        <div class="ai-score-val score-weak" id="ai-gemini">--</div>
+        <div class="ai-score-out">/100</div>
+        <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-gemini" style="width:0%"></div></div>
+      </div>
+      <div class="ai-row">
+        <div class="ai-platform-name">Claude</div>
+        <div class="ai-score-val score-weak" id="ai-claude">--</div>
+        <div class="ai-score-out">/100</div>
+        <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-claude" style="width:0%"></div></div>
+      </div>
+      <div class="ai-row">
+        <div class="ai-platform-name">Google</div>
+        <div class="ai-score-val score-mid" id="ai-google">--</div>
+        <div class="ai-score-out">/100</div>
+        <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-google" style="width:0%"></div></div>
+      </div>
+      <div class="ai-divider"></div>
+      <div class="ai-disclaimer">Signal-based estimate derived from publicly visible profile signals, review strength, website content, and competitor presence. These are not direct results from ChatGPT, Gemini, or Claude APIs.</div>
+    </div>
+  </div>
+
+  <!-- 3. Who AI Recommends Instead -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="card-head">
+        <div class="card-head-icon">&#x1F916;</div>
+        <div>
+          <div class="card-head-title">Who AI Recommends Instead</div>
+          <div class="card-head-sub">Based on query signals <span class="tag-estimated">Estimated</span></div>
+        </div>
+      </div>
+      <div class="recs-query" id="recs-query">&ldquo;Best doctor in your city&rdquo;</div>
+      <div class="recs-list" id="recs-list">
+        <div class="rec-row"><div class="rec-rank">1</div><div class="rec-name" id="rec-1">--</div></div>
+        <div class="rec-row"><div class="rec-rank">2</div><div class="rec-name" id="rec-2">--</div></div>
+        <div class="rec-row"><div class="rec-rank">3</div><div class="rec-name" id="rec-3">--</div></div>
+      </div>
+      <div class="recs-warning">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <span>You were not detected in top AI recommendation signals. Competitors above appear more frequently when patients search for your specialty.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Competitor Leaderboard -->
+  <div class="card">
+    <div class="card-inner" style="padding-bottom:0">
+      <div class="card-head">
+        <div class="card-head-icon">&#x1F3C6;</div>
+        <div>
+          <div class="card-head-title">Competitor Visibility Leaderboard</div>
+          <div class="card-head-sub">Signal-based estimates &middot; Your row highlighted</div>
+        </div>
+      </div>
+    </div>
+    <div class="table-scroll">
+      <table class="ldr-table">
+        <thead>
+          <tr>
+            <th>Doctor</th>
+            <th>Google</th>
+            <th>ChatGPT</th>
+            <th>Gemini</th>
+            <th>Claude</th>
+            <th>Overall</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboard-body"></tbody>
+      </table>
+    </div>
+    <div class="table-note">Estimated signal-based scores. Not sourced from official APIs. Competitor names are illustrative for this preview.</div>
+  </div>
+
+  <!-- 5. Locked: Potential Patient Loss -->
+  <div class="card locked-card">
+    <div class="locked-content" aria-hidden="true">
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-head-icon">&#x1F4C9;</div>
+          <div class="card-head-title">Potential Patient Loss</div>
+        </div>
+        <div class="fake-big-num">~47</div>
+        <div class="fake-lbl">estimated patients/month going to competitors</div>
+        <div class="fake-bar-row"><span style="min-width:130px">Competitor advantage</span><div class="fake-bar-track"><div class="fake-bar-fill fb-weak" style="width:74%"></div></div><span>High</span></div>
+        <div class="fake-bar-row"><span style="min-width:130px">Your capture rate</span><div class="fake-bar-track"><div class="fake-bar-fill fb-mid" style="width:28%"></div></div><span>Low</span></div>
+        <div class="fake-bar-row"><span style="min-width:130px">Recovery potential</span><div class="fake-bar-track"><div class="fake-bar-fill" style="width:85%"></div></div><span>High</span></div>
+      </div>
+    </div>
+    <div class="locked-overlay">
+      <div class="lock-icon">&#x1F512;</div>
+      <div class="lock-title">Potential Patient Loss</div>
+      <div class="lock-sub">See your estimated monthly patient loss and recovery potential</div>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- 6. Locked: Search & AI Result Simulation -->
+  <div class="card locked-card">
+    <div class="locked-content" aria-hidden="true">
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-head-icon">&#x1F50D;</div>
+          <div class="card-head-title">Search &amp; AI Result Simulation</div>
+        </div>
+        <div class="fake-phone-bar">&#x1F50D; best specialist near me</div>
+        <div class="fake-result-row"><span>Google Maps position</span><span style="color:var(--red);font-weight:700">#8</span></div>
+        <div class="fake-result-row"><span>Appears in ChatGPT results</span><span style="color:var(--red);font-weight:700">Not found</span></div>
+        <div class="fake-result-row"><span>Appears in Gemini results</span><span style="color:var(--red);font-weight:700">Not found</span></div>
+        <div class="fake-result-row"><span>Appears in Claude results</span><span style="color:var(--red);font-weight:700">Not found</span></div>
+        <div class="fake-result-row"><span>Top competitor shown instead</span><span style="color:var(--amber);font-weight:700">3 of 4 platforms</span></div>
+      </div>
+    </div>
+    <div class="locked-overlay">
+      <div class="lock-icon">&#x1F512;</div>
+      <div class="lock-title">Search &amp; AI Result Simulation</div>
+      <div class="lock-sub">See exactly how you appear in Google and AI searches, versus competitors</div>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- 7. Locked: 7-Pillar Visibility Breakdown -->
+  <div class="card locked-card">
+    <div class="locked-content" aria-hidden="true">
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-head-icon">&#x1F4CA;</div>
+          <div class="card-head-title">7-Pillar Visibility Breakdown</div>
+        </div>
+        <div class="fake-bar-row"><span style="min-width:170px">Google Business Profile</span><div class="fake-bar-track"><div class="fake-bar-fill" style="width:82%"></div></div><span>82</span></div>
+        <div class="fake-bar-row"><span style="min-width:170px">Online Reviews</span><div class="fake-bar-track"><div class="fake-bar-fill fb-mid" style="width:58%"></div></div><span>58</span></div>
+        <div class="fake-bar-row"><span style="min-width:170px">Website Signals</span><div class="fake-bar-track"><div class="fake-bar-fill fb-weak" style="width:41%"></div></div><span>41</span></div>
+        <div class="fake-bar-row"><span style="min-width:170px">Social Presence</span><div class="fake-bar-track"><div class="fake-bar-fill fb-weak" style="width:34%"></div></div><span>34</span></div>
+        <div class="fake-bar-row"><span style="min-width:170px">AI Platform Mentions</span><div class="fake-bar-track"><div class="fake-bar-fill fb-weak" style="width:26%"></div></div><span>26</span></div>
+        <div class="fake-bar-row"><span style="min-width:170px">Directory Presence</span><div class="fake-bar-track"><div class="fake-bar-fill" style="width:71%"></div></div><span>71</span></div>
+        <div class="fake-bar-row" style="margin-bottom:0"><span style="min-width:170px">Media &amp; Press</span><div class="fake-bar-track"><div class="fake-bar-fill fb-weak" style="width:14%"></div></div><span>14</span></div>
+      </div>
+    </div>
+    <div class="locked-overlay">
+      <div class="lock-icon">&#x1F512;</div>
+      <div class="lock-title">7-Pillar Visibility Breakdown</div>
+      <div class="lock-sub">Full breakdown across every signal Google and AI use to surface doctors</div>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- 8. Locked: Personalized Action Plan -->
+  <div class="card locked-card">
+    <div class="locked-content" aria-hidden="true">
+      <div class="card-inner">
+        <div class="card-head">
+          <div class="card-head-icon">&#x1F3AF;</div>
+          <div class="card-head-title">Personalized Action Plan</div>
+        </div>
+        <div class="fake-action"><div class="fake-action-dot"></div><span>Add 8 photos to your Google Business Profile — competitors average 3&times; more clicks with photos</span></div>
+        <div class="fake-action"><div class="fake-action-dot" style="background:var(--red)"></div><span>Update your business hours — patients cannot tell if you&rsquo;re open, causing lost calls</span></div>
+        <div class="fake-action"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Request 5 new reviews this month — your review count is below the local top 3</span></div>
+        <div class="fake-action" style="margin-bottom:0"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Add a specialty-specific FAQ section to your website for AI citation eligibility</span></div>
+      </div>
+    </div>
+    <div class="locked-overlay">
+      <div class="lock-icon">&#x1F512;</div>
+      <div class="lock-title">Personalized Action Plan</div>
+      <div class="lock-sub">Your custom step-by-step fix plan, prioritized by patient impact</div>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+    </div>
+  </div>
+
+  <!-- CTA Banner -->
+  <div class="cta-banner">
+    <h2>Get the Complete Visibility Report</h2>
+    <p>Unlock all 8 sections. PDF delivered in 60 seconds.</p>
+    <div class="cta-features">
+      <span class="cta-feat">Potential Patient Loss estimate</span>
+      <span class="cta-feat">Search &amp; AI Result Simulation</span>
+      <span class="cta-feat">7-Pillar Visibility Breakdown</span>
+      <span class="cta-feat">Personalized 30-Day Action Plan</span>
+      <span class="cta-feat">Competitor deep-compare</span>
+      <span class="cta-feat">AI ranking fix guide</span>
+    </div>
+    <div class="cta-price">$19 one-time &middot; No subscription &middot; Instant PDF delivery</div>
+    <button class="cta-btn" onclick="doCheckout()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Unlock Full Report &mdash; $19
+    </button>
+    <button class="cta-back" onclick="window.location.href='../index.html#tool'">&larr; Run a different check</button>
+  </div>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-cols">
+      <div class="footer-brand">
+        <a class="footer-brand-logo" href="/">
+          <div class="footer-brand-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#fff" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#fff"/></svg></div>
+          <span class="footer-brand-name">The Doc <span>Mirror</span></span>
+        </a>
+        <p class="footer-tagline">How do Google and AI see you?<br>Find out, free.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="/">Home</a></li>
+          <li><a href="./resources.html">Resources</a></li>
+          <li><a href="/#pricing">Pricing</a></li>
+          <li><a href="mailto:hello@thedocmirror.com">Contact</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a></li>
+          <li><a href="./doctor-visibility-score.html">Doctor Visibility Score</a></li>
+          <li><a href="./how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a></li>
+          <li><a href="./google-visibility-for-doctors.html">Google Visibility for Doctors</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="/#about">About</a></li>
+          <li><a href="./privacy.html">Privacy</a></li>
+          <li><a href="./terms.html">Terms</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="/#faq">FAQ</a></li>
+          <li><a href="./help-center.html">Help Center</a></li>
+          <li><a href="mailto:support@thedocmirror.com">Contact Support</a></li>
+        </ul>
+      </div>
+    </div>
+    <hr class="footer-divider">
+    <div class="footer-bottom">
+      <p>&copy; 2026 The Doc Mirror. All rights reserved.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+
+  // ── Shared helpers ─────────────────────────────────────────────────────────
+  function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function scoreColor(n)   { return n>=70?'pv-strong':n>=50?'pv-mid':'pv-weak'; }
+  function aiScoreColor(n) { return n>=70?'score-strong':n>=40?'score-mid':'score-weak'; }
+  function barClass(n)     { return n>=70?'fill-strong':n>=40?'fill-mid':'fill-weak'; }
+  function statusInfo(n) {
+    if (n>=70) return {text:'Good Visibility',    cls:'status-good'};
+    if (n>=55) return {text:'Moderate Visibility',cls:'status-moderate'};
+    if (n>=40) return {text:'Needs Improvement',  cls:'status-warn'};
+    return          {text:'Critical',             cls:'status-critical'};
+  }
+  function scoreNumClass(n) { return n>=70?'score-color-good':n>=50?'score-color-warn':'score-color-critical'; }
+  function renderStars(r) {
+    var f=Math.floor(r),h=r%1>=0.5?1:0,e=5-f-h;
+    return '★'.repeat(f)+(h?'½':'')+'☆'.repeat(e);
+  }
+
+  // ── Seeded RNG (mirrors index.html — for deterministic competitors) ────────
+  var _im=Math.imul||function(a,b){var ah=(a>>>16)&0xffff,al=a&0xffff,bh=(b>>>16)&0xffff,bl=b&0xffff;return((al*bh+ah*bl)<<16)+(al*bl)|0;};
+  function _seed(s){var h=0;for(var i=0;i<s.length;i++)h=(_im(31,h)+s.charCodeAt(i))|0;return(h>>>0)||1;}
+  function _rng(seed){var s=seed>>>0;return function(lo,hi){s=(_im(1664525,s)+1013904223)>>>0;return lo+(s%(hi-lo+1));};}
+
+  function syntheticCompetitors(doctorName, specialty, cityState, googleScore) {
+    var base = (doctorName+specialty+cityState).toLowerCase().replace(/\s+/g,'');
+    var r = _rng(_seed(base));
+    var pools = [
+      ['Dr. Rajesh Kumar','Dr. Priya Mehta','Dr. Amit Sinha'],
+      ['Dr. Sarah Torres','Dr. Michael Chen','Dr. Jessica Park'],
+      ['Dr. Vivek Sharma','Dr. Nisha Patel','Dr. James Wilson']
+    ];
+    return pools[r(0,2)].map(function(name,i){
+      var boost = Math.max(5, r(10,28) - i*r(3,7));
+      var cg  = Math.min(97, googleScore+boost);
+      var cc  = Math.round(cg*0.65);
+      var cgm = Math.round(cg*0.60);
+      var ccl = Math.round(cg*0.55);
+      return {name:name,google:cg,chatgpt:cc,gemini:cgm,claude:ccl,overall:Math.round((cg+cc+cgm+ccl)/4)};
+    });
+  }
+
+  // ── Load data: real API result takes priority over synthetic preview ────────
+  var isReal = false;
+  var d;
+
+  try {
+    var raw = localStorage.getItem('tdm_audit_result');
+    if (raw) { d = JSON.parse(raw); isReal = true; }
+  } catch(_) {}
+
+  if (!d) {
+    try {
+      var raw2 = localStorage.getItem('tdm_free_preview');
+      if (raw2) { d = JSON.parse(raw2); }
+    } catch(_) {}
+  }
+
+  if (!d) {
+    document.getElementById('no-data').style.display = 'block';
+    return;
+  }
+
+  document.getElementById('report-content').style.display = 'flex';
+
+  // ── Normalise to a common display shape ───────────────────────────────────
+  var doctorName, specialty, cityState, overallScore, googleScore, chatgptScore, geminiScore, claudeScore, competitors;
+
+  if (isReal) {
+    doctorName   = d.doctorName  || 'Your Practice';
+    specialty    = d.specialty   || '';
+    cityState    = d.cityState   || '';
+    googleScore  = d.score;
+    chatgptScore = Math.round(googleScore * 0.65);
+    geminiScore  = Math.round(googleScore * 0.60);
+    claudeScore  = Math.round(googleScore * 0.55);
+    overallScore = d.score;
+    competitors  = syntheticCompetitors(doctorName, specialty, cityState, googleScore);
+
+    // Show the Google Listing card
+    document.getElementById('card-google-listing').style.display = 'block';
+    document.getElementById('gbp-business-name').textContent = d.businessName || doctorName;
+    document.getElementById('gbp-rating').textContent  = d.rating ? d.rating.toFixed(1) : '–';
+    document.getElementById('gbp-stars').textContent   = d.rating ? renderStars(d.rating) : '';
+    document.getElementById('gbp-reviews').textContent = d.reviewCount || 0;
+    document.getElementById('gbp-photos').textContent  = d.photoCount  || 0;
+
+    if (d.address) {
+      document.getElementById('gbp-address-row').style.display = 'flex';
+      document.getElementById('gbp-address').textContent = d.address;
+    }
+    if (d.website) {
+      document.getElementById('gbp-website-row').style.display = 'flex';
+      var wEl = document.getElementById('gbp-website');
+      wEl.href = d.website;
+      wEl.textContent = d.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,'');
+    }
+
+    var hoursText   = document.getElementById('gbp-hours-text');
+    var hoursStatus = document.getElementById('gbp-hours-status');
+    if (d.hasHours) {
+      hoursText.textContent = d.hoursText || 'Hours listed';
+      if (d.isOpenNow === true)  { hoursStatus.textContent='Open now'; hoursStatus.className='gbp-hours-status gbp-open'; hoursStatus.style.display=''; }
+      else if (d.isOpenNow===false) { hoursStatus.textContent='Closed now'; hoursStatus.className='gbp-hours-status gbp-closed'; hoursStatus.style.display=''; }
+    } else {
+      hoursText.textContent = 'Hours not listed — patients can\'t confirm availability';
+      hoursText.className   = 'gbp-hours-warn';
+    }
+
+    // Update notice bar wording for real data
+    var noticeSpan = document.querySelector('.preview-notice span');
+    if (noticeSpan) noticeSpan.innerHTML = '<strong>Google Places data.</strong> Rating, reviews, photos, and address are from the Google Places API. AI platform scores are signal-based estimates — not from direct AI API calls.';
+
+    // Update hero badge
+    var heroBadge = document.querySelector('.hero-badge');
+    if (heroBadge) heroBadge.textContent = 'Visibility Report · Google Places Data';
+
+  } else {
+    // Synthetic preview data
+    doctorName   = d.doctorName   || 'Your Practice';
+    specialty    = d.specialty    || '';
+    cityState    = d.cityState    || '';
+    overallScore = d.overallScore || 0;
+    googleScore  = d.googleScore  || 0;
+    chatgptScore = d.chatgptScore || 0;
+    geminiScore  = d.geminiScore  || 0;
+    claudeScore  = d.claudeScore  || 0;
+    competitors  = d.competitors  || [];
+  }
+
+  // ── Hero ──────────────────────────────────────────────────────────────────
+  document.getElementById('hero-name').textContent = doctorName + ' — Visibility Preview';
+  document.getElementById('hero-sub').textContent  = specialty + (specialty && cityState ? ' · ' : '') + cityState;
+
+  // ── Score card ────────────────────────────────────────────────────────────
+  var sn = document.getElementById('score-num');
+  sn.textContent = overallScore;
+  sn.classList.add(scoreNumClass(overallScore));
+
+  var si = statusInfo(overallScore);
+  var sb = document.getElementById('score-status');
+  sb.textContent = si.text;
+  sb.className   = 'score-status ' + si.cls;
+
+  function setPill(id, val) {
+    var el = document.getElementById(id);
+    el.textContent = val;
+    el.className   = 'pill-val ' + scoreColor(val);
+  }
+  setPill('pill-google',  googleScore);
+  setPill('pill-chatgpt', chatgptScore);
+  setPill('pill-gemini',  geminiScore);
+  setPill('pill-claude',  claudeScore);
+
+  // ── AI Snapshot ───────────────────────────────────────────────────────────
+  function setAIRow(id, barId, val) {
+    var el = document.getElementById(id);
+    el.textContent = val;
+    el.className   = 'ai-score-val ' + aiScoreColor(val);
+    var bar = document.getElementById(barId);
+    bar.style.width = val + '%';
+    bar.className   = 'ai-bar-fill ' + barClass(val);
+  }
+  setAIRow('ai-chatgpt', 'bar-chatgpt', chatgptScore);
+  setAIRow('ai-gemini',  'bar-gemini',  geminiScore);
+  setAIRow('ai-claude',  'bar-claude',  claudeScore);
+  setAIRow('ai-google',  'bar-google',  googleScore);
+
+  // ── AI Recs ───────────────────────────────────────────────────────────────
+  document.getElementById('recs-query').textContent = '”Best ' + (specialty||'doctor') + ' in ' + (cityState||'your city') + '”';
+  competitors.forEach(function(c, i) {
+    var el = document.getElementById('rec-' + (i+1));
+    if (el) el.textContent = c.name;
+  });
+
+  // ── Leaderboard ───────────────────────────────────────────────────────────
+  var tbody = document.getElementById('leaderboard-body');
+  var rows = competitors.map(function(c) {
+    return '<tr><td>'+escH(c.name)+'</td>'
+      +'<td>'+c.google+'</td><td>'+c.chatgpt+'</td>'
+      +'<td>'+c.gemini+'</td><td>'+c.claude+'</td>'
+      +'<td><strong>'+c.overall+'</strong></td></tr>';
+  });
+  rows.push('<tr class=”you-row”><td>'+escH(doctorName)+' <span class=”you-badge”>You</span></td>'
+    +'<td>'+googleScore+'</td><td>'+chatgptScore+'</td>'
+    +'<td>'+geminiScore+'</td><td>'+claudeScore+'</td>'
+    +'<td><strong>'+overallScore+'</strong></td></tr>');
+  tbody.innerHTML = rows.join('');
+
+})();
+
+// ── Checkout ──────────────────────────────────────────────────────────────
+function doCheckout() {
+  fetch('/api/checkout', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan: 'report' })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(d) { if (d.url) window.location.href = d.url; })
+  .catch(function() {
+    window.location.href = 'mailto:hello@thedocmirror.com?subject=Full%20Visibility%20Report%20%E2%80%94%20%2419';
+  });
+}
+</script>
+
+</body>
+</html>

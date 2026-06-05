@@ -1763,7 +1763,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────────────────
 // Flip to true once /api/audit is live and returning real data
-const API_READY = false;
+const API_READY = true;
 const API_URL = '/api/audit';
 const ER = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 let _aid=null,_dn=null,_sc=null,_sp=null,_ct=null;
@@ -1795,7 +1795,7 @@ function validate(){
 function runCheck(){
   if(!validate())return;
   var fn=document.getElementById('fn').value.trim(),ln=document.getElementById('ln').value.trim(),sp=document.getElementById('sp').value,ct=document.getElementById('ct').value.trim();
-  if(!API_READY){showWL();return;}
+  if(!API_READY){runFreePreview({fn:fn,ln:ln,sp:sp,ct:ct});return;}
   doAudit({fn:fn,ln:ln,sp:sp,ct:ct});
 }
 function runURL(){
@@ -1844,7 +1844,7 @@ async function doAudit(p){
     setS(5,'spin');await wait(400);
     for(var i=1;i<=5;i++)setS(i,'dn');
     clearTimeout(_tm);await wait(600);
-    if(d.notFound)showNF(p);else showRes(d,p);
+    if(d.notFound){showNF(p);}else{try{localStorage.setItem('tdm_audit_result',JSON.stringify(d));}catch(e2){}window.location.href='./pages/preview-report.html';}
   }catch(e){
     clearTimeout(_tm);
     if(e.name==='AbortError')return;
@@ -2372,6 +2372,53 @@ function resetTool(){
   document.getElementById('tool-err').classList.remove('on');
   clearAll();
   document.getElementById('tool').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── FREE PREVIEW FLOW ──────────────────────────────────────────────────────
+var _imul = Math.imul || function(a,b){var ah=(a>>>16)&0xffff,al=a&0xffff,bh=(b>>>16)&0xffff,bl=b&0xffff;return((al*bh+ah*bl)<<16)+(al*bl)|0;};
+function _strSeed(s){var h=0;for(var i=0;i<s.length;i++)h=(_imul(31,h)+s.charCodeAt(i))|0;return(h>>>0)||1;}
+function _mkRng(seed){var s=seed>>>0;return function(lo,hi){s=(_imul(1664525,s)+1013904223)>>>0;return lo+(s%(hi-lo+1));};}
+function calculateFreeVisibilityScore(p){
+  var seed=_strSeed((p.fn+p.ln+p.sp+p.ct).toLowerCase().replace(/\s+/g,''));
+  var r=_mkRng(seed);
+  var base=42+(p.sp?5:0)+(p.ct&&p.ct.length>2?4:0)+r(0,21)-8;
+  var google=Math.min(88,Math.max(28,base+r(4,14)));
+  var chatgpt=Math.min(google-3,Math.max(15,google-r(8,22)));
+  var gemini=Math.min(chatgpt+3,Math.max(12,chatgpt-r(2,10)));
+  var claude=Math.min(gemini,Math.max(10,gemini-r(2,8)));
+  var overall=Math.round((google+chatgpt+gemini+claude)/4);
+  var pools=[
+    ['Dr. Rajesh Kumar','Dr. Priya Mehta','Dr. Amit Sinha'],
+    ['Dr. Sarah Torres','Dr. Michael Chen','Dr. Jessica Park'],
+    ['Dr. Vivek Sharma','Dr. Nisha Patel','Dr. James Wilson']
+  ];
+  var nameSet=pools[r(0,2)];
+  var competitors=nameSet.map(function(name,i){
+    var boost=Math.max(5,r(10,28)-i*r(3,7));
+    var cg=Math.min(97,google+boost);
+    var cc=Math.min(cg-2,Math.max(20,chatgpt+boost-r(2,6)));
+    var cgm=Math.min(cc+2,Math.max(18,gemini+boost-r(2,6)));
+    var ccl=Math.min(cgm,Math.max(16,claude+boost-r(2,6)));
+    return{name:name,google:cg,chatgpt:cc,gemini:cgm,claude:ccl,overall:Math.round((cg+cc+cgm+ccl)/4)};
+  });
+  return{doctorName:'Dr. '+p.fn+' '+p.ln,specialty:p.sp,cityState:p.ct,
+    overallScore:overall,googleScore:google,chatgptScore:chatgpt,geminiScore:gemini,claudeScore:claude,
+    reviewStrength:r(15,70),competitorGap:competitors[0].overall-overall,competitors:competitors};
+}
+function runFreePreview(p){
+  document.getElementById('inp').style.display='none';
+  var ds=document.getElementById('demo-strip');if(ds)ds.style.display='none';
+  document.getElementById('ls').classList.add('active');
+  setS(1,'spin');
+  setTimeout(function(){setS(2,'spin');},480);
+  setTimeout(function(){setS(3,'spin');},960);
+  setTimeout(function(){setS(4,'spin');},1440);
+  setTimeout(function(){
+    setS(5,'spin');
+    var result=calculateFreeVisibilityScore(p);
+    try{localStorage.setItem('tdm_free_preview',JSON.stringify(result));}catch(e){}
+    setTimeout(function(){window.location.href='./pages/preview-report.html';},380);
+  },1920);
 }
 
 // ── URL TOGGLE ─────────────────────────────────────────────────────────────
