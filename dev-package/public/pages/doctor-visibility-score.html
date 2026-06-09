@@ -87,6 +87,21 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
 .footer-bottom p{font-size:.8rem;color:#5a7080;margin:0}
 @media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
 @media(max-width:480px){.footer-cols{grid-template-columns:1fr}}
+
+
+
+/* ── BLOG ─────────────────────────────────────────────────────────────── */
+.blog-wrap{max-width:860px;margin:3rem auto 0;padding:0 clamp(1rem,3vw,1.5rem)}
+.blog-hd{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}
+.blog-hd-left h2{font-size:1.1rem;font-weight:700;color:var(--navy);margin-bottom:2px}
+.blog-hd-left p{font-size:.82rem;color:var(--slate-muted)}
+.blog-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem 1.5rem;margin-bottom:1rem;display:flex;flex-direction:column;gap:.5rem}
+.blog-card-meta{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.blog-card-date{font-size:.76rem;color:var(--slate-muted)}
+.blog-card-tag{font-size:.7rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--green);background:var(--green-light);padding:2px 8px;border-radius:20px}
+.blog-card h3{font-size:.97rem;font-weight:700;color:var(--navy);line-height:1.35}
+.blog-card p{font-size:.87rem;color:var(--slate-light);line-height:1.65;margin:0}
+
 </style>
 </head>
 <body>
@@ -160,6 +175,42 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
   <h3>Related guides</h3>
   <div class="related-links"><a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a><a href="./how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a><a href="./google-visibility-for-doctors.html">Google Visibility for Doctors</a></div>
 </div>
+
+
+
+
+<section class="blog-wrap" aria-label="Blog">
+
+  <div class="blog-hd">
+    <div class="blog-hd-left">
+      <h2>From the Blog</h2>
+      <p>Insights on doctor visibility scoring for doctors — add your own posts below.</p>
+    </div>
+  </div>
+
+  <!-- ── POST 1 (sample — edit or delete this) ── -->
+  <div class="blog-card">
+    <div class="blog-card-meta">
+      <span class="blog-card-date">June 2025</span>
+      <span class="blog-card-tag">Visibility Score</span>
+    </div>
+    <h3>3 Profile Fixes That Add 15+ Points to Your Visibility Score</h3>
+    <p>Most doctors score below 60/100 not because of poor care — but because of missing photos, no business description, and outdated hours. These three fixes take under 30 minutes and have the highest score impact of any action you can take.</p>
+  </div>
+
+  <!-- NAYA POST YAHAN PASTE KARO:
+  <div class="blog-card">
+    <div class="blog-card-meta">
+      <span class="blog-card-date">Month Year</span>
+      <span class="blog-card-tag">Tag</span>
+    </div>
+    <h3>Title yahan likhein</h3>
+    <p>2-3 lines mein apni post ka summary likhein.</p>
+  </div>
+  -->
+
+</section>
+
 </main>
 <footer>
   <div class="footer-inner">
@@ -169,7 +220,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="footer-brand-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#fff" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#fff"/></svg></div>
           <span class="footer-brand-name">The Doc <span>Mirror</span></span>
         </a>
-        <p class="footer-tagline">How do Google and AI see you?<br>Find out, free.</p>
+        <p class="footer-tagline">How your patients see you on ChatGPT, AI and Google?<br>Find out, free.</p>
       </div>
       <div class="footer-col">
         <h4>Product</h4>

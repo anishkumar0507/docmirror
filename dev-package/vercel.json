@@ -1,7 +1,12 @@
 {
-  "framework": "nextjs",
-  "buildCommand": "next build",
-  "outputDirectory": ".next",
+  "version": 2,
+  "installCommand": "npm install",
+  "functions": {
+    "api/**/*.js": {
+      "maxDuration": 60,
+      "memory": 1024
+    }
+  },
   "crons": [
     {
       "path": "/api/weekly-check",
@@ -19,12 +24,6 @@
       ]
     },
     {
-      "source": "/preview/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=86400, stale-while-revalidate=604800" }
-      ]
-    },
-    {
       "source": "/api/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "no-store" }
@@ -32,7 +31,6 @@
     }
   ],
   "rewrites": [
-    { "source": "/sitemap.xml", "destination": "/sitemap" },
-    { "source": "/robots.txt", "destination": "/robots" }
+    { "source": "/dashboard", "destination": "/dashboard.html" }
   ]
 }

@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unlock Full Report — The Doc Mirror</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;--red:#DC2626}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+
+/* NAV */
+nav{background:#fff;border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2rem);height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.logo-word span{color:var(--green)}
+.back-link{font-size:.85rem;color:var(--slate-light);text-decoration:none}
+.back-link:hover{color:var(--navy)}
+
+/* LAYOUT */
+main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2.5rem clamp(1rem,4vw,2rem) 4rem;gap:2rem;flex-wrap:wrap}
+
+/* ORDER SUMMARY (left) */
+.summary{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.75rem;width:100%;max-width:340px;flex-shrink:0}
+.summary-doctor{display:flex;align-items:center;gap:12px;margin-bottom:1.25rem;padding-bottom:1.25rem;border-bottom:1px solid var(--border)}
+.doc-avatar{width:44px;height:44px;border-radius:10px;background:var(--navy);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;font-weight:700;flex-shrink:0}
+.doc-name{font-size:.95rem;font-weight:700;color:var(--navy);line-height:1.3}
+.doc-meta{font-size:.78rem;color:var(--slate-light);margin-top:2px}
+.summary h3{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate-light);margin-bottom:.85rem}
+.feature-list{list-style:none;display:flex;flex-direction:column;gap:.55rem;margin-bottom:1.25rem}
+.feature-list li{display:flex;align-items:flex-start;gap:8px;font-size:.875rem;color:var(--slate)}
+.feature-list li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+.price-row{display:flex;align-items:center;justify-content:space-between;padding-top:1rem;border-top:1px solid var(--border)}
+.price-label{font-size:.85rem;color:var(--slate-light)}
+.price-amount{font-size:1.5rem;font-weight:800;color:var(--navy);font-family:'DM Mono',monospace}
+.price-note{font-size:.72rem;color:var(--slate-light);margin-top:2px;text-align:right}
+
+/* PAYMENT FORM (right) */
+.pay-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.75rem;width:100%;max-width:420px}
+.pay-card h2{font-size:1.15rem;font-weight:700;color:var(--navy);margin-bottom:.35rem}
+.pay-card .subtitle{font-size:.85rem;color:var(--slate-light);margin-bottom:1.5rem}
+.field-label{font-size:.8rem;font-weight:600;color:var(--slate);margin-bottom:.4rem;display:block}
+.field-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:.93rem;font-family:inherit;color:var(--navy);outline:none;transition:border-color .15s}
+.field-input:focus{border-color:var(--navy)}
+.field-input.err{border-color:var(--red)}
+.field-err{font-size:.78rem;color:var(--red);min-height:1.1em;margin-top:3px}
+.pay-btn{width:100%;margin-top:1.25rem;padding:14px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s}
+.pay-btn:hover:not(:disabled){background:#0e3060}
+.pay-btn:disabled{opacity:.65;cursor:not-allowed}
+.pay-secure{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.85rem;font-size:.75rem;color:var(--slate-light)}
+.pay-logos{display:flex;align-items:center;gap:8px;margin-top:.65rem;justify-content:center;opacity:.5;font-size:.72rem;color:var(--slate-light)}
+
+/* SUCCESS STATE */
+.success-state{text-align:center;padding:2rem 0}
+.success-state .tick{font-size:3rem;margin-bottom:.75rem}
+.success-state h2{font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:.5rem}
+.success-state p{color:var(--slate-light);font-size:.9rem;line-height:1.7;margin-bottom:1.25rem}
+.view-btn{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:.95rem;border:none;cursor:pointer;font-family:inherit}
+.view-btn:hover{background:#007a57}
+.download-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--navy);padding:11px 24px;border-radius:8px;font-weight:700;font-size:.9rem;border:1.5px solid var(--border);cursor:pointer;font-family:inherit;margin-top:.65rem}
+.download-btn:hover{border-color:var(--navy)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TRUST BAR */
+.trust-bar{max-width:780px;width:100%;text-align:center;margin-top:1rem;font-size:.78rem;color:var(--slate-light);padding:0 1rem}
+.trust-bar strong{color:var(--slate)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="../index.html">
+    <div class="logo-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M2 12h3m14 0h3M12 2v3m0 14v3"/></svg>
+    </div>
+    <span class="logo-word">The Doc <span>Mirror</span></span>
+  </a>
+  <a class="back-link" href="preview-report.html">← Back to report</a>
+</nav>
+
+<main>
+
+  <!-- ORDER SUMMARY -->
+  <div class="summary">
+    <div class="summary-doctor" id="doc-summary" style="display:none">
+      <div class="doc-avatar" id="doc-initial">D</div>
+      <div>
+        <div class="doc-name" id="doc-name-lbl">Doctor</div>
+        <div class="doc-meta" id="doc-meta-lbl">Visibility Report</div>
+      </div>
+    </div>
+
+    <h3>What's included</h3>
+    <ul class="feature-list">
+      <li>7-Pillar visibility breakdown with real scores</li>
+      <li>5 AI-written fixes with copy-paste text</li>
+      <li>Competitor visibility leaderboard (full scores)</li>
+      <li>Potential patient loss estimate</li>
+      <li>Search &amp; AI result simulation</li>
+      <li>SEO keyword strategy (3 tiers)</li>
+      <li>Content strategy brief &amp; Reel ideas</li>
+      <li>90-day action plan (3 phases)</li>
+      <li>PDF delivered to your email</li>
+    </ul>
+
+    <div class="price-row">
+      <div>
+        <div class="price-label">Total</div>
+        <div class="price-note">One-time · No subscription</div>
+      </div>
+      <div style="text-align:right">
+        <div class="price-amount">$19</div>
+        <div class="price-note">Instant PDF delivery</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAYMENT FORM -->
+  <div class="pay-card" id="pay-card">
+    <h2>Complete your order</h2>
+    <p class="subtitle">Enter your email — the full PDF report is delivered here.</p>
+
+    <label class="field-label" for="email-input">Email address</label>
+    <input class="field-input" type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
+    <div class="field-err" id="email-err"></div>
+
+    <button class="pay-btn" id="pay-btn" onclick="startPayment()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Unlock Full Report — $19
+    </button>
+
+    <div class="pay-secure">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Secure payment via Razorpay
+    </div>
+    <div class="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
+  </div>
+
+</main>
+
+<div class="trust-bar">
+  <strong>100% private.</strong> Your report is generated from publicly visible Google Places data only. No personal records accessed.
+</div>
+
+<script>
+// ── Read audit data from localStorage ─────────────────────────────────────
+var auditData = null;
+try {
+  var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
+  if (raw) auditData = JSON.parse(raw);
+} catch(_) {}
+
+// Show doctor summary card if we have data
+if (auditData && auditData.doctorName) {
+  var summaryEl = document.getElementById('doc-summary');
+  var initialEl = document.getElementById('doc-initial');
+  var nameLbl   = document.getElementById('doc-name-lbl');
+  var metaLbl   = document.getElementById('doc-meta-lbl');
+
+  if (summaryEl) summaryEl.style.display = 'flex';
+  if (nameLbl)   nameLbl.textContent  = auditData.doctorName;
+  if (metaLbl)   metaLbl.textContent  = (auditData.specialty || '') + (auditData.cityState ? ' · ' + auditData.cityState : '');
+  if (initialEl) initialEl.textContent = (auditData.doctorName || 'D').replace(/^Dr\.?\s*/i,'').charAt(0).toUpperCase();
+}
+
+// ── Pre-fill email if user typed it on the report page ────────────────────
+var savedEmail = '';
+try { savedEmail = localStorage.getItem('tdm_checkout_email') || ''; } catch(_) {}
+if (savedEmail) document.getElementById('email-input').value = savedEmail;
+
+// ── Load Razorpay SDK ──────────────────────────────────────────────────────
+function loadRzp(cb) {
+  if (window.Razorpay) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  s.onload = cb;
+  s.onerror = function() { showErr('Could not load payment SDK. Please refresh.'); };
+  document.head.appendChild(s);
+}
+
+function showErr(msg) {
+  document.getElementById('email-err').textContent = msg;
+}
+
+function setBtnLoading(text) {
+  var btn = document.getElementById('pay-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> ' + text;
+}
+
+function setBtnReady() {
+  var btn = document.getElementById('pay-btn');
+  btn.disabled = false;
+  btn.innerHTML =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
+    '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
+    ' Unlock Full Report — $19';
+}
+
+// ── Main payment flow ──────────────────────────────────────────────────────
+function startPayment() {
+  var emailEl = document.getElementById('email-input');
+  var email   = (emailEl ? emailEl.value : '').trim();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showErr('Please enter a valid email address.');
+    if (emailEl) emailEl.focus();
+    return;
+  }
+  showErr('');
+
+  if (!auditData) {
+    showErr('Audit data not found. Please run a free check first.');
+    return;
+  }
+
+  // Save email for convenience
+  try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
+
+  setBtnLoading('Creating order…');
+
+  // Step 1: Create Razorpay order on backend
+  fetch('/api/checkout', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email: email, auditData: auditData })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(orderRes) {
+    if (orderRes.error) { showErr(orderRes.error); setBtnReady(); return; }
+
+    setBtnLoading('Opening payment…');
+
+    // Step 2: Open Razorpay modal
+    loadRzp(function() {
+      var options = {
+        key:         orderRes.keyId,
+        amount:      orderRes.amount,
+        currency:    orderRes.currency,
+        name:        'The Doc Mirror',
+        description: 'Doctor Visibility Full Report — ' + (auditData.doctorName || ''),
+        order_id:    orderRes.orderId,
+        prefill:     { email: email },
+        theme:       { color: '#0A2540' },
+
+        // Step 3: Payment success — verify on backend then redirect
+        handler: function(response) {
+          setBtnLoading('Verifying payment…');
+
+          fetch('/api/verify-payment', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              orderId:   response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              auditId:   orderRes.auditId,
+              email:     email
+            })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(verifyRes) {
+            if (verifyRes.ok) {
+              // Store payment proof so the preview page knows it's paid
+              try {
+                localStorage.setItem('tdm_paid_session', JSON.stringify({
+                  auditId:   orderRes.auditId,
+                  email:     email,
+                  paymentId: response.razorpay_payment_id,
+                  paidAt:    Date.now()
+                }));
+              } catch(_) {}
+
+              // Show success state then redirect
+              showSuccess(email);
+            } else {
+              showErr(verifyRes.error || 'Verification failed. Contact support.');
+              setBtnReady();
+            }
+          })
+          .catch(function() {
+            showErr('Verification failed. Email: hello@thedocmirror.com');
+            setBtnReady();
+          });
+        },
+
+        modal: {
+          ondismiss: function() { setBtnReady(); }
+        }
+      };
+
+      var rzp = new window.Razorpay(options);
+      rzp.open();
+      setBtnReady();
+    });
+  })
+  .catch(function(err) {
+    showErr('Something went wrong. Please try again.');
+    setBtnReady();
+  });
+}
+
+// ── Success state ──────────────────────────────────────────────────────────
+function showSuccess(email) {
+  var card = document.getElementById('pay-card');
+  if (!card) return;
+
+  card.innerHTML =
+    '<div class="success-state">' +
+    '<div class="tick">✅</div>' +
+    '<h2>Payment Confirmed!</h2>' +
+    '<p>Your full visibility report is being generated.<br>' +
+    'PDF will be sent to <strong>' + escH(email) + '</strong><br>within 60 seconds.</p>' +
+    '<a class="view-btn" href="preview-report.html?paid=1">View Full Report →</a><br>' +
+    '<button class="download-btn" id="dl-btn" onclick="downloadPdf(\'' + escH(email) + '\')">⬇️ Download PDF Now</button>' +
+    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:1rem">PDF generation takes ~45 seconds</p>' +
+    '</div>';
+
+  // Auto-redirect after 3 seconds
+  setTimeout(function() {
+    window.location.href = 'preview-report.html?paid=1';
+  }, 3000);
+}
+
+// ── Download PDF directly ──────────────────────────────────────────────────
+function downloadPdf(email) {
+  var btn = document.getElementById('dl-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~45 sec)…'; }
+
+  fetch('/api/download-pdf', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ auditData: auditData })
+  })
+  .then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed'); });
+    return r.blob();
+  })
+  .then(function(blob) {
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'DocMirror-Visibility-Report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
+  })
+  .catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
+    alert('PDF failed: ' + (err.message || 'Try again'));
+  });
+}
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Allow pressing Enter in email field
+document.getElementById('email-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') startPayment();
+});
+</script>
+
+</body>
+</html>

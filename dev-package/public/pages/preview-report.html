@@ -179,6 +179,16 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
 .gbp-closed{background:var(--red-light);color:var(--red)}
 .gbp-hours-warn{color:#7C5C00;font-size:.82rem}
 
+/* ── ISSUES CARD ── */
+.issue-item{display:flex;align-items:flex-start;gap:10px;padding:.75rem .85rem;border-radius:10px;font-size:.9rem;line-height:1.55;margin-bottom:.6rem}
+.issue-item:last-child{margin-bottom:0}
+.issue-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:.32rem}
+.issue-dot-r{background:var(--red)}
+.issue-dot-a{background:var(--amber)}
+.issue-critical{background:var(--red-light);color:#991b1b}
+.issue-warn{background:var(--amber-light);color:#92400E}
+.recs-note{font-size:.76rem;color:var(--slate-muted);padding:.65rem 0 0;line-height:1.55;border-top:1px solid var(--border);margin-top:.75rem}
+
 /* ── FOOTER ── */
 footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 1.5rem;margin-top:3rem}
 .footer-inner{max-width:1040px;margin:0 auto}
@@ -316,6 +326,20 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
     </div>
   </div>
 
+  <!-- Issues from Anthropic (visible only when real data has issues) -->
+  <div class="card" id="card-issues" style="display:none">
+    <div class="card-inner">
+      <div class="card-head">
+        <div class="card-head-icon">&#x26A0;</div>
+        <div>
+          <div class="card-head-title">Visibility Issues Found <span class="real-badge">AI Analysis</span></div>
+          <div class="card-head-sub">Identified from your real Google Business Profile</div>
+        </div>
+      </div>
+      <div id="issues-list"></div>
+    </div>
+  </div>
+
   <!-- 3. AI Visibility Snapshot -->
   <div class="card dark-card">
     <div class="card-inner">
@@ -366,10 +390,11 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
         <div class="rec-row"><div class="rec-rank">2</div><div class="rec-name" id="rec-2">--</div></div>
         <div class="rec-row"><div class="rec-rank">3</div><div class="rec-name" id="rec-3">--</div></div>
       </div>
-      <div class="recs-warning">
+      <div class="recs-warning" style="display:none">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         <span>You were not detected in top AI recommendation signals. Competitors above appear more frequently when patients search for your specialty.</span>
       </div>
+      <p class="recs-note" id="recs-disclaimer" style="display:none">Competitor names above are illustrative examples based on your specialty and location. Real competitor data is included in the full report.</p>
     </div>
   </div>
 
@@ -389,17 +414,16 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
         <thead>
           <tr>
             <th>Doctor</th>
-            <th>Google</th>
-            <th>ChatGPT</th>
-            <th>Gemini</th>
-            <th>Claude</th>
-            <th>Overall</th>
+            <th style="text-align:center">Overall Score</th>
           </tr>
         </thead>
         <tbody id="leaderboard-body"></tbody>
       </table>
     </div>
-    <div class="table-note">Estimated signal-based scores. Not sourced from official APIs. Competitor names are illustrative for this preview.</div>
+    <div id="leaderboard-footer" style="padding:1rem 1.5rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+      <span style="font-size:.78rem;color:var(--slate-muted)">&#x1F512; Google, ChatGPT, Gemini &amp; Claude scores locked</span>
+      <button class="lock-cta" style="margin-top:0;font-size:.8rem;padding:7px 16px" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+    </div>
   </div>
 
   <!-- 5. Locked: Potential Patient Loss -->
@@ -482,10 +506,12 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="card-head-icon">&#x1F3AF;</div>
           <div class="card-head-title">Personalized Action Plan</div>
         </div>
-        <div class="fake-action"><div class="fake-action-dot"></div><span>Add 8 photos to your Google Business Profile — competitors average 3&times; more clicks with photos</span></div>
-        <div class="fake-action"><div class="fake-action-dot" style="background:var(--red)"></div><span>Update your business hours — patients cannot tell if you&rsquo;re open, causing lost calls</span></div>
-        <div class="fake-action"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Request 5 new reviews this month — your review count is below the local top 3</span></div>
-        <div class="fake-action" style="margin-bottom:0"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Add a specialty-specific FAQ section to your website for AI citation eligibility</span></div>
+        <div id="locked-recs-content">
+          <div class="fake-action"><div class="fake-action-dot"></div><span>Add 8 photos to your Google Business Profile — competitors average 3&times; more clicks with photos</span></div>
+          <div class="fake-action"><div class="fake-action-dot" style="background:var(--red)"></div><span>Update your business hours — patients cannot tell if you&rsquo;re open, causing lost calls</span></div>
+          <div class="fake-action"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Request 5 new reviews this month — your review count is below the local top 3</span></div>
+          <div class="fake-action" style="margin-bottom:0"><div class="fake-action-dot" style="background:var(--amber)"></div><span>Add a specialty-specific FAQ section to your website for AI citation eligibility</span></div>
+        </div>
       </div>
     </div>
     <div class="locked-overlay">
@@ -497,7 +523,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
   </div>
 
   <!-- CTA Banner -->
-  <div class="cta-banner">
+  <div class="cta-banner" id="cta-section">
     <h2>Get the Complete Visibility Report</h2>
     <p>Unlock all 8 sections. PDF delivered in 60 seconds.</p>
     <div class="cta-features">
@@ -508,8 +534,8 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
       <span class="cta-feat">Competitor deep-compare</span>
       <span class="cta-feat">AI ranking fix guide</span>
     </div>
-    <div class="cta-price">$19 one-time &middot; No subscription &middot; Instant PDF delivery</div>
-    <button class="cta-btn" onclick="doCheckout()">
+    <div class="cta-price">$19 one-time &middot; No subscription &middot; PDF delivered to your email</div>
+    <button class="cta-btn" style="margin:1rem auto 0;display:flex" onclick="doCheckout()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Unlock Full Report &mdash; $19
     </button>
@@ -526,7 +552,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="footer-brand-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#fff" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#fff"/></svg></div>
           <span class="footer-brand-name">The Doc <span>Mirror</span></span>
         </a>
-        <p class="footer-tagline">How do Google and AI see you?<br>Find out, free.</p>
+        <p class="footer-tagline">How your patients see you on ChatGPT, AI and Google?<br>Find out, free.</p>
       </div>
       <div class="footer-col">
         <h4>Product</h4>
@@ -590,49 +616,27 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
     return '★'.repeat(f)+(h?'½':'')+'☆'.repeat(e);
   }
 
-  // ── Seeded RNG (mirrors index.html — for deterministic competitors) ────────
-  var _im=Math.imul||function(a,b){var ah=(a>>>16)&0xffff,al=a&0xffff,bh=(b>>>16)&0xffff,bl=b&0xffff;return((al*bh+ah*bl)<<16)+(al*bl)|0;};
-  function _seed(s){var h=0;for(var i=0;i<s.length;i++)h=(_im(31,h)+s.charCodeAt(i))|0;return(h>>>0)||1;}
-  function _rng(seed){var s=seed>>>0;return function(lo,hi){s=(_im(1664525,s)+1013904223)>>>0;return lo+(s%(hi-lo+1));};}
-
-  function syntheticCompetitors(doctorName, specialty, cityState, googleScore) {
-    var base = (doctorName+specialty+cityState).toLowerCase().replace(/\s+/g,'');
-    var r = _rng(_seed(base));
-    var pools = [
-      ['Dr. Rajesh Kumar','Dr. Priya Mehta','Dr. Amit Sinha'],
-      ['Dr. Sarah Torres','Dr. Michael Chen','Dr. Jessica Park'],
-      ['Dr. Vivek Sharma','Dr. Nisha Patel','Dr. James Wilson']
-    ];
-    return pools[r(0,2)].map(function(name,i){
-      var boost = Math.max(5, r(10,28) - i*r(3,7));
-      var cg  = Math.min(97, googleScore+boost);
-      var cc  = Math.round(cg*0.65);
-      var cgm = Math.round(cg*0.60);
-      var ccl = Math.round(cg*0.55);
-      return {name:name,google:cg,chatgpt:cc,gemini:cgm,claude:ccl,overall:Math.round((cg+cc+cgm+ccl)/4)};
-    });
-  }
-
-  // ── Load data: real API result takes priority over synthetic preview ────────
+  // ── Load data: ONLY real API results are accepted ────────────────────────────
+  // Synthetic/fake preview data (tdm_free_preview) is deliberately NOT loaded —
+  // it was generated without verifying the doctor exists on Google and would
+  // show a misleading report for non-existent listings.
   var isReal = false;
   var d;
 
   try {
-    var raw = localStorage.getItem('tdm_audit_result');
+    var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
     if (raw) { d = JSON.parse(raw); isReal = true; }
   } catch(_) {}
 
-  if (!d) {
-    try {
-      var raw2 = localStorage.getItem('tdm_free_preview');
-      if (raw2) { d = JSON.parse(raw2); }
-    } catch(_) {}
-  }
-
+  // Do NOT fall back to tdm_free_preview — that path is disabled.
+  // If no real API data exists, show the not-found state.
   if (!d) {
     document.getElementById('no-data').style.display = 'block';
     return;
   }
+
+  // Expose globally so doActualCheckout() can access without re-parsing localStorage
+  window._tdmAuditData = d;
 
   document.getElementById('report-content').style.display = 'flex';
 
@@ -648,7 +652,8 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
     geminiScore  = Math.round(googleScore * 0.60);
     claudeScore  = Math.round(googleScore * 0.55);
     overallScore = d.score;
-    competitors  = syntheticCompetitors(doctorName, specialty, cityState, googleScore);
+    // Use real competitors from Google Places API only
+    competitors  = (d.competitors || []).filter(function(c){ return c.name && c.source !== 'synthetic'; });
 
     // Show the Google Listing card
     document.getElementById('card-google-listing').style.display = 'block';
@@ -687,6 +692,27 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
     // Update hero badge
     var heroBadge = document.querySelector('.hero-badge');
     if (heroBadge) heroBadge.textContent = 'Visibility Report · Google Places Data';
+
+    // Show Anthropic issues
+    if (d.issues && d.issues.length > 0) {
+      var cardIssues = document.getElementById('card-issues');
+      if (cardIssues) cardIssues.style.display = 'block';
+      var il = document.getElementById('issues-list');
+      if (il) il.innerHTML = d.issues.map(function(iss, i) {
+        var cls = i === 0 ? 'issue-critical' : 'issue-warn';
+        var dot = i === 0 ? 'issue-dot-r'    : 'issue-dot-a';
+        return '<div class="issue-item ' + cls + '"><div class="issue-dot ' + dot + '"></div><span>' + escH(iss) + '</span></div>';
+      }).join('');
+    }
+
+    // Replace locked action plan placeholder with real recommendations
+    if (d.recommendations && d.recommendations.length > 0) {
+      var lrc = document.getElementById('locked-recs-content');
+      if (lrc) lrc.innerHTML = d.recommendations.map(function(rec, i) {
+        var clr = i === 0 ? 'var(--red)' : 'var(--amber)';
+        return '<div class="fake-action"><div class="fake-action-dot" style="background:' + clr + '"></div><span>' + escH(rec) + '</span></div>';
+      }).join('');
+    }
 
   } else {
     // Synthetic preview data
@@ -741,40 +767,536 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
 
   // ── AI Recs ───────────────────────────────────────────────────────────────
   document.getElementById('recs-query').textContent = '”Best ' + (specialty||'doctor') + ' in ' + (cityState||'your city') + '”';
-  competitors.forEach(function(c, i) {
-    var el = document.getElementById('rec-' + (i+1));
-    if (el) el.textContent = c.name;
-  });
+
+  var recsList = document.getElementById('recs-list');
+  if (competitors.length === 0) {
+    if (recsList) recsList.innerHTML =
+      '<div style=”font-size:.85rem;color:var(--slate-muted);padding:.5rem 0;line-height:1.6”>' +
+      'No verified competitors found from Google Places.</div>';
+  } else {
+    // Show only rows we have data for; hide extras
+    for (var ri = 1; ri <= 3; ri++) {
+      var rec = document.getElementById('rec-' + ri);
+      var row = rec ? rec.closest('.rec-row') : null;
+      if (ri <= competitors.length) {
+        if (rec) rec.textContent = competitors[ri - 1].name;
+        if (row) row.style.display = '';
+      } else {
+        if (row) row.style.display = 'none';
+      }
+    }
+  }
 
   // ── Leaderboard ───────────────────────────────────────────────────────────
   var tbody = document.getElementById('leaderboard-body');
+  // Competitors: show name only, lock the score column
   var rows = competitors.map(function(c) {
-    return '<tr><td>'+escH(c.name)+'</td>'
-      +'<td>'+c.google+'</td><td>'+c.chatgpt+'</td>'
-      +'<td>'+c.gemini+'</td><td>'+c.claude+'</td>'
-      +'<td><strong>'+c.overall+'</strong></td></tr>';
+    return '<tr>'
+      +'<td>'+escH(c.name)+'</td>'
+      +'<td style=”text-align:center;color:var(--slate-muted);letter-spacing:.12em;filter:blur(3px);user-select:none” aria-label=”Locked”>&#x2022;&#x2022;&#x2022;</td>'
+      +'</tr>';
   });
+
+  if (rows.length === 0) {
+    rows.push('<tr><td colspan=”2” style=”text-align:center;color:var(--slate-muted);'
+      +'font-size:.85rem;padding:1rem 0”>No verified competitors found from Google Places.</td></tr>');
+  }
+
+  // Your row: show your real overall score
   rows.push('<tr class=”you-row”><td>'+escH(doctorName)+' <span class=”you-badge”>You</span></td>'
-    +'<td>'+googleScore+'</td><td>'+chatgptScore+'</td>'
-    +'<td>'+geminiScore+'</td><td>'+claudeScore+'</td>'
-    +'<td><strong>'+overallScore+'</strong></td></tr>');
+    +'<td style=”text-align:center”><strong>'+overallScore+'</strong></td></tr>');
   tbody.innerHTML = rows.join('');
 
 })();
 
 // ── Checkout ──────────────────────────────────────────────────────────────
+// All unlock buttons → dedicated checkout page
 function doCheckout() {
-  fetch('/api/checkout', {
-    method: 'POST',
+  window.location.href = 'checkout.html';
+}
+
+// ── Download PDF ───────────────────────────────────────────────────────────
+function downloadPdf() {
+  var btn = document.getElementById('download-pdf-btn');
+  var auditData = window._tdmAuditData;
+  if (!auditData) { alert('Audit data not found. Please run a free check first.'); return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~45 sec)...'; }
+
+  fetch('/api/download-pdf', {
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ plan: 'report' })
+    body:    JSON.stringify({ auditData: auditData })
   })
-  .then(function(r) { return r.json(); })
-  .then(function(d) { if (d.url) window.location.href = d.url; })
-  .catch(function() {
-    window.location.href = 'mailto:hello@thedocmirror.com?subject=Full%20Visibility%20Report%20%E2%80%94%20%2419';
+  .then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed'); });
+    return r.blob();
+  })
+  .then(function(blob) {
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href   = url;
+    a.download = 'DocMirror-Visibility-Report.pdf';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Report'; }
+  })
+  .catch(function(err) {
+    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Report'; }
+    alert('PDF generation failed: ' + (err.message || 'Please try again.'));
   });
 }
+
+// ── Shared download button HTML ────────────────────────────────────────────
+function downloadBtnHtml() {
+  return '<button id="download-pdf-btn" onclick="downloadPdf()" ' +
+    'style="display:inline-flex;align-items:center;gap:8px;background:#00A878;color:#fff;' +
+    'border:none;border-radius:8px;padding:12px 24px;font-size:.95rem;font-weight:700;' +
+    'cursor:pointer;font-family:\'DM Sans\',sans-serif;transition:background .15s;margin-top:12px">' +
+    '⬇️ Download PDF Report</button>';
+}
+
+// Dynamically load Razorpay SDK only when needed
+function loadRazorpaySdk(cb) {
+  if (window.Razorpay) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  s.onload  = cb;
+  s.onerror = function() { cb(new Error('Razorpay SDK failed to load')); };
+  document.head.appendChild(s);
+}
+
+// Only the bottom CTA button triggers the actual payment
+function doActualCheckout() {
+  var emailEl = document.getElementById('cta-email');
+  var errEl   = document.getElementById('cta-email-err');
+  var btn     = document.querySelector('#cta-section .cta-btn');
+  var email   = (emailEl ? emailEl.value : '').trim();
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (errEl) errEl.textContent = 'Please enter a valid email address.';
+    if (emailEl) emailEl.focus();
+    return;
+  }
+  if (errEl) errEl.textContent = '';
+
+  // Use the already-loaded audit data from the page (fastest, always available)
+  var auditData = window._tdmAuditData || null;
+
+  // Fallback: try all known localStorage keys
+  if (!auditData) {
+    var keys = ['docmirrorPreviewReport', 'tdm_audit_result', 'tdm_free_preview'];
+    for (var ki = 0; ki < keys.length; ki++) {
+      try {
+        var raw = localStorage.getItem(keys[ki]);
+        if (raw) { auditData = JSON.parse(raw); break; }
+      } catch(_) {}
+    }
+  }
+
+  if (!auditData) {
+    if (errEl) errEl.textContent = 'Audit data not found. Please run a free check first.';
+    return;
+  }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating order…'; }
+
+  // Step 1: Create Razorpay order on backend
+  fetch('/api/checkout', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email: email, auditData: auditData })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(orderRes) {
+    if (orderRes.error) throw new Error(orderRes.error);
+
+    // Step 2: Load Razorpay SDK and open payment modal
+    loadRazorpaySdk(function(sdkErr) {
+      if (sdkErr) throw sdkErr;
+
+      var options = {
+        key:         orderRes.keyId,
+        amount:      orderRes.amount,
+        currency:    orderRes.currency,
+        name:        'The Doc Mirror',
+        description: 'Doctor Visibility Full Report',
+        image:       '',                // add logo URL if available
+        order_id:    orderRes.orderId,
+        prefill:     { email: email },
+        theme:       { color: '#0A2540' },
+
+        // Step 3: Payment success — verify signature on backend
+        handler: function(response) {
+          if (btn) { btn.disabled = true; btn.textContent = 'Verifying payment…'; }
+
+          fetch('/api/verify-payment', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({
+              orderId:   response.razorpay_order_id,
+              paymentId: response.razorpay_payment_id,
+              signature: response.razorpay_signature,
+              auditId:   orderRes.auditId,
+              email:     email
+            })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(verifyRes) {
+            if (verifyRes.ok) {
+              // Unlock all locked sections immediately after payment
+              document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
+              document.querySelectorAll('.locked-content').forEach(function(el) {
+                el.removeAttribute('aria-hidden');
+                el.style.filter = 'none';
+                el.style.opacity = '1';
+              });
+              // Hide leaderboard lock footer
+              var lbf = document.getElementById('leaderboard-footer');
+              if (lbf) lbf.style.display = 'none';
+
+              // Show payment success + download button in CTA
+              var ctaSection = document.getElementById('cta-section');
+              if (ctaSection) ctaSection.innerHTML =
+                '<div style="text-align:center;padding:2rem 1rem">' +
+                '<div style="font-size:2.5rem;margin-bottom:12px">✅</div>' +
+                '<h2 style="color:#fff;margin-bottom:8px">Payment Successful!</h2>' +
+                '<p style="color:rgba(255,255,255,.8);line-height:1.8;margin-bottom:4px">' +
+                  'Full report is being generated and sent to<br><strong>' + escH(email) + '</strong> — PDF arrives in ~60 seconds.</p>' +
+                '<p style="color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:16px">Or download it directly right now:</p>' +
+                downloadBtnHtml() +
+                '</div>';
+
+              // Show success banner at top
+              var topBanner = document.createElement('div');
+              topBanner.innerHTML = '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;' +
+                'background:#00A878;color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600">' +
+                '✅ Payment confirmed — all sections unlocked. PDF sent to ' + escH(email) + '</div>';
+              document.body.insertBefore(topBanner.firstChild, document.body.firstChild);
+            } else {
+              if (errEl) errEl.textContent = verifyRes.error || 'Verification failed. Contact support.';
+              if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report'; }
+            }
+          })
+          .catch(function() {
+            if (errEl) errEl.textContent = 'Verification failed. Email us at hello@thedocmirror.com';
+            if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report'; }
+          });
+        },
+
+        // Payment modal closed without completing
+        modal: {
+          ondismiss: function() {
+            if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+          }
+        }
+      };
+
+      var rzp = new window.Razorpay(options);
+      rzp.open();
+      if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+    });
+  })
+  .catch(function(err) {
+    if (errEl) errEl.textContent = err.message || 'Something went wrong. Please try again.';
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+  });
+}
+
+// ── DEMO MODE — ?demo=1 unlocks all paid sections with REAL audit data ───────
+(function () {
+  if (!/[?&]demo=1/.test(window.location.search)) return;
+
+  // ── Demo banner ────────────────────────────────────────────────────────────
+  var banner = document.createElement('div');
+  banner.innerHTML =
+    '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#D97706;' +
+    'color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600;">' +
+    '🔓 DEMO MODE — Full paid report preview · Real audit data shown' +
+    '<button onclick="this.parentElement.remove()" style="background:none;border:none;' +
+    'color:#fff;cursor:pointer;margin-left:12px;font-size:1rem">✕</button></div>';
+  document.body.insertBefore(banner.firstChild, document.body.firstChild);
+
+  // ── Pull real audit data from the page ────────────────────────────────────
+  var d            = window._tdmAuditData || {};
+  var specialty    = d.specialty    || 'Specialist';
+  var cityRaw      = (d.cityState   || 'your city').split(',');
+  var city         = cityRaw[0].trim();
+  var reviewCount  = d.reviewCount  || 0;
+  var rating       = d.rating       || 0;
+  var photoCount   = d.photoCount   || 0;
+  var hasHours     = d.hasHours     || false;
+  var website      = d.website      || null;
+  var score        = d.score        || 0;
+  var doctorName   = d.doctorName   || 'Doctor';
+  var competitors  = d.competitors  || [];
+  var issues       = d.issues       || [];
+  var recs         = d.recommendations || [];
+
+  function bclr(pct) { return pct >= 65 ? '#00A878' : pct >= 40 ? '#D97706' : '#DC2626'; }
+  function pOf(s,m)  { return Math.round(s / m * 100); }
+  function esc2(s)   { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ── Compute real pillar scores from audit data ─────────────────────────────
+  var gmb      = Math.min(30, 5 + (d.address ? 5 : 0) + (hasHours ? 7 : 0) + (website ? 4 : 0) + 5);
+  var rSc      = !rating ? 0 : rating>=4.8?20:rating>=4.5?17:rating>=4.0?14:rating>=3.5?10:5;
+  var revSc    = reviewCount>=50?15:reviewCount>=20?11:reviewCount>=10?7:reviewCount>=5?4:1;
+  var phSc     = photoCount>=10?10:photoCount>=5?7:photoCount>=1?4:0;
+  var rankSc   = score>=85?12:score>=70?8:score>=50?4:2;
+  var aiSc     = website?2.5:1;
+  var dirSc    = 1.5;
+
+  // ── Patient loss derived from competitor review gap ────────────────────────
+  var topReviews  = competitors.length ? (competitors[0].reviewCount || 500) : 500;
+  var gap         = Math.max(10, topReviews - reviewCount);
+  var lossLow     = Math.max(5,  Math.round(gap * 0.018));
+  var lossHigh    = Math.max(lossLow + 8, Math.round(gap * 0.045));
+  var capRate     = Math.min(95, Math.round((reviewCount / Math.max(topReviews, 1)) * 100));
+  var compAdv     = 100 - capRate;
+  var topComp     = competitors.length ? competitors[0].name : 'A top local competitor';
+
+  // ── Search simulation values from score ───────────────────────────────────
+  var gmapsPos    = score>=90?'#2':score>=80?'#3':score>=65?'#5':score>=50?'#8':'#12+';
+  var chatgptMent = score>=80?'Occasionally':score>=60?'Rarely':'Not found';
+  var geminiMent  = 'Not found';
+  var claudeMent  = 'Not found';
+
+  // ── Action plan items from real issues/recs or fallback ────────────────────
+  var planItems = [];
+  if (recs.length) {
+    planItems = recs.slice(0, 6);
+  } else if (issues.length) {
+    planItems = issues.slice(0, 6).map(function(i){ return typeof i==='string'?i:i.text||String(i); });
+  } else {
+    planItems = [
+      'Upload ' + Math.max(5, 15 - photoCount) + ' more photos — before/after, clinic interior, team shots',
+      'Respond to all ' + reviewCount + ' existing Google reviews within 48 hours',
+      'Add specialty keyword "' + specialty + '" to your GBP business description',
+      !hasHours ? 'Add office hours for all 7 days — patients skip profiles with missing hours' : 'Expand to include telehealth or weekend hours',
+      'Create a Healthgrades profile for high-authority medical citation',
+      'Add a Zocdoc listing to appear in AI recommendation training data'
+    ];
+  }
+
+  // ── Step 1: Remove ALL overlays completely ─────────────────────────────────
+  document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('.locked-content').forEach(function(el) {
+    el.removeAttribute('aria-hidden');
+    el.style.filter  = 'none';
+    el.style.opacity = '1';
+    el.style.pointerEvents = 'auto';
+  });
+
+  // ── Step 2: Get the 4 locked card-inner divs in DOM order ─────────────────
+  var cards = document.querySelectorAll('.locked-card .card-inner');
+
+  // ── CARD 1: Potential Patient Loss ────────────────────────────────────────
+  if (cards[0]) {
+    cards[0].innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-head-icon">&#x1F4C9;</div>' +
+        '<div><div class="card-head-title">Potential Patient Loss</div>' +
+        '<div class="card-head-sub">Estimated from your review gap vs top local competitor</div></div>' +
+      '</div>' +
+      '<div style="font-size:2.6rem;font-weight:700;color:#DC2626;font-family:\'DM Mono\',monospace;margin-bottom:4px">~' + lossLow + '–' + lossHigh + '</div>' +
+      '<div style="color:var(--slate-light);font-size:.88rem;margin-bottom:20px">estimated new patients/month going to competitors instead of you</div>' +
+      '<div class="fake-bar-row"><span style="min-width:170px;color:var(--slate);font-weight:500">Competitor advantage</span>' +
+        '<div class="fake-bar-track"><div class="fake-bar-fill" style="width:' + compAdv + '%;background:' + bclr(100 - compAdv) + '"></div></div>' +
+        '<span style="font-weight:700;color:' + bclr(100 - compAdv) + '">' + compAdv + '%</span></div>' +
+      '<div class="fake-bar-row"><span style="min-width:170px;color:var(--slate);font-weight:500">Your capture rate</span>' +
+        '<div class="fake-bar-track"><div class="fake-bar-fill" style="width:' + capRate + '%;background:' + bclr(capRate) + '"></div></div>' +
+        '<span style="font-weight:700;color:' + bclr(capRate) + '">' + capRate + '%</span></div>' +
+      '<div class="fake-bar-row" style="margin-bottom:16px"><span style="min-width:170px;color:var(--slate);font-weight:500">Recovery potential</span>' +
+        '<div class="fake-bar-track"><div class="fake-bar-fill" style="width:85%;background:#00A878"></div></div>' +
+        '<span style="font-weight:700;color:#00A878">High</span></div>' +
+      '<div style="background:#FEF2F2;border-left:3px solid #DC2626;border-radius:6px;padding:10px 14px;font-size:.85rem;color:#991b1b">' +
+        '<strong>' + esc2(topComp) + '</strong> currently captures an estimated <strong>' + Math.round(compAdv * 0.55) + '%</strong> of patients searching <em>"Best ' + esc2(specialty) + ' in ' + esc2(city) + '"</em>' +
+      '</div>';
+  }
+
+  // ── CARD 2: Search & AI Result Simulation ─────────────────────────────────
+  if (cards[1]) {
+    var rowStyle = 'display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:.9rem;';
+    cards[1].innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-head-icon">&#x1F50D;</div>' +
+        '<div><div class="card-head-title">Search &amp; AI Result Simulation</div>' +
+        '<div class="card-head-sub">How patients find you when they search your specialty</div></div>' +
+      '</div>' +
+      '<div style="background:var(--warm);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-family:\'DM Mono\',monospace;font-size:.9rem;color:var(--slate);margin-bottom:16px">' +
+        '&#x1F50D; &ldquo;Best ' + esc2(specialty) + ' in ' + esc2(city) + '&rdquo;' +
+      '</div>' +
+      '<div style="' + rowStyle + '"><span style="color:var(--slate)">Google Maps position</span>' +
+        '<span style="font-weight:700;color:' + bclr(score) + '">' + gmapsPos + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="color:var(--slate)">Appears in ChatGPT results</span>' +
+        '<span style="font-weight:700;color:' + (chatgptMent==='Occasionally'?'#00A878':'#DC2626') + '">' + chatgptMent + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="color:var(--slate)">Appears in Gemini results</span>' +
+        '<span style="font-weight:700;color:#DC2626">' + geminiMent + '</span></div>' +
+      '<div style="' + rowStyle + '"><span style="color:var(--slate)">Appears in Claude results</span>' +
+        '<span style="font-weight:700;color:#DC2626">' + claudeMent + '</span></div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;font-size:.9rem;">' +
+        '<span style="color:var(--slate)">Top competitor shown instead</span>' +
+        '<span style="font-weight:700;color:#D97706">' + (competitors.length>=3?'3 of 4':'2 of 4') + ' platforms</span></div>' +
+      '<div style="background:#FFFBEB;border-left:3px solid #D97706;border-radius:6px;padding:10px 14px;margin-top:8px;font-size:.85rem;color:#633806">' +
+        '&#x1F4A1; <strong>Why this matters:</strong> 73% of patients check AI tools before booking. Competitors with 1,500+ reviews consistently appear — you don\'t.' +
+      '</div>';
+  }
+
+  // ── CARD 3: 7-Pillar Visibility Breakdown ─────────────────────────────────
+  if (cards[2]) {
+    var pillars = [
+      { name: 'Google Business Profile', sc: gmb,   max: 30 },
+      { name: 'Rating & Review Quality', sc: rSc,   max: 20 },
+      { name: 'Review Volume',           sc: revSc, max: 15 },
+      { name: 'Photo & Visual Content',  sc: phSc,  max: 10 },
+      { name: 'Local Search Rank',       sc: rankSc,max: 15 },
+      { name: 'AI Visibility Signals',   sc: aiSc,  max: 5  },
+      { name: 'Directory & Citations',   sc: dirSc, max: 5  }
+    ];
+    var barsHtml = pillars.map(function(p) {
+      var pct   = pOf(p.sc, p.max);
+      var color = bclr(pct);
+      var lbl   = pct >= 65 ? 'Strong' : pct >= 40 ? 'Moderate' : 'Needs work';
+      return '<div style="margin-bottom:14px">' +
+        '<div style="display:flex;justify-content:space-between;margin-bottom:5px">' +
+          '<span style="font-size:.88rem;font-weight:600;color:var(--navy)">' + p.name + '</span>' +
+          '<span style="font-size:.8rem;font-weight:700;color:' + color + '">' + p.sc + '/' + p.max + ' &mdash; ' + lbl + '</span>' +
+        '</div>' +
+        '<div style="height:9px;background:var(--border);border-radius:5px;overflow:hidden">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + color + ';border-radius:5px"></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+    cards[2].innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-head-icon">&#x1F4CA;</div>' +
+        '<div><div class="card-head-title">7-Pillar Visibility Breakdown</div>' +
+        '<div class="card-head-sub">Computed from your real Google Places data</div></div>' +
+      '</div>' +
+      barsHtml +
+      '<div style="background:var(--green-light);border-left:3px solid #00A878;border-radius:6px;padding:10px 14px;font-size:.85rem;color:#085041">' +
+        'Total score: <strong>' + score + '/100</strong> &mdash; Your biggest gains are in Photos (' + (10-phSc) + ' pts available) and Review Volume (' + (15-revSc) + ' pts available).' +
+      '</div>';
+  }
+
+  // ── CARD 4: Personalized Action Plan ──────────────────────────────────────
+  if (cards[3]) {
+    var phaseColors  = ['#00A878', '#D97706', '#0A2540'];
+    var phaseLabels  = ['Phase 1 (Days 1–30): Quick Wins', 'Phase 2 (Days 31–60): Reviews & Content', 'Phase 3 (Days 61–90): Authority & AI'];
+    var phaseGains   = [8, 12, 10];
+    var phasesHtml   = phaseLabels.map(function(lbl, i) {
+      var items  = planItems.slice(i * 2, i * 2 + 2);
+      var clr    = phaseColors[i];
+      var itemsH = items.map(function(item) {
+        return '<div style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;font-size:.88rem;color:var(--slate)">' +
+          '<span style="color:' + clr + ';flex-shrink:0;font-weight:700;margin-top:1px">✓</span>' +
+          '<span>' + esc2(typeof item==='string'?item:item.text||String(item)) + '</span>' +
+          '</div>';
+      }).join('');
+      return '<div style="border-left:3px solid ' + clr + ';padding:12px 14px;margin-bottom:12px;background:var(--warm);border-radius:0 8px 8px 0">' +
+        '<div style="font-weight:700;color:var(--navy);margin-bottom:8px;font-size:.9rem">' + lbl + '</div>' +
+        itemsH +
+        '<div style="font-size:.8rem;font-weight:600;color:' + clr + ';margin-top:4px">Estimated score gain: +' + phaseGains[i] + ' pts</div>' +
+        '</div>';
+    }).join('');
+    cards[3].innerHTML =
+      '<div class="card-head">' +
+        '<div class="card-head-icon">&#x1F3AF;</div>' +
+        '<div><div class="card-head-title">Personalized Action Plan</div>' +
+        '<div class="card-head-sub">Based on your real profile gaps &middot; No hiring required</div></div>' +
+      '</div>' +
+      phasesHtml +
+      '<div style="background:var(--green-light);border:1px solid #00A878;border-radius:8px;padding:12px 16px;text-align:center">' +
+        '<div style="font-size:.82rem;color:var(--slate-light);margin-bottom:2px">Projected score after 90 days</div>' +
+        '<div style="font-size:1.6rem;font-weight:700;color:#00A878;font-family:\'DM Mono\',monospace">' + Math.min(100, score + 22) + '<span style="font-size:1rem">/100</span></div>' +
+        '<div style="font-size:.8rem;color:#085041">+' + Math.min(22, 100 - score) + ' pts from current ' + score + '</div>' +
+      '</div>';
+  }
+
+  // ── Leaderboard: show real competitor scores instead of blurred dots ─────────
+  var tbody = document.getElementById('leaderboard-body');
+  if (tbody && competitors.length) {
+    var lbRows = competitors.map(function(c) {
+      // Use googleScore from API; estimate if missing
+      var gs = c.googleScore !== undefined ? c.googleScore
+             : Math.min(99, Math.round(
+                 (c.rating      ? (c.rating / 5) * 40   : 0) +
+                 (c.reviewCount ? Math.min(25, Math.round(c.reviewCount / 60)) : 0) +
+                 20
+               ));
+      var scoreColor = gs >= 70 ? '#00A878' : gs >= 45 ? '#D97706' : '#DC2626';
+      return '<tr>' +
+        '<td style="font-family:\'DM Sans\',sans-serif;font-weight:600;color:var(--navy)">' + esc2(c.name) + '</td>' +
+        '<td style="text-align:center;font-family:\'DM Mono\',monospace;font-weight:700;color:' + scoreColor + '">' + gs + '</td>' +
+        '</tr>';
+    });
+    // Keep the existing "You" row (last row in tbody)
+    var youRow = tbody.querySelector('.you-row');
+    tbody.innerHTML = lbRows.join('');
+    if (youRow) tbody.appendChild(youRow);
+
+    // Hide the "scores locked" footer — scores are visible in demo mode
+    var lbFooter = document.getElementById('leaderboard-footer');
+    if (lbFooter) lbFooter.style.display = 'none';
+  }
+
+  // ── Replace CTA with demo state + download button ─────────────────────────
+  var cta = document.getElementById('cta-section');
+  if (cta) cta.innerHTML =
+    '<div style="text-align:center;padding:2.5rem 1rem">' +
+    '<div style="font-size:2.5rem;margin-bottom:12px">&#x1F389;</div>' +
+    '<h2 style="color:#fff;margin-bottom:8px">Demo Mode Active</h2>' +
+    '<p style="color:rgba(255,255,255,.7);line-height:1.8;margin-bottom:16px">' +
+      'All sections show real computed data from the free audit.<br>' +
+      'Download the PDF report below or run a real check.</p>' +
+    downloadBtnHtml() +
+    '<br><a href="../index.html#tool" style="display:inline-block;color:rgba(255,255,255,.6);' +
+      'font-size:.85rem;margin-top:12px;text-decoration:underline">' +
+      '&larr; Run a real free check</a>' +
+    '</div>';
+
+})();
+
+// ── PAID MODE — ?paid=1 ────────────────────────────────────────────────────
+// Triggered after successful Razorpay payment redirect.
+// Unlocks all sections and shows download button.
+(function () {
+  if (!/[?&]paid=1/.test(window.location.search)) return;
+
+  // Success banner
+  var banner = document.createElement('div');
+  banner.innerHTML =
+    '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#00A878;' +
+    'color:#fff;text-align:center;padding:9px 16px;font-size:.85rem;font-weight:600">' +
+    '✅ Payment confirmed — all sections unlocked &nbsp;·&nbsp; PDF being sent to your email' +
+    '</div>';
+  document.body.insertBefore(banner.firstChild, document.body.firstChild);
+
+  // Unlock all locked sections
+  document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
+  document.querySelectorAll('.locked-content').forEach(function(el) {
+    el.removeAttribute('aria-hidden');
+    el.style.filter  = 'none';
+    el.style.opacity = '1';
+  });
+  var lbf = document.getElementById('leaderboard-footer');
+  if (lbf) lbf.style.display = 'none';
+
+  // Replace CTA with download
+  var cta = document.getElementById('cta-section');
+  if (cta) cta.innerHTML =
+    '<div style="text-align:center;padding:2.5rem 1rem">' +
+    '<div style="font-size:2.5rem;margin-bottom:12px">✅</div>' +
+    '<h2 style="color:#fff;margin-bottom:8px">Full Report Unlocked</h2>' +
+    '<p style="color:rgba(255,255,255,.75);line-height:1.8;margin-bottom:16px">' +
+      'Your PDF report is being generated and sent to your email.<br>' +
+      'You can also download it directly right now:</p>' +
+    downloadBtnHtml() +
+    '</div>';
+
+})();
 </script>
 
 </body>

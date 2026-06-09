@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doctor Visibility Report | The Doc Mirror</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!--
+  THE DOC MIRROR — PDF REPORT TEMPLATE v5
+  ─────────────────────────────────────────────────────────────────────────
+  13 sections across ~13 pages. Rendered server-side by html-pdf-node.
+
+  PLACEHOLDER REFERENCE (every {{TOKEN}} the developer must replace):
+  Core: {{DOCTOR_NAME_CLEAN}}, {{SPECIALTY}}, {{CITY}}, {{STATE}}, {{REGION}},
+        {{REPORT_DATE}}, {{SCORE}}, {{VERDICT_LABEL}}, {{VERDICT_COLOR}},
+        {{TOTAL_PAGES}}, {{CURRENCY_SYMBOL}}, {{TIER_LABEL}}
+  Exec summary: {{EXEC_HEADLINE}}, {{EXEC_PARAGRAPH_1}}, {{EXEC_PARAGRAPH_2}},
+                {{EXEC_PARAGRAPH_3}}, {{EXEC_TOP_3_PRIORITIES_HTML}}
+  AI visibility: {{AI_GOOGLE_SCORE}}, {{AI_CHATGPT_SCORE}}, {{AI_GEMINI_SCORE}},
+                 {{AI_CLAUDE_SCORE}}, {{AI_PERPLEXITY_SCORE}}, {{AI_OVERALL_LABEL}},
+                 {{AI_QUERIES_RAN_HTML}}, {{AI_COMPETITORS_HTML}},
+                 {{AI_RUN_TIMESTAMP}}, {{AI_IS_REAL_BADGE}}
+  Pillars: {{PILLAR_GMB_SCORE}}, {{PILLAR_RATING_SCORE}}, {{PILLAR_REVIEWS_SCORE}},
+           {{PILLAR_PHOTOS_SCORE}}, {{PILLAR_RANK_SCORE}}, {{PILLAR_AI_SCORE}},
+           {{PILLAR_DIRECTORIES_SCORE}}, {{PILLAR_TOTAL}} (must equal SCORE!)
+  Competitor: {{COMPETITOR_TABLE_HTML}}, {{COMPETITOR_NARRATIVE_HTML}}
+  Patient loss: {{LOSS_MONTHLY_LOW}}, {{LOSS_MONTHLY_HIGH}},
+                {{LOSS_ANNUAL_LOW}}, {{LOSS_ANNUAL_HIGH}},
+                {{LOSS_METHODOLOGY_TEXT}}, {{LOSS_FORMULA_HTML}}
+  Fixes: {{FIX_GUIDE_HTML}} (5-7 fixes, each: title, steps, copyText, impact, time, scoreGain)
+  Sentiment: {{SENTIMENT_POSITIVE_HTML}}, {{SENTIMENT_NEGATIVE_HTML}},
+             {{SENTIMENT_THEMES_HTML}}, {{RESPONSE_TEMPLATES_HTML}}
+  SEO: {{SEO_PRIMARY_HTML}}, {{SEO_SECONDARY_HTML}}, {{SEO_LONGTAIL_HTML}}
+  Content: {{CONTENT_PILLARS_HTML}}, {{CONTENT_REELS_HTML}},
+           {{CONTENT_BLOGS_HTML}}, {{CONTENT_CADENCE}}
+  Journey: {{JOURNEY_STAGES_HTML}}, {{JOURNEY_CRITICAL_STAGE}}
+  Plan: {{PLAN_PHASE1_HTML}}, {{PLAN_PHASE2_HTML}}, {{PLAN_PHASE3_HTML}},
+        {{PLAN_PROJECTED_SCORE}}
+  Monitor upsell: {{MONITOR_SAMPLE_ALERT_HTML}}, {{MONITOR_SAMPLE_TREND_HTML}}
+  Methodology: {{METHODOLOGY_SOURCES_HTML}}, {{METHODOLOGY_TIMESTAMP}}
+
+  CRITICAL: {{PILLAR_TOTAL}} MUST equal {{SCORE}}. If they don't match, the
+  report calculation is broken — show a warning to the user, don't generate.
+-->
+<style>
+:root{
+  --navy:#0A2540;--navy-light:#142E50;--green:#00A878;--green-dark:#007a57;
+  --green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;
+  --slate-muted:#9aabba;--border:#E2E8F0;--red:#DC2626;--red-light:#FEF2F2;
+  --amber:#D97706;--amber-light:#FFFBEB;--blue:#0C447C;--blue-light:#E6F1FB;
+  --purple:#3C3489;--purple-light:#EEEDFE;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;font-size:10.5pt;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@page{size:A4;margin:0}
+.page{width:210mm;min-height:297mm;padding:12mm 14mm;page-break-after:always;position:relative}
+.page:last-child{page-break-after:auto}
+
+/* ── COVER PAGE ─────────────────────────────────────────────────────────── */
+.cover{background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.cover::before{content:'';position:absolute;top:-60px;right:-60px;width:280px;height:280px;border-radius:50%;background:rgba(0,168,120,.1);pointer-events:none}
+.cover::after{content:'';position:absolute;bottom:-120px;left:-60px;width:340px;height:340px;border-radius:50%;background:rgba(0,168,120,.04);pointer-events:none}
+.cover-top{z-index:1}
+.logo{font-size:18pt;font-weight:700;letter-spacing:-.02em;margin-bottom:4px}
+.logo span{color:var(--green)}
+.logo-tag{font-size:9.5pt;color:rgba(255,255,255,.45);margin-bottom:40px}
+.cover h1{font-size:24pt;font-weight:700;letter-spacing:-.02em;line-height:1.1;margin-bottom:10px}
+.cover h1 em{color:var(--green);font-style:normal}
+.cover-sub{font-size:10.5pt;color:rgba(255,255,255,.62);line-height:1.6;max-width:420px}
+.cover-meta{margin-top:32px;display:grid;grid-template-columns:1fr 1fr;gap:10px;z-index:1}
+.meta-item{background:rgba(255,255,255,.07);border-radius:8px;padding:11px 14px}
+.meta-item .lbl{font-size:8pt;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.meta-item .val{font-size:11pt;font-weight:600;color:#fff}
+.cover-bottom{z-index:1}
+.cover-score-block{background:rgba(255,255,255,.07);border-radius:14px;padding:20px;text-align:center;border:1px solid rgba(0,168,120,.3)}
+.cs-label{font-size:8.5pt;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.cs-num{font-size:56pt;font-weight:700;color:#fff;letter-spacing:-.04em;line-height:1;font-family:'DM Mono',monospace}
+.cs-out{font-size:14pt;color:rgba(255,255,255,.4);font-weight:500}
+.cs-verdict{font-size:11pt;font-weight:600;margin-top:6px}
+.cv-strong{color:var(--green)}
+.cv-moderate{color:#FAC775}
+.cv-warning{color:#FAA877}
+.cv-critical{color:#F87171}
+.cover-date{font-size:8.5pt;color:rgba(255,255,255,.32);margin-top:14px;text-align:center}
+
+/* ── SECTION HEADER ──────────────────────────────────────────────────────── */
+.section-hd{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--navy)}
+.section-hd h2{font-size:14pt;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.section-num{width:26px;height:26px;background:var(--navy);color:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11pt;font-weight:700;flex-shrink:0}
+.section-sub{font-size:9.5pt;color:var(--slate-light);margin-bottom:14px;line-height:1.5}
+
+/* ── EXECUTIVE SUMMARY ────────────────────────────────────────────────────── */
+.exec-headline{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-light) 100%);color:#fff;border-radius:14px;padding:18px 22px;margin-bottom:16px;position:relative;overflow:hidden}
+.exec-headline::before{content:'';position:absolute;top:-30px;right:-30px;width:140px;height:140px;border-radius:50%;background:rgba(0,168,120,.08)}
+.eh-label{font-size:9pt;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;position:relative}
+.eh-number{font-size:22pt;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1.15;position:relative;color:#fff}
+.eh-number .currency{font-size:14pt;color:rgba(255,255,255,.55);margin-right:4px}
+.eh-sub{font-size:10pt;color:rgba(255,255,255,.6);margin-top:6px;line-height:1.5;position:relative;max-width:520px}
+.exec-paragraph{font-size:10.5pt;color:var(--slate);line-height:1.7;margin-bottom:10px}
+.exec-paragraph strong{color:var(--navy);font-weight:600}
+.exec-priorities{background:var(--warm);border-radius:10px;padding:14px 16px;margin-top:14px}
+.exec-priorities h4{font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.exec-priority{display:flex;align-items:flex-start;gap:10px;padding:6px 0;border-bottom:.5px solid var(--border);font-size:10pt}
+.exec-priority:last-child{border-bottom:none}
+.ep-num{width:20px;height:20px;border-radius:50%;background:var(--green);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0;margin-top:1px}
+.ep-text{flex:1;color:var(--navy);font-weight:500;line-height:1.5}
+
+/* ── AI VISIBILITY SECTION ───────────────────────────────────────────────── */
+.ai-section{background:var(--navy);color:#fff;border-radius:14px;padding:18px;margin-bottom:14px;position:relative;overflow:hidden}
+.ai-section::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(0,168,120,.06)}
+.ai-label{font-size:9pt;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;position:relative}
+.ai-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;position:relative}
+.ai-card{background:rgba(255,255,255,.06);border-radius:10px;padding:12px 10px;border:0.5px solid rgba(255,255,255,.08);text-align:center}
+.ai-platform-name{font-size:9pt;color:rgba(255,255,255,.7);font-weight:500;margin-bottom:4px}
+.ai-platform-score{font-size:22pt;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.03em;line-height:1}
+.aps-strong{color:#1D9E75}
+.aps-mid{color:#FAC775}
+.aps-weak{color:#F87171}
+.ai-platform-out{font-size:8pt;color:rgba(255,255,255,.35)}
+.ai-platform-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;margin-top:6px}
+.ai-platform-fill{height:100%;border-radius:2px}
+.aif-strong{background:#1D9E75}.aif-mid{background:#EF9F27}.aif-weak{background:#E24B4A}
+.ai-real-badge{display:inline-block;font-size:8pt;font-weight:600;padding:3px 10px;border-radius:20px;background:rgba(0,168,120,.2);color:#6EE7C0;margin-bottom:10px;position:relative}
+.ai-real-badge.synthetic{background:rgba(255,200,100,.15);color:#FAC775}
+
+/* AI queries ran */
+.ai-queries-box{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;margin-top:10px;position:relative}
+.ai-queries-box h4{font-size:9pt;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.ai-query-item{background:rgba(255,255,255,.05);border-radius:6px;padding:7px 10px;margin-bottom:4px;font-size:9pt;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.aq-text{color:rgba(255,255,255,.75);font-family:'DM Mono',monospace;font-size:8.5pt;flex:1}
+.aq-result{font-size:8pt;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.aqr-found{background:#1D9E75;color:#fff}
+.aqr-notfound{background:rgba(248,113,113,.2);color:#FCA5A5}
+
+/* Who AI recommends instead */
+.ai-recs-box{background:rgba(248,113,113,.08);border-left:3px solid #F87171;border-radius:0 10px 10px 0;padding:12px 14px;margin-top:10px;position:relative}
+.ai-recs-box h4{font-size:9pt;color:#FCA5A5;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;font-weight:600}
+.ai-rec-doc{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:10pt;color:#fff}
+.air-rank{width:18px;height:18px;border-radius:50%;background:rgba(255,255,255,.12);color:rgba(255,255,255,.7);display:flex;align-items:center;justify-content:center;font-size:8.5pt;font-weight:700;flex-shrink:0}
+.ai-not-detected{font-size:9pt;color:#FCA5A5;font-weight:600;margin-top:8px;padding-top:8px;border-top:.5px solid rgba(248,113,113,.2)}
+
+/* ── 7-PILLAR TABLE ──────────────────────────────────────────────────────── */
+.pillar-table{width:100%;border-collapse:collapse;margin-bottom:14px}
+.pillar-table th{font-size:8.5pt;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;background:var(--warm);text-align:left;border-bottom:1px solid var(--border)}
+.pillar-table td{padding:9px 10px;border-bottom:0.5px solid var(--border);font-size:10.5pt;vertical-align:middle}
+.pillar-table .p-name{font-weight:600;color:var(--navy)}
+.pillar-table .p-name-sub{font-size:8.5pt;color:var(--slate-light);font-weight:400;margin-top:2px;line-height:1.3}
+.pillar-table .p-score{font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;text-align:right}
+.pillar-table .p-score-max{font-size:9pt;color:var(--slate-muted);font-weight:400}
+.pillar-table .p-bar{width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;display:inline-block;vertical-align:middle}
+.pillar-table .p-bar-fill{height:100%;border-radius:3px}
+.pf-strong{background:var(--green)}.pf-mid{background:#EF9F27}.pf-weak{background:#E24B4A}
+.pillar-table .p-status{font-size:8.5pt;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.ps-strong{background:var(--green-light);color:var(--green-dark)}
+.ps-mid{background:#FFF8E7;color:#92400E}
+.ps-weak{background:var(--red-light);color:#791F1F}
+.pillar-total-row{background:var(--navy);color:#fff;font-weight:700}
+.pillar-total-row td{color:#fff;border-bottom:none;padding:11px 10px;font-size:11pt}
+.pillar-total-row .p-score{color:#fff !important}
+
+/* ── COMPETITOR TABLE ────────────────────────────────────────────────────── */
+.comp-table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:9.5pt}
+.comp-table th{font-size:8pt;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;padding:8px 8px;background:var(--warm);text-align:left;border-bottom:1px solid var(--border)}
+.comp-table td{padding:8px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle}
+.comp-table .ct-name{font-weight:600;color:var(--navy);font-size:9.5pt}
+.comp-table .ct-score{font-family:'DM Mono',monospace;font-weight:700;font-size:10pt}
+.comp-table .ct-you{background:var(--green-light)}
+.comp-table .ct-you td{color:var(--navy);font-weight:600}
+.comp-narrative{background:var(--navy);color:#fff;border-radius:10px;padding:14px 16px;margin-top:10px}
+.comp-narrative h4{font-size:9pt;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.comp-narrative p{font-size:10pt;color:rgba(255,255,255,.85);line-height:1.65}
+.comp-narrative .cn-sentence{display:block;padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.1)}
+.comp-narrative .cn-sentence:last-child{border-bottom:none}
+
+/* ── PATIENT LOSS ESTIMATE ───────────────────────────────────────────────── */
+.loss-headline{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:14px;padding:18px;margin-bottom:14px;text-align:center}
+.loss-label{font-size:8.5pt;color:#991B1B;text-transform:uppercase;letter-spacing:.07em;font-weight:700;margin-bottom:6px}
+.loss-headline-number{font-size:26pt;font-weight:700;color:#991B1B;font-family:'DM Mono',monospace;line-height:1.1;letter-spacing:-.02em;margin-bottom:4px}
+.loss-headline-sub{font-size:9.5pt;color:#7F1D1D;line-height:1.5;max-width:480px;margin:0 auto}
+.loss-revenue-band{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.lrv-card{background:var(--warm);border-radius:10px;padding:12px 14px;text-align:center}
+.lrv-label{font-size:8pt;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:600}
+.lrv-num{font-size:18pt;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1}
+.lrv-sub{font-size:8.5pt;color:var(--slate-light);margin-top:2px}
+.loss-methodology{background:var(--warm);border-radius:10px;padding:12px 14px;font-size:9pt;color:var(--slate);line-height:1.65}
+.loss-methodology h4{font-size:8.5pt;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;font-weight:700}
+.loss-formula{font-family:'DM Mono',monospace;font-size:8.5pt;color:var(--slate-light);background:#fff;padding:8px 10px;border-radius:6px;margin-top:6px;line-height:1.6}
+
+/* ── FIX GUIDE ───────────────────────────────────────────────────────────── */
+.fix-item{background:var(--warm);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--green)}
+.fix-item.high{border-left-color:var(--red)}
+.fix-item.medium{border-left-color:var(--amber)}
+.fix-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.fix-num{width:20px;height:20px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0;margin-top:1px}
+.fix-title{flex:1;font-size:10.5pt;font-weight:700;color:var(--navy);line-height:1.4}
+.fix-badges{display:flex;gap:5px;flex-shrink:0}
+.fix-badge{font-size:7.5pt;font-weight:600;padding:2px 6px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em}
+.fb-high{background:var(--red-light);color:#991B1B}
+.fb-med{background:var(--amber-light);color:#92400E}
+.fb-low{background:var(--green-light);color:var(--green-dark)}
+.fb-time{background:var(--blue-light);color:var(--blue)}
+.fb-gain{background:var(--purple-light);color:var(--purple)}
+.fix-steps{font-size:9.5pt;color:var(--slate);line-height:1.65;padding-left:30px;margin-bottom:6px}
+.fix-copy{background:#fff;border:.5px solid var(--border);border-radius:6px;padding:8px 10px;margin-left:30px;font-size:9pt;color:var(--slate);line-height:1.6;font-family:'DM Mono',monospace}
+.fix-copy strong{color:var(--navy);font-family:'DM Sans',sans-serif;font-weight:600}
+
+/* ── SENTIMENT ──────────────────────────────────────────────────────────── */
+.sent-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.sent-card{background:var(--warm);border-radius:10px;padding:12px 14px}
+.sent-card.positive{background:var(--green-light)}
+.sent-card.negative{background:var(--red-light)}
+.sent-card h4{font-size:9pt;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;font-weight:700}
+.sent-card.positive h4{color:var(--green-dark)}
+.sent-card.negative h4{color:#991B1B}
+.sent-tags{display:flex;flex-wrap:wrap;gap:5px}
+.sent-tag{font-size:9pt;padding:3px 9px;border-radius:20px;background:#fff;color:var(--slate);font-weight:500}
+.response-templates{background:var(--warm);border-radius:10px;padding:12px 14px}
+.response-templates h4{font-size:9pt;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;font-weight:700}
+.resp-template{background:#fff;border-left:3px solid var(--green);border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:6px;font-size:9pt;color:var(--slate);line-height:1.6}
+.resp-template strong{color:var(--navy);font-weight:600}
+
+/* ── SEO + CONTENT ──────────────────────────────────────────────────────── */
+.kw-group{margin-bottom:10px}
+.kw-group h4{font-size:9pt;color:var(--navy);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.kw-tags{display:flex;flex-wrap:wrap;gap:5px}
+.kw-tag{font-size:9pt;padding:3px 10px;border-radius:20px;border:.5px solid;font-weight:500}
+.kw-primary{background:var(--blue-light);color:var(--blue);border-color:#85B7EB}
+.kw-secondary{background:var(--green-light);color:var(--green-dark);border-color:var(--green)}
+.kw-longtail{background:var(--warm);color:var(--slate);border-color:var(--border)}
+.content-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.content-block{background:var(--warm);border-radius:10px;padding:12px 14px}
+.content-block h4{font-size:9pt;color:var(--navy);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.content-item{font-size:9.5pt;color:var(--slate);padding:5px 0;border-bottom:.5px solid var(--border);line-height:1.5}
+.content-item:last-child{border-bottom:none}
+.content-cadence{background:var(--navy);color:#fff;border-radius:8px;padding:9px 14px;font-size:9.5pt;text-align:center;margin-top:8px}
+
+/* ── PATIENT JOURNEY ─────────────────────────────────────────────────────── */
+.journey-stages{display:flex;flex-direction:column;gap:6px}
+.journey-stage{background:var(--warm);border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;border-left:3px solid var(--border)}
+.journey-stage.winning{border-left-color:var(--green)}
+.journey-stage.losing{border-left-color:var(--red)}
+.journey-stage.neutral{border-left-color:var(--amber)}
+.js-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9pt;font-weight:700;flex-shrink:0;margin-top:1px}
+.jsn-win{background:var(--green-light);color:var(--green-dark)}
+.jsn-lose{background:var(--red-light);color:#991B1B}
+.jsn-neutral{background:var(--amber-light);color:#92400E}
+.js-body{flex:1}
+.js-name{font-size:10pt;font-weight:700;color:var(--navy);margin-bottom:2px}
+.js-touch{font-size:8.5pt;color:var(--slate-light);font-style:italic;margin-bottom:4px}
+.js-gap{font-size:9pt;color:#991B1B;line-height:1.5;margin-bottom:3px}
+.js-action{font-size:9pt;color:var(--green-dark);line-height:1.5;font-weight:500}
+.js-badge{font-size:8.5pt;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px}
+
+/* ── 90-DAY PLAN ─────────────────────────────────────────────────────────── */
+.plan-phase{background:var(--warm);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.plan-phase-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.pp-badge{font-size:8pt;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.ppb-1{background:var(--blue-light);color:var(--blue)}
+.ppb-2{background:var(--green-light);color:var(--green-dark)}
+.ppb-3{background:var(--purple-light);color:var(--purple)}
+.pp-focus{font-size:10pt;font-weight:700;color:var(--navy);flex:1;line-height:1.4}
+.pp-gain{font-size:8.5pt;font-weight:600;padding:3px 8px;border-radius:20px;background:var(--green);color:#fff;white-space:nowrap}
+.pp-section h5{font-size:8.5pt;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;font-weight:700;margin-top:6px}
+.pp-action{font-size:9pt;color:var(--slate);padding:3px 0 3px 16px;position:relative;line-height:1.55}
+.pp-action::before{content:'→';position:absolute;left:0;color:var(--green);font-weight:700}
+.pp-kpi{font-size:9pt;color:var(--navy);padding:3px 0 3px 16px;position:relative;line-height:1.55;font-weight:500}
+.pp-kpi::before{content:'✓';position:absolute;left:0;color:var(--green-dark);font-weight:700}
+.plan-projection{background:var(--navy);color:#fff;border-radius:10px;padding:14px 18px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.plan-projection-current{font-size:10pt;color:rgba(255,255,255,.6)}
+.plan-projection-current strong{color:#fff;font-weight:700;font-size:13pt}
+.plan-projection-arrow{font-size:18pt;color:var(--green)}
+.plan-projection-future{text-align:right}
+.ppf-num{font-size:24pt;font-weight:700;font-family:'DM Mono',monospace;color:#fff;letter-spacing:-.02em;line-height:1}
+.ppf-label{font-size:8.5pt;color:rgba(255,255,255,.5);margin-top:2px}
+
+/* ── MONITOR UPSELL ──────────────────────────────────────────────────────── */
+.monitor-page{background:linear-gradient(180deg,#0A2540 0%,#0F2D4D 50%,#143356 100%);color:#fff;position:relative;overflow:hidden}
+.monitor-page::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(0,168,120,.08)}
+.monitor-eyebrow{font-size:9pt;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;position:relative}
+.monitor-h1{font-size:22pt;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.15;margin-bottom:8px;position:relative}
+.monitor-h1 em{color:var(--green);font-style:normal}
+.monitor-lede{font-size:11pt;color:rgba(255,255,255,.7);line-height:1.65;max-width:500px;margin-bottom:24px;position:relative}
+.monitor-features{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;position:relative}
+.mf-card{background:rgba(255,255,255,.06);border-radius:10px;padding:12px 14px;border:.5px solid rgba(255,255,255,.08)}
+.mf-icon{font-size:14pt;margin-bottom:6px;color:var(--green)}
+.mf-title{font-size:10pt;font-weight:700;color:#fff;margin-bottom:4px;line-height:1.4}
+.mf-desc{font-size:9pt;color:rgba(255,255,255,.55);line-height:1.55}
+.sample-alert{background:rgba(255,255,255,.06);border:.5px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:14px;position:relative}
+.sample-alert h4{font-size:9pt;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+.alert-mock{background:#fff;color:var(--navy);border-radius:8px;padding:12px 14px;font-size:9.5pt;line-height:1.6}
+.alert-mock-subject{font-size:10pt;font-weight:700;color:var(--navy);margin-bottom:6px}
+.alert-mock-meta{font-size:8.5pt;color:var(--slate-light);margin-bottom:8px;padding-bottom:6px;border-bottom:.5px solid var(--border)}
+.alert-mock p{margin-bottom:6px;color:var(--slate)}
+.alert-mock strong{color:var(--navy)}
+.alert-delta-up{color:var(--green-dark);font-weight:700}
+.alert-delta-down{color:var(--red);font-weight:700}
+.monitor-cta{background:var(--green);color:#fff;border-radius:12px;padding:18px 22px;text-align:center;position:relative;margin-top:14px}
+.monitor-cta-price{font-size:24pt;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1;margin-bottom:4px}
+.monitor-cta-period{font-size:11pt;font-weight:500;opacity:.85}
+.monitor-cta-sub{font-size:9.5pt;color:rgba(255,255,255,.85);margin-top:8px;line-height:1.5}
+.monitor-cta-button{display:inline-block;background:#fff;color:var(--green-dark);padding:10px 24px;border-radius:8px;font-size:11pt;font-weight:700;margin-top:12px;text-decoration:none}
+
+/* ── METHODOLOGY ─────────────────────────────────────────────────────────── */
+.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.method-block{background:var(--warm);border-radius:10px;padding:12px 14px}
+.method-block h4{font-size:9pt;color:var(--navy);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.method-list{font-size:9pt;color:var(--slate);line-height:1.65}
+.method-list li{padding:3px 0 3px 14px;position:relative;list-style:none;line-height:1.55}
+.method-list li::before{content:'•';position:absolute;left:0;color:var(--green);font-weight:700}
+.method-formula{background:#fff;border-radius:6px;padding:8px 10px;font-family:'DM Mono',monospace;font-size:8.5pt;color:var(--slate);line-height:1.6;margin-top:6px}
+.timestamp-strip{background:var(--navy);color:#fff;border-radius:8px;padding:10px 14px;font-size:9pt;text-align:center;margin-top:14px}
+.timestamp-strip strong{color:var(--green);font-weight:700}
+
+/* ── FOOTER (every page except cover) ───────────────────────────────────── */
+.footer{position:absolute;bottom:8mm;left:14mm;right:14mm;display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:.5px solid var(--border);font-size:8.5pt;color:var(--slate-muted)}
+.footer-brand{font-weight:600;color:var(--slate)}
+.footer-brand span{color:var(--green)}
+
+/* ── UTILITIES ──────────────────────────────────────────────────────────── */
+.data-note{font-size:8.5pt;color:var(--slate-light);font-style:italic;margin-top:8px;line-height:1.5}
+.divider{height:1px;background:var(--border);margin:14px 0}
+
+@media print{
+  .page{margin:0;box-shadow:none}
+  html,body{width:210mm}
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 1: COVER                                                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page cover">
+  <div class="cover-top">
+    <div class="logo">The Doc <span>Mirror</span></div>
+    <div class="logo-tag">Doctor Visibility Report</div>
+    <h1>{{DOCTOR_NAME_CLEAN}}</h1>
+    <div class="cover-sub">{{SPECIALTY}} · {{CITY}}{{STATE_DISPLAY}}<br>Your complete Doctor Visibility Score — all 7 pillars, AI visibility across 4 platforms, competitor intelligence, and your 90-day plan to win more patients.</div>
+
+    <div class="cover-meta">
+      <div class="meta-item">
+        <div class="lbl">Report Date</div>
+        <div class="val">{{REPORT_DATE}}</div>
+      </div>
+      <div class="meta-item">
+        <div class="lbl">Report Type</div>
+        <div class="val">{{TIER_LABEL}}</div>
+      </div>
+      <div class="meta-item">
+        <div class="lbl">Specialty</div>
+        <div class="val">{{SPECIALTY}}</div>
+      </div>
+      <div class="meta-item">
+        <div class="lbl">Market</div>
+        <div class="val">{{CITY}}{{STATE_DISPLAY}}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-bottom">
+    <div class="cover-score-block">
+      <div class="cs-label">{{SPECIALTY}} Doctor Visibility Score</div>
+      <div class="cs-num">{{SCORE}}<span class="cs-out">/100</span></div>
+      <div class="cs-verdict {{VERDICT_COLOR}}">{{VERDICT_LABEL}}</div>
+    </div>
+    <div class="cover-date">Generated {{REPORT_DATE}} · thedocmirror.com</div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 2: EXECUTIVE SUMMARY                                                -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">1</div>
+    <h2>Executive Summary</h2>
+  </div>
+
+  <!-- HEADLINE: estimated revenue at risk -->
+  <div class="exec-headline">
+    <div class="eh-label">Estimated annual revenue at risk</div>
+    <div class="eh-number"><span class="currency">{{CURRENCY_SYMBOL}}</span>{{LOSS_ANNUAL_LOW}}<span style="color:rgba(255,255,255,.45);font-size:14pt;font-weight:500"> – </span>{{CURRENCY_SYMBOL}}{{LOSS_ANNUAL_HIGH}}</div>
+    <div class="eh-sub">{{EXEC_HEADLINE}}</div>
+  </div>
+
+  <p class="exec-paragraph">{{EXEC_PARAGRAPH_1}}</p>
+  <p class="exec-paragraph">{{EXEC_PARAGRAPH_2}}</p>
+  <p class="exec-paragraph">{{EXEC_PARAGRAPH_3}}</p>
+
+  <div class="exec-priorities">
+    <h4>Top 3 priorities for the next 30 days</h4>
+    {{EXEC_TOP_3_PRIORITIES_HTML}}
+  </div>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 2 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 3: AI SEARCH VISIBILITY (THE MAIN VALUE PROP)                       -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">2</div>
+    <h2>AI Search Visibility</h2>
+  </div>
+  <p class="section-sub">How Google and AI tools (ChatGPT, Gemini, Claude, Perplexity) discover and recommend your practice today. {{AI_RUN_TIMESTAMP_TEXT}}</p>
+
+  <div class="ai-section">
+    <div class="ai-label">Your visibility across AI search platforms</div>
+    <span class="ai-real-badge">{{AI_IS_REAL_BADGE}}</span>
+
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="ai-platform-name">Google</div>
+        <div class="ai-platform-score {{AI_GOOGLE_COLOR}}">{{AI_GOOGLE_SCORE}}</div>
+        <div class="ai-platform-out">/ 100</div>
+        <div class="ai-platform-bar"><div class="ai-platform-fill {{AI_GOOGLE_FILL}}" style="width:{{AI_GOOGLE_SCORE}}%"></div></div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-platform-name">ChatGPT</div>
+        <div class="ai-platform-score {{AI_CHATGPT_COLOR}}">{{AI_CHATGPT_SCORE}}</div>
+        <div class="ai-platform-out">/ 100</div>
+        <div class="ai-platform-bar"><div class="ai-platform-fill {{AI_CHATGPT_FILL}}" style="width:{{AI_CHATGPT_SCORE}}%"></div></div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-platform-name">Gemini</div>
+        <div class="ai-platform-score {{AI_GEMINI_COLOR}}">{{AI_GEMINI_SCORE}}</div>
+        <div class="ai-platform-out">/ 100</div>
+        <div class="ai-platform-bar"><div class="ai-platform-fill {{AI_GEMINI_FILL}}" style="width:{{AI_GEMINI_SCORE}}%"></div></div>
+      </div>
+      <div class="ai-card">
+        <div class="ai-platform-name">Claude</div>
+        <div class="ai-platform-score {{AI_CLAUDE_COLOR}}">{{AI_CLAUDE_SCORE}}</div>
+        <div class="ai-platform-out">/ 100</div>
+        <div class="ai-platform-bar"><div class="ai-platform-fill {{AI_CLAUDE_FILL}}" style="width:{{AI_CLAUDE_SCORE}}%"></div></div>
+      </div>
+    </div>
+
+    <div class="ai-queries-box">
+      <h4>Real AI queries run on your behalf</h4>
+      {{AI_QUERIES_RAN_HTML}}
+    </div>
+
+    <div class="ai-recs-box">
+      <h4>Who AI tools recommended instead of you</h4>
+      {{AI_COMPETITORS_HTML}}
+      <div class="ai-not-detected">{{AI_NOT_DETECTED_TEXT}}</div>
+    </div>
+  </div>
+
+  <p class="data-note">Why this matters: 1 in 3 patients (Pew Research, 2025) now uses an AI tool at some point in their healthcare decision. Doctors who do not appear in AI recommendations are invisible at the decision moment — regardless of their Google rank. Improving the underlying signals (citations, schema markup, directory depth) typically moves AI scores by 15–25 points in 90 days.</p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 3 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 4: 7-PILLAR VISIBILITY BREAKDOWN                                    -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">3</div>
+    <h2>7-Pillar Visibility Breakdown</h2>
+  </div>
+  <p class="section-sub">Your composite Doctor Visibility Score is calculated across 7 weighted pillars. The radar chart below shows your current position; the table beneath details each pillar.</p>
+
+  <!-- NEW v5: Visual radar chart -->
+  <div style="display:flex;align-items:center;justify-content:center;margin:8px 0 18px;background:var(--warm);border-radius:14px;padding:14px">
+    <svg viewBox="0 0 320 270" xmlns="http://www.w3.org/2000/svg" style="width:280px;height:230px">
+      <!-- Background heptagon (7 pillars) at 100% -->
+      <polygon points="160,30 287,90 290,180 220,250 100,250 30,180 33,90"
+               fill="none" stroke="#E2E8F0" stroke-width="1"/>
+      <polygon points="160,72 244,110 246,168 198,212 122,212 74,168 76,110"
+               fill="none" stroke="#E2E8F0" stroke-width="0.5" stroke-dasharray="3,3"/>
+      <polygon points="160,115 200,131 201,156 175,177 145,177 119,156 120,131"
+               fill="none" stroke="#E2E8F0" stroke-width="0.5" stroke-dasharray="3,3"/>
+
+      <!-- Actual data polygon (placeholders converted to percentages) -->
+      <polygon points="{{RADAR_POINTS}}"
+               fill="rgba(0,168,120,.2)" stroke="#00A878" stroke-width="2"/>
+
+      <!-- Vertex dots -->
+      {{RADAR_DOTS}}
+
+      <!-- Pillar labels -->
+      <text x="160" y="20" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">GMB</text>
+      <text x="297" y="86" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">Rating</text>
+      <text x="300" y="186" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">Reviews</text>
+      <text x="220" y="265" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">Photos</text>
+      <text x="100" y="265" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">Rank</text>
+      <text x="20" y="186" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">AI</text>
+      <text x="23" y="86" text-anchor="middle" fill="#0A2540" font-size="9" font-weight="700" font-family="DM Sans,Arial">Directory</text>
+    </svg>
+    <div style="margin-left:20px;font-size:9pt;color:var(--slate);line-height:1.7">
+      <div style="font-weight:700;color:var(--navy);margin-bottom:6px;font-size:10pt">Read the chart</div>
+      <div><span style="display:inline-block;width:10px;height:10px;background:rgba(0,168,120,.4);border:2px solid #00A878;border-radius:2px;vertical-align:middle;margin-right:5px"></span>Your current visibility</div>
+      <div><span style="display:inline-block;width:10px;height:10px;border:1px solid #E2E8F0;border-radius:2px;vertical-align:middle;margin-right:5px"></span>Maximum (100% on every pillar)</div>
+      <div style="margin-top:8px;font-style:italic;color:var(--slate-light)">A balanced shape means consistent strength. Sharp dips show specific pillars to fix.</div>
+    </div>
+  </div>
+
+  <table class="pillar-table">
+    <thead>
+      <tr>
+        <th style="width:40%">Pillar</th>
+        <th style="width:20%">Performance</th>
+        <th style="width:15%">Status</th>
+        <th style="width:25%;text-align:right">Score</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>
+          <div class="p-name">Google Business Profile</div>
+          <div class="p-name-sub">Completeness, hours, phone, description, category</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_GMB_FILL}}" style="width:{{PILLAR_GMB_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_GMB_STATUS_CLASS}}">{{PILLAR_GMB_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_GMB_SCORE}}<span class="p-score-max">/30</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">Star Rating Quality</div>
+          <div class="p-name-sub">Average rating across all reviews</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_RATING_FILL}}" style="width:{{PILLAR_RATING_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_RATING_STATUS_CLASS}}">{{PILLAR_RATING_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_RATING_SCORE}}<span class="p-score-max">/20</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">Review Volume</div>
+          <div class="p-name-sub">Total reviews + recency of recent activity</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_REVIEWS_FILL}}" style="width:{{PILLAR_REVIEWS_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_REVIEWS_STATUS_CLASS}}">{{PILLAR_REVIEWS_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_REVIEWS_SCORE}}<span class="p-score-max">/15</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">Photo Presence</div>
+          <div class="p-name-sub">Photo count, quality, and recency</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_PHOTOS_FILL}}" style="width:{{PILLAR_PHOTOS_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_PHOTOS_STATUS_CLASS}}">{{PILLAR_PHOTOS_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_PHOTOS_SCORE}}<span class="p-score-max">/10</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">Competitive Search Rank</div>
+          <div class="p-name-sub">Local pack position when patients search your specialty</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_RANK_FILL}}" style="width:{{PILLAR_RANK_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_RANK_STATUS_CLASS}}">{{PILLAR_RANK_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_RANK_SCORE}}<span class="p-score-max">/15</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">AI Visibility Signals</div>
+          <div class="p-name-sub">Wikipedia, citations, schema markup, directory depth</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_AI_FILL}}" style="width:{{PILLAR_AI_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_AI_STATUS_CLASS}}">{{PILLAR_AI_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_AI_SCORE}}<span class="p-score-max">/5</span></td>
+      </tr>
+      <tr>
+        <td>
+          <div class="p-name">Directory &amp; Citation Presence</div>
+          <div class="p-name-sub">Healthgrades, Zocdoc, Vitals, Practo, JustDial, Doximity</div>
+        </td>
+        <td><div class="p-bar"><div class="p-bar-fill {{PILLAR_DIRECTORIES_FILL}}" style="width:{{PILLAR_DIRECTORIES_PCT}}%"></div></div></td>
+        <td><span class="p-status {{PILLAR_DIRECTORIES_STATUS_CLASS}}">{{PILLAR_DIRECTORIES_STATUS}}</span></td>
+        <td class="p-score">{{PILLAR_DIRECTORIES_SCORE}}<span class="p-score-max">/5</span></td>
+      </tr>
+      <tr class="pillar-total-row">
+        <td>Total Doctor Visibility Score</td>
+        <td></td>
+        <td></td>
+        <td class="p-score">{{PILLAR_TOTAL}}<span class="p-score-max" style="color:rgba(255,255,255,.5)">/100</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="data-note">Score calculation: GMB (30) + Rating (20) + Reviews (15) + Photos (10) + Rank (15) + AI Visibility (5) + Directory (5) = 100 maximum. Your total must match the headline score; if you see a discrepancy, please contact hello@thedocmirror.com.</p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 4 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 5: COMPETITOR INTELLIGENCE                                          -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">4</div>
+    <h2>Competitor Intelligence</h2>
+  </div>
+  <p class="section-sub">The top 3 {{SPECIALTY}}s appearing above you in Google Maps for your market, with their visibility scores across Google and AI search.</p>
+
+  <table class="comp-table">
+    <thead>
+      <tr>
+        <th style="width:34%">Practice</th>
+        <th style="width:12%">DVS Score</th>
+        <th style="width:10%">Rating</th>
+        <th style="width:12%">Reviews</th>
+        <th style="width:10%">Photos</th>
+        <th style="width:10%">Google Rank</th>
+        <th style="width:12%">AI Mentions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{COMPETITOR_TABLE_HTML}}
+    </tbody>
+  </table>
+
+  <div class="comp-narrative">
+    <h4>Competitive Analysis</h4>
+    {{COMPETITOR_NARRATIVE_HTML}}
+  </div>
+
+  <p class="data-note">Competitor data sourced from Google Places API + SerpApi local pack results. AI mention counts reflect the queries we ran against ChatGPT, Gemini, Claude, and Perplexity on your behalf.</p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 5 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 6: PATIENT LOSS ESTIMATE                                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">5</div>
+    <h2>Patient Loss &amp; Revenue Impact</h2>
+  </div>
+
+  <div class="loss-headline">
+    <div class="loss-label">Estimated patients lost to competitors every month</div>
+    <div class="loss-headline-number">{{LOSS_MONTHLY_LOW}} – {{LOSS_MONTHLY_HIGH}}</div>
+    <div class="loss-headline-sub">Patients searching for a {{SPECIALTY}} in {{CITY}} who are choosing a competitor instead, based on your current visibility gap.</div>
+  </div>
+
+  <div class="loss-revenue-band">
+    <div class="lrv-card">
+      <div class="lrv-label">Conservative annual revenue at risk</div>
+      <div class="lrv-num">{{CURRENCY_SYMBOL}}{{LOSS_ANNUAL_LOW}}</div>
+      <div class="lrv-sub">Assumes lower bound: {{LOSS_MONTHLY_LOW}} missed patients/mo at {{CURRENCY_SYMBOL}}{{VALUE_PER_PATIENT_LOW}} per patient</div>
+    </div>
+    <div class="lrv-card">
+      <div class="lrv-label">Aggressive annual revenue at risk</div>
+      <div class="lrv-num">{{CURRENCY_SYMBOL}}{{LOSS_ANNUAL_HIGH}}</div>
+      <div class="lrv-sub">Assumes upper bound: {{LOSS_MONTHLY_HIGH}} missed patients/mo at {{CURRENCY_SYMBOL}}{{VALUE_PER_PATIENT_HIGH}} per patient</div>
+    </div>
+  </div>
+
+  <div class="loss-methodology">
+    <h4>Methodology</h4>
+    <p>{{LOSS_METHODOLOGY_TEXT}}</p>
+    <div class="loss-formula">{{LOSS_FORMULA_HTML}}</div>
+  </div>
+
+  <p class="data-note">This estimate is intentionally conservative. It does not account for word-of-mouth amplification (each lost patient typically refers 1–2 more) or for high-value patient categories (long-term care patients can represent 5–10× the per-patient value shown here). The actual opportunity cost is likely higher.</p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 6 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 7: PERSONALISED FIX GUIDE                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">6</div>
+    <h2>Personalised Fix Guide</h2>
+  </div>
+  <p class="section-sub">Fixes are ranked by Doctor Visibility Score impact. Each fix shows estimated time, expected score gain, and copy-paste ready text. All fixes are specialty-appropriate for {{SPECIALTY}}.</p>
+
+  {{FIX_GUIDE_HTML}}
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 7 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 8: REVIEW SENTIMENT + RESPONSE TEMPLATES                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">7</div>
+    <h2>Review Sentiment Analysis</h2>
+  </div>
+  <p class="section-sub">Themes from your recent patient reviews, with ready-to-paste response templates for positive, neutral, and critical reviews.</p>
+
+  <div class="sent-grid">
+    <div class="sent-card positive">
+      <h4>Patients consistently praise</h4>
+      <div class="sent-tags">{{SENTIMENT_POSITIVE_HTML}}</div>
+    </div>
+    <div class="sent-card negative">
+      <h4>Patients consistently flag</h4>
+      <div class="sent-tags">{{SENTIMENT_NEGATIVE_HTML}}</div>
+    </div>
+  </div>
+
+  <div class="response-templates">
+    <h4>Ready-to-paste response templates</h4>
+    {{RESPONSE_TEMPLATES_HTML}}
+  </div>
+
+  <p class="data-note">Sentiment analysis based on the {{REVIEW_COUNT}} most recent Google reviews, processed by Claude AI. Response templates are written in the doctor's voice — feel free to personalise before posting.</p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 8 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 9: SEO KEYWORDS + CONTENT STRATEGY                                  -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">8</div>
+    <h2>SEO Keyword &amp; Content Strategy</h2>
+  </div>
+  <p class="section-sub">Keywords patients actually use to find a {{SPECIALTY}} in {{CITY}}, plus ready-to-film content ideas.</p>
+
+  <div class="kw-group">
+    <h4>Primary keywords — high intent, high volume</h4>
+    <div class="kw-tags">{{SEO_PRIMARY_HTML}}</div>
+  </div>
+  <div class="kw-group">
+    <h4>Secondary keywords</h4>
+    <div class="kw-tags">{{SEO_SECONDARY_HTML}}</div>
+  </div>
+  <div class="kw-group">
+    <h4>Long-tail keywords — low competition, high conversion</h4>
+    <div class="kw-tags">{{SEO_LONGTAIL_HTML}}</div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="content-grid">
+    <div class="content-block">
+      <h4>Content pillars</h4>
+      {{CONTENT_PILLARS_HTML}}
+    </div>
+    <div class="content-block">
+      <h4>Ready-to-film Reel ideas</h4>
+      {{CONTENT_REELS_HTML}}
+    </div>
+  </div>
+
+  <div class="content-block" style="margin-top:8px">
+    <h4>SEO-optimised blog titles</h4>
+    {{CONTENT_BLOGS_HTML}}
+  </div>
+
+  <div class="content-cadence">{{CONTENT_CADENCE}}</div>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 9 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 10: PATIENT JOURNEY AUDIT                                           -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">9</div>
+    <h2>Patient Journey Audit</h2>
+  </div>
+  <p class="section-sub">Where you are winning and losing patients across their 5 decision stages. The most critical stage to fix: <strong>{{JOURNEY_CRITICAL_STAGE}}</strong>.</p>
+
+  <div class="journey-stages">
+    {{JOURNEY_STAGES_HTML}}
+  </div>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 10 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 11: 90-DAY ACTION PLAN                                              -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">10</div>
+    <h2>Your 90-Day Action Plan</h2>
+  </div>
+  <p class="section-sub">Every action below is fully completable without hiring an agency or third-party. Designed for {{SPECIALTY}}s practising in {{CITY}}.</p>
+
+  {{PLAN_PHASE1_HTML}}
+  {{PLAN_PHASE2_HTML}}
+  {{PLAN_PHASE3_HTML}}
+
+  <div class="plan-projection">
+    <div class="plan-projection-current">Current score: <strong>{{SCORE}}/100</strong></div>
+    <div class="plan-projection-arrow">→</div>
+    <div class="plan-projection-future">
+      <div class="ppf-num">{{PLAN_PROJECTED_SCORE}}</div>
+      <div class="ppf-label">Projected score at day 90</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 11 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 12: MONITOR TIER UPSELL                                             -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page monitor-page">
+  <div class="monitor-eyebrow">Next step · Monitor plan</div>
+  <h1 class="monitor-h1">Get this report <em>every Monday</em>, automatically.</h1>
+  <p class="monitor-lede">This report you're reading right now is a snapshot. Your visibility changes every week — a competitor adds 20 new reviews, your AI ranking drops on Gemini, your local pack position shifts. Monitor catches these changes the moment they happen.</p>
+
+  <div class="monitor-features">
+    <div class="mf-card">
+      <div class="mf-icon">●</div>
+      <div class="mf-title">Weekly full audit</div>
+      <div class="mf-desc">All 7 pillars + real AI queries on ChatGPT, Gemini, Claude, Perplexity. Run every Monday 9AM EST.</div>
+    </div>
+    <div class="mf-card">
+      <div class="mf-icon">●</div>
+      <div class="mf-title">AI rank tracking</div>
+      <div class="mf-desc">See how your position in ChatGPT and Gemini responses moves over time. No other tool tracks this.</div>
+    </div>
+    <div class="mf-card">
+      <div class="mf-icon">●</div>
+      <div class="mf-title">Competitor alerts</div>
+      <div class="mf-desc">Instant email when a competitor gains reviews, moves up in rank, or starts appearing in AI results.</div>
+    </div>
+    <div class="mf-card">
+      <div class="mf-icon">●</div>
+      <div class="mf-title">12-week trend dashboard</div>
+      <div class="mf-desc">Watch your score climb week by week. Track your improvement against competitors visually.</div>
+    </div>
+  </div>
+
+  <div class="sample-alert">
+    <h4>Sample weekly alert</h4>
+    <div class="alert-mock">
+      <div class="alert-mock-subject">Weekly Doctor Visibility Update — {{DOCTOR_NAME_CLEAN}}</div>
+      <div class="alert-mock-meta">From: hello@thedocmirror.com · To: you@yourpractice.com</div>
+      {{MONITOR_SAMPLE_ALERT_HTML}}
+    </div>
+  </div>
+
+  <div class="monitor-cta">
+    <div class="monitor-cta-price">{{CURRENCY_SYMBOL}}49<span class="monitor-cta-period">/month</span></div>
+    <div class="monitor-cta-sub">Cancel anytime · No annual contract · First weekly report runs next Monday</div>
+    <a class="monitor-cta-button" href="https://thedocmirror.com/#pricing">Activate Monitor →</a>
+  </div>
+
+  <div class="footer" style="color:rgba(255,255,255,.4);border-top-color:rgba(255,255,255,.1)">
+    <span style="color:rgba(255,255,255,.6);font-weight:600">The Doc <span style="color:var(--green)">Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 12 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 13: METHODOLOGY                                                      -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="section-hd">
+    <div class="section-num">11</div>
+    <h2>Methodology</h2>
+  </div>
+  <p class="section-sub">How your Doctor Visibility Score was calculated, what data sources we used, and when each measurement was taken.</p>
+
+  <div class="method-grid">
+    <div class="method-block">
+      <h4>Data sources</h4>
+      <ul class="method-list">{{METHODOLOGY_SOURCES_HTML}}</ul>
+    </div>
+    <div class="method-block">
+      <h4>Score weighting</h4>
+      <div class="method-formula">GMB Profile (30) + Rating Quality (20) + Review Volume (15) + Photos (10) + Search Rank (15) + AI Visibility (5) + Directory Presence (5) = 100</div>
+      <p style="font-size:9pt;color:var(--slate);margin-top:8px;line-height:1.6">Weights calibrated against thousands of real US doctor profiles. Updated quarterly as patient discovery patterns shift.</p>
+    </div>
+  </div>
+
+  <div class="method-block">
+    <h4>What we did not do</h4>
+    <ul class="method-list">
+      <li>We did not access your Google Business account, your website backend, or any private data</li>
+      <li>We did not contact you to verify any information — everything in this report is read from public sources</li>
+      <li>We did not share your data with any third party</li>
+      <li>For sentiment analysis, we used Claude AI to identify themes — no individual review was retained beyond this report</li>
+    </ul>
+  </div>
+
+  <div class="timestamp-strip">
+    <strong>All data sourced and analysed on {{METHODOLOGY_TIMESTAMP}}.</strong> AI search queries against ChatGPT, Gemini, Claude, and Perplexity were run live in real time during report generation. Results may differ on subsequent days as AI systems update.
+  </div>
+
+  <p style="font-size:8.5pt;color:var(--slate-light);text-align:center;margin-top:20px;line-height:1.6">
+    Questions about this report? Email <strong style="color:var(--navy)">hello@thedocmirror.com</strong><br>
+    The Doc Mirror is a product of Nextdot Digital Solutions Pvt. Ltd.<br>
+    Report generated by automated analysis. Not a substitute for professional marketing consultation.
+  </p>
+
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 13 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+</body>
+</html>
