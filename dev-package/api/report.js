@@ -9,6 +9,7 @@ const auditStore       = require('../lib/audit-store');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
 const { runOncePerUser } = require('../lib/pdf-jobs');
 const { launchBrowser } = require('../lib/puppeteer-loader');
+const { createGmailTransport } = require('../lib/gmail');
 const {
   cleanDoctorName,
   detectRegion,
@@ -230,11 +231,7 @@ async function renderPdf(html) {
 
 // ── Send email via Gmail (nodemailer) ─────────────────────────────────────
 async function sendEmail(email, doctorName, pdfBuffer) {
-  const nodemailer  = require('nodemailer');
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: { user: process.env.GMAIL_USER, pass: process.env.GMAIL_APP_PASSWORD },
-  });
+  const transporter = createGmailTransport();
   const cleanName = cleanDoctorName(doctorName);
   await transporter.sendMail({
     from:    `"The Doc Mirror" <${process.env.GMAIL_USER}>`,
@@ -331,17 +328,29 @@ async function _generateReportCore({ auditId, email }) {
     }
   } catch (_) {}
 
-  // 10. Send email
+  // 10. Send email (non-fatal — PDF already generated; user can download manually)
+  let emailSent = false;
   console.log(`[report] sending email → ${email}`);
-  await sendEmail(email, d.doctorName || 'Doctor', pdfBuffer);
-  console.log('[report] email sent');
+  try {
+    await sendEmail(email, d.doctorName || 'Doctor', pdfBuffer);
+    emailSent = true;
+    console.log('[report] email sent ✓');
+  } catch (mailErr) {
+    console.error('[report] email failed (PDF still available):', mailErr.message);
+  }
 
-  // 11. Mark delivered
+  // 11. Mark delivered — PDF succeeded even if email failed
   await supabase.from('paid_reports').update({
-    status: 'delivered', pdf_url: pdfUrl, delivered_at: new Date().toISOString(),
+    status:      emailSent ? 'delivered' : 'email_failed',
+    pdf_url:     pdfUrl,
+    delivered_at: new Date().toISOString(),
   }).eq('audit_id', auditId);
 
-  console.log(`[report] ✓ done — Dr. ${d.doctorNameClean} → ${email}`);
+  console.log(
+    emailSent
+      ? `[report] ✓ done — Dr. ${d.doctorNameClean} → ${email}`
+      : `[report] ✓ PDF ready — email not sent; user can Download PDF (${email})`
+  );
 }
 
 /** Public entry — deduplicates concurrent jobs per email/auditId */
