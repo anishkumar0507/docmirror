@@ -1,6 +1,7 @@
 'use strict';
 
-const fs = require('fs');
+const path = require('path');
+const fs   = require('fs');
 require('../lib/env');
 
 const {
@@ -46,12 +47,18 @@ async function handler(req, res) {
     // Claude prompts
     console.log('[download-pdf] running Claude prompts...');
     const ai = await runAllPrompts(d);
-    const full = { ...d, ...ai };
+    const full = {
+      ...d,
+      ...ai,
+      complianceFramework: region === 'IN'
+        ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
+        : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules',
+    };
 
     // Load template and replace placeholders
     const templatePath = path.join(__dirname, '../public/pdf-report-template.html');
     let html = fs.readFileSync(templatePath, 'utf8');
-    const placeholders = buildPdfPlaceholders(full, 13);
+    const placeholders = buildPdfPlaceholders(full, 15);
     for (const [token, value] of Object.entries(placeholders)) {
       html = html.split(token).join(value);
     }

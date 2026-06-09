@@ -44,14 +44,15 @@ async function handler(req, res) {
     .update({ status: 'generating', stripe_session_id: orderId })  // reuse stripe_session_id column for razorpay orderId
     .eq('audit_id', auditId);
 
-  // Respond to frontend immediately — report generation runs in background
-  res.json({ ok: true, message: 'Payment verified. Report generating — check your email in ~60 seconds.' });
-
-  // Generate report in background (non-blocking)
+  // Generate report (must complete before response — Vercel serverless kills background work)
   const { generateReport } = require('./report');
-  generateReport({ auditId, email }).catch(err => {
+  try {
+    await generateReport({ auditId, email });
+  } catch (err) {
     console.error('[verify] generateReport failed:', err.message);
-  });
+  }
+
+  res.json({ ok: true, message: 'Payment verified. Your report PDF has been emailed.' });
 }
 
 module.exports = handler;

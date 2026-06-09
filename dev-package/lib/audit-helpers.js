@@ -210,28 +210,67 @@ function buildCompetitorTableHtml(d) {
   const nameClean   = d.doctorNameClean || cleanDoctorName(d.doctorName || '');
 
   const youRow = `
-<tr class="you-row">
-  <td><strong>Dr. ${esc(nameClean)}</strong> <span class="comp-badge cb-you">You</span></td>
+<tr class="ct-you">
+  <td class="ct-name">Dr. ${esc(nameClean)} <span style="font-size:8pt;background:#00A878;color:#fff;padding:1px 6px;border-radius:10px;font-weight:600;margin-left:4px">You</span></td>
+  <td class="ct-score">${d.score || 0}/100</td>
   <td>${d.rating ? Number(d.rating).toFixed(1) + '★' : '—'}</td>
   <td>${d.reviewCount || 0}</td>
-  <td>${d.score || 0}/100</td>
-  <td><span class="comp-badge cb-you">You</span></td>
+  <td>${d.photoCount || '—'}</td>
+  <td>—</td>
+  <td>—</td>
 </tr>`;
 
   if (!competitors.length) {
-    return youRow + `<tr><td colspan="5" style="text-align:center;padding:12px;color:#6B7A8D;font-size:9pt">No competitors found nearby</td></tr>`;
+    return youRow + `<tr><td colspan="7" style="text-align:center;padding:12px;color:#6B7A8D;font-size:9pt">No competitors found nearby</td></tr>`;
   }
 
   const compRows = competitors.map(c => `
 <tr>
-  <td>${esc(c.name)}</td>
+  <td class="ct-name">${esc(c.name)}</td>
+  <td class="ct-score">${c.googleScore ? c.googleScore + '/100' : '—'}</td>
   <td>${c.rating ? Number(c.rating).toFixed(1) + '★' : '—'}</td>
   <td>${c.reviewCount || 0}</td>
-  <td>${c.googleScore ? c.googleScore + '/100' : '—'}</td>
-  <td><span class="comp-badge cb-them">Competitor</span></td>
+  <td>—</td>
+  <td>—</td>
+  <td>—</td>
 </tr>`).join('');
 
   return youRow + compRows;
+}
+
+// ── v5.1 Social Content Engine helpers ────────────────────────────────────────
+
+function subcatsHtml(subcats) {
+  if (!subcats || !subcats.length) return '';
+  return subcats.map(s => `<div class="cat-sub-item">${esc(s)}</div>`).join('');
+}
+
+function calendarHtml(weeks) {
+  if (!weeks || !weeks.length) return '';
+  const cls = { '1': '', '2': 'c2', '3': 'c3', '4': 'c4' };
+  return weeks.map(w => {
+    const cell = (day) => {
+      const e = w[day] || {};
+      const cc = cls[String(e.catNum || '1')] || '';
+      return `<div class="cal-cell"><div class="cal-cat ${cc}">${esc(e.cat || 'Education')}</div><div class="cal-topic">${esc(e.topic || '')}</div></div>`;
+    };
+    return `<div class="cal-week">Wk ${w.week}</div>${cell('mon')}${cell('wed')}${cell('fri')}`;
+  }).join('');
+}
+
+function topicLibraryHtml(topics) {
+  if (!topics || !topics.length) return '';
+  return topics.slice(0, 12).map(t => {
+    const title = typeof t === 'string' ? t : (t.title || '');
+    return `<div class="topic-chip"><strong>${esc(title)}</strong></div>`;
+  }).join('');
+}
+
+function specialtyDontsHtml(donts) {
+  if (!donts || !donts.length) {
+    return '<div class="spec-item">Follow the relevant medical council guidelines before publishing any clinical content.</div>';
+  }
+  return donts.map(d => `<div class="spec-item">${esc(d)}</div>`).join('');
 }
 
 function buildFixGuideHtml(fixes) {
@@ -323,7 +362,7 @@ function buildMethodologySourcesHtml(d) {
 }
 
 // ── buildPdfPlaceholders (main mapper) ─────────────────────────────────────
-function buildPdfPlaceholders(audit, totalPages = 13) {
+function buildPdfPlaceholders(audit, totalPages = 15) {
   const city       = audit.city  || (audit.cityState || '').split(',')[0].trim();
   const state      = audit.state || (audit.cityState || '').split(',')[1]?.trim() || '';
   const region     = audit.region || detectRegion(city, state);
@@ -460,6 +499,39 @@ function buildPdfPlaceholders(audit, totalPages = 13) {
     // ── Methodology ────────────────────────────────────────────────────────
     '{{METHODOLOGY_SOURCES_HTML}}': buildMethodologySourcesHtml({ ...audit, city, state, region }),
     '{{METHODOLOGY_TIMESTAMP}}':    new Date(genAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' }),
+
+    // ── v5.1 Social Media Content Engine (page 10) ─────────────────────────
+    '{{HASHTAG_LOCATION}}':  (city + (audit.specialty || '')).replace(/[^a-zA-Z0-9]/g, ''),
+    '{{HASHTAG_SPECIALTY}}': (audit.specialty || '').replace(/[^a-zA-Z0-9]/g, ''),
+    '{{COMPLIANCE_FRAMEWORK}}': audit.complianceFramework || (
+      region === 'IN'
+        ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
+        : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules'
+    ),
+
+    '{{CAT1_SUBCATS_HTML}}': subcatsHtml(audit.socialContent?.categories?.cat1 || [`${audit.specialty || 'doctor'} myths debunked`, 'Symptoms explained simply', `When to visit a ${audit.specialty || 'doctor'}`]),
+    '{{CAT2_SUBCATS_HTML}}': subcatsHtml(audit.socialContent?.categories?.cat2 || ['Daily health habits', 'Preventive care tips', 'Seasonal wellness']),
+    '{{CAT3_SUBCATS_HTML}}': subcatsHtml(audit.socialContent?.categories?.cat3 || ['Day in our clinic', 'Meet the team', 'Behind-the-scenes']),
+    '{{CAT4_SUBCATS_HTML}}': subcatsHtml(audit.socialContent?.categories?.cat4 || [`Local health in ${city}`, 'Community Q&A', 'Health awareness']),
+
+    '{{CALENDAR_ROWS_HTML}}': calendarHtml(audit.socialContent?.calendar || [
+      { week:1, mon:{cat:'Education',catNum:'1',topic:`${audit.specialty || 'Doctor'} FAQs`}, wed:{cat:'Lifestyle',catNum:'2',topic:'Morning health routine'}, fri:{cat:'Community',catNum:'4',topic:`Health news from ${city}`} },
+      { week:2, mon:{cat:'Education',catNum:'1',topic:`When to see a ${audit.specialty || 'doctor'}`}, wed:{cat:'Lifestyle',catNum:'2',topic:'Seasonal prevention guide'}, fri:{cat:'Behind Practice',catNum:'3',topic:'Meet our team'} },
+      { week:3, mon:{cat:'Education',catNum:'1',topic:'Myth vs fact'}, wed:{cat:'Lifestyle',catNum:'2',topic:'Healthy eating habits'}, fri:{cat:'Community',catNum:'4',topic:'Community health awareness'} },
+      { week:4, mon:{cat:'Education',catNum:'1',topic:`${audit.specialty || 'Doctor'} myths debunked`}, wed:{cat:'Lifestyle',catNum:'2',topic:'Prevention tips'}, fri:{cat:'Behind Practice',catNum:'3',topic:'Clinic tour walkthrough'} },
+    ]),
+
+    '{{TOPIC_LIBRARY_HTML}}': topicLibraryHtml(audit.socialContent?.topics || [
+      {title:`Top 5 FAQs about ${audit.specialty || 'doctors'}`},{title:'Morning health routine'},
+      {title:'A day at our clinic'},{title:`Health in ${city}`},
+      {title:`When to visit a ${audit.specialty || 'doctor'}`},{title:'Seasonal prevention guide'},
+      {title:'Meet the team'},{title:'Patient FAQs answered'},
+      {title:'Healthy habits 101'},{title:'Clinic tour walkthrough'},
+      {title:'Community health awareness'},{title:'Myth vs fact: medical edition'},
+    ]),
+
+    // ── v5.1 Production & Compliance Guide (page 11) ───────────────────────
+    '{{SPECIALTY_DONTS_HTML}}': specialtyDontsHtml(audit.specialtyDonts),
 
     // ── Safety net: suppress any stray {{TOKEN}} from code examples ────────
     '{{TOKEN}}': '',

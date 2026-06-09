@@ -32,7 +32,7 @@ app.use(express.json({ limit: '2mb' }));
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── API routes ───────────────────────────────────────────────────────────────
+// ── API routes ─────────────────────────────────────────────────────────────
 app.get('/api/debug-competitors', debugCompetitorsHandler);
 app.post('/api/audit',            auditHandler);
 app.post('/api/checkout',         checkoutHandler);
@@ -53,12 +53,18 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`\n  The Doc Mirror`);
-  console.log(`  http://localhost:${PORT}\n`);
-  console.log(`  Places key  : ${process.env.GOOGLE_PLACES_API_KEY    ? '✓' : '✗ MISSING'}`);
-  console.log(`  Anthropic   : ${process.env.ANTHROPIC_API_KEY        ? '✓' : '✗ MISSING'}`);
-  console.log(`  Razorpay    : ${process.env.RAZORPAY_KEY_ID          ? '✓' : '✗ MISSING'}`);
-  console.log(`  Resend      : ${process.env.RESEND_API_KEY           ? '✓' : '✗ MISSING'}`);
-  console.log(`  Supabase    : ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗ MISSING'}\n`);
-});
+// Export for Vercel serverless
+module.exports = app;
+
+// Local dev server
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n  The Doc Mirror`);
+    console.log(`  http://localhost:${PORT}\n`);
+    console.log(`  Places key  : ${process.env.GOOGLE_PLACES_API_KEY    ? '✓' : '✗ MISSING'}`);
+    console.log(`  Anthropic   : ${process.env.ANTHROPIC_API_KEY        ? '✓' : '✗ MISSING'}`);
+    console.log(`  Razorpay    : ${process.env.RAZORPAY_KEY_ID          ? '✓' : '✗ MISSING'}`);
+    console.log(`  Resend      : ${process.env.RESEND_API_KEY           ? '✓' : '✗ MISSING'}`);
+    console.log(`  Supabase    : ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗ MISSING'}\n`);
+  });
+}

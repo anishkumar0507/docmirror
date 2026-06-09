@@ -53,8 +53,9 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;font-size:10.5pt;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 @page{size:A4;margin:0}
-.page{width:210mm;min-height:297mm;padding:12mm 14mm;page-break-after:always;position:relative}
-.page:last-child{page-break-after:auto}
+.page{width:210mm;min-height:297mm;height:auto;padding:12mm 14mm 0;page-break-after:always;break-after:page;position:relative;display:flex;flex-direction:column}
+.page:last-child{page-break-after:auto;break-after:auto}
+.page-body{flex:1 0 auto;padding-bottom:8mm}
 
 /* ── COVER PAGE ─────────────────────────────────────────────────────────── */
 .cover{background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
@@ -187,7 +188,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .loss-formula{font-family:'DM Mono',monospace;font-size:8.5pt;color:var(--slate-light);background:#fff;padding:8px 10px;border-radius:6px;margin-top:6px;line-height:1.6}
 
 /* ── FIX GUIDE ───────────────────────────────────────────────────────────── */
-.fix-item{background:var(--warm);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--green)}
+.fix-item{background:var(--warm);border-radius:10px;padding:12px 14px;margin-bottom:8px;border-left:3px solid var(--green);break-inside:avoid;page-break-inside:avoid}
 .fix-item.high{border-left-color:var(--red)}
 .fix-item.medium{border-left-color:var(--amber)}
 .fix-head{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
@@ -234,9 +235,75 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .content-item:last-child{border-bottom:none}
 .content-cadence{background:var(--navy);color:#fff;border-radius:8px;padding:9px 14px;font-size:9.5pt;text-align:center;margin-top:8px}
 
+/* ── CONTENT ENGINE (NEW v5.1 — page 10) ─────────────────────────────── */
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:6px}
+.cat-card{background:var(--warm);border-radius:9px;padding:7px 10px;border-top:3px solid var(--green);break-inside:avoid;page-break-inside:avoid}
+.cat-card.c2{border-top-color:#4ECDC4}
+.cat-card.c3{border-top-color:#FAC775}
+.cat-card.c4{border-top-color:#9b87f5}
+.cat-head{display:flex;align-items:center;gap:6px;margin-bottom:5px}
+.cat-num{width:18px;height:18px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:8.5pt;font-weight:700;flex-shrink:0}
+.cat-name{font-size:9.5pt;font-weight:700;color:var(--navy)}
+.cat-sub{font-size:8.5pt;color:var(--slate);line-height:1.45;padding-left:2px}
+.cat-sub-item{padding:1px 0;display:flex;gap:4px}
+.cat-sub-item::before{content:'▸';color:var(--green);font-weight:700;font-size:8pt;line-height:1.6}
+
+.calendar{display:grid;grid-template-columns:46px 1fr 1fr 1fr;gap:2px;margin-bottom:5px;background:var(--warm);border-radius:9px;padding:6px}
+.cal-head{font-size:7.5pt;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.05em;text-align:center;padding:3px 2px}
+.cal-week{font-size:8.5pt;font-weight:700;color:var(--navy);display:flex;align-items:center;justify-content:center;background:#fff;border-radius:5px}
+.cal-cell{background:#fff;border-radius:5px;padding:4px 5px;font-size:7.5pt;line-height:1.3;text-align:center}
+.cal-cat{font-size:7pt;color:var(--green-dark);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:1px}
+.cal-cat.c2{color:#0d8c87}.cal-cat.c3{color:#92400E}.cal-cat.c4{color:#5b3fb8}
+.cal-topic{color:var(--slate);font-weight:500}
+
+.topic-library{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-bottom:5px}
+.topic-chip{background:#fff;border:.5px solid var(--border);border-radius:7px;padding:5px 7px;font-size:7.5pt;color:var(--slate);line-height:1.35}
+.topic-chip strong{color:var(--navy);font-weight:600;display:block;font-size:8.5pt;margin-bottom:1px}
+
+.platform-mix{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.pm-card{background:var(--warm);border-radius:7px;padding:6px 9px;text-align:center}
+.pm-name{font-size:8.5pt;font-weight:700;color:var(--navy);margin-bottom:1px}
+.pm-cadence{font-size:7.5pt;color:var(--slate-light);font-weight:500}
+.pm-format{font-size:7pt;color:var(--slate);margin-top:2px;font-style:italic}
+
+/* ── PRODUCTION + COMPLIANCE (NEW v5.1 — page 11) ─────────────────────── */
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:6px}
+.prod-card{background:var(--warm);border-radius:8px;padding:7px 9px;break-inside:avoid;page-break-inside:avoid}
+.prod-icon{font-size:12pt;margin-bottom:2px}
+.prod-title{font-size:9pt;font-weight:700;color:var(--navy);margin-bottom:2px;line-height:1.3}
+.prod-desc{font-size:8pt;color:var(--slate);line-height:1.45}
+.prod-desc strong{color:var(--navy);font-weight:600}
+
+.caption-framework{background:var(--warm);border-radius:9px;padding:7px 10px;margin-bottom:6px;break-inside:avoid;page-break-inside:avoid}
+.cf-row{display:flex;align-items:center;gap:7px;padding:3px 0;font-size:8.5pt;line-height:1.45}
+.cf-label{font-size:7.5pt;font-weight:700;color:var(--navy);background:#fff;border-radius:4px;padding:2px 7px;flex-shrink:0;min-width:56px;text-align:center;text-transform:uppercase;letter-spacing:.04em}
+.cf-text{color:var(--slate);flex:1}
+.cf-text em{color:var(--green-dark);font-style:italic;font-weight:600}
+
+.compliance-box{background:#FEF2F2;border:1px solid #FCA5A5;border-radius:9px;padding:7px 10px;margin-bottom:5px;break-inside:avoid;page-break-inside:avoid}
+.compliance-box h4{font-size:8.5pt;font-weight:700;color:#991B1B;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.compliance-box h4::before{content:'⛔';font-size:10pt}
+.comp-list{font-size:8pt;color:#7F1D1D;line-height:1.5}
+.comp-item{padding:2px 0 2px 13px;position:relative;line-height:1.45}
+.comp-item::before{content:'✗';position:absolute;left:0;color:#DC2626;font-weight:700}
+
+.specialty-dos{background:#FFFBEB;border:1px solid #FAC775;border-radius:9px;padding:7px 10px;margin-bottom:5px;break-inside:avoid;page-break-inside:avoid}
+.specialty-dos h4{font-size:8.5pt;font-weight:700;color:#92400E;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.specialty-dos h4::before{content:'⚠';font-size:10pt}
+.spec-list{font-size:8pt;color:#78350F;line-height:1.5}
+.spec-item{padding:2px 0 2px 13px;position:relative;line-height:1.45}
+.spec-item::before{content:'•';position:absolute;left:0;color:#D97706;font-weight:700}
+
+.checklist{background:var(--green-light);border-radius:9px;padding:7px 10px;border-left:3px solid var(--green);break-inside:avoid;page-break-inside:avoid}
+.checklist h4{font-size:8.5pt;font-weight:700;color:var(--green-dark);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.checklist h4::before{content:'✓';font-size:10pt}
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 12px;font-size:8pt;color:var(--slate)}
+.check-item{padding:2px 0 2px 14px;position:relative;line-height:1.45}
+.check-item::before{content:'☐';position:absolute;left:0;color:var(--green-dark);font-weight:700;font-size:8.5pt}
+
 /* ── PATIENT JOURNEY ─────────────────────────────────────────────────────── */
 .journey-stages{display:flex;flex-direction:column;gap:6px}
-.journey-stage{background:var(--warm);border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;border-left:3px solid var(--border)}
+.journey-stage{background:var(--warm);border-radius:10px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px;border-left:3px solid var(--border);break-inside:avoid;page-break-inside:avoid}
 .journey-stage.winning{border-left-color:var(--green)}
 .journey-stage.losing{border-left-color:var(--red)}
 .journey-stage.neutral{border-left-color:var(--amber)}
@@ -252,7 +319,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .js-badge{font-size:8.5pt;font-weight:600;padding:2px 7px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:2px}
 
 /* ── 90-DAY PLAN ─────────────────────────────────────────────────────────── */
-.plan-phase{background:var(--warm);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.plan-phase{background:var(--warm);border-radius:10px;padding:10px 12px;margin-bottom:6px;break-inside:avoid;page-break-inside:avoid}
 .plan-phase-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .pp-badge{font-size:8pt;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap}
 .ppb-1{background:var(--blue-light);color:var(--blue)}
@@ -260,10 +327,10 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .ppb-3{background:var(--purple-light);color:var(--purple)}
 .pp-focus{font-size:10pt;font-weight:700;color:var(--navy);flex:1;line-height:1.4}
 .pp-gain{font-size:8.5pt;font-weight:600;padding:3px 8px;border-radius:20px;background:var(--green);color:#fff;white-space:nowrap}
-.pp-section h5{font-size:8.5pt;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;font-weight:700;margin-top:6px}
-.pp-action{font-size:9pt;color:var(--slate);padding:3px 0 3px 16px;position:relative;line-height:1.55}
+.pp-section h5{font-size:8pt;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;font-weight:700;margin-top:4px}
+.pp-action{font-size:8.5pt;color:var(--slate);padding:2px 0 2px 16px;position:relative;line-height:1.5}
 .pp-action::before{content:'→';position:absolute;left:0;color:var(--green);font-weight:700}
-.pp-kpi{font-size:9pt;color:var(--navy);padding:3px 0 3px 16px;position:relative;line-height:1.55;font-weight:500}
+.pp-kpi{font-size:8.5pt;color:var(--navy);padding:2px 0 2px 16px;position:relative;line-height:1.5;font-weight:500}
 .pp-kpi::before{content:'✓';position:absolute;left:0;color:var(--green-dark);font-weight:700}
 .plan-projection{background:var(--navy);color:#fff;border-radius:10px;padding:14px 18px;margin-top:10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
 .plan-projection-current{font-size:10pt;color:rgba(255,255,255,.6)}
@@ -274,7 +341,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .ppf-label{font-size:8.5pt;color:rgba(255,255,255,.5);margin-top:2px}
 
 /* ── MONITOR UPSELL ──────────────────────────────────────────────────────── */
-.monitor-page{background:linear-gradient(180deg,#0A2540 0%,#0F2D4D 50%,#143356 100%);color:#fff;position:relative;overflow:hidden}
+.monitor-page{background:linear-gradient(180deg,#0A2540 0%,#0F2D4D 50%,#143356 100%);color:#fff;position:relative}
 .monitor-page::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(0,168,120,.08)}
 .monitor-eyebrow{font-size:9pt;font-weight:700;color:var(--green);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;position:relative}
 .monitor-h1{font-size:22pt;font-weight:700;color:#fff;letter-spacing:-.02em;line-height:1.15;margin-bottom:8px;position:relative}
@@ -312,7 +379,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .timestamp-strip strong{color:var(--green);font-weight:700}
 
 /* ── FOOTER (every page except cover) ───────────────────────────────────── */
-.footer{position:absolute;bottom:8mm;left:14mm;right:14mm;display:flex;justify-content:space-between;align-items:center;padding-top:8px;border-top:.5px solid var(--border);font-size:8.5pt;color:var(--slate-muted)}
+.footer{display:flex;justify-content:space-between;align-items:center;padding-top:8px;padding-bottom:8mm;border-top:.5px solid var(--border);font-size:8.5pt;color:var(--slate-muted);flex-shrink:0}
 .footer-brand{font-weight:600;color:var(--slate)}
 .footer-brand span{color:var(--green)}
 
@@ -321,8 +388,15 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .divider{height:1px;background:var(--border);margin:14px 0}
 
 @media print{
-  .page{margin:0;box-shadow:none}
+  @page{size:A4;margin:0}
   html,body{width:210mm}
+  .page{margin:0;box-shadow:none;min-height:297mm;height:auto;page-break-after:always;break-after:page;display:flex;flex-direction:column}
+  .page:last-child{page-break-after:auto;break-after:auto}
+  .page-body{flex:1 0 auto;padding-bottom:8mm}
+  .footer{flex-shrink:0}
+  .fix-item,.plan-phase,.journey-stage,.cat-card,.prod-card,.compliance-box,.specialty-dos,
+  .checklist,.caption-framework,.mf-card,.sent-card,.content-block,.method-block,
+  .lrv-card,.ai-section,.comp-narrative{break-inside:avoid;page-break-inside:avoid}
 }
 </style>
 </head>
@@ -372,6 +446,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 2: EXECUTIVE SUMMARY                                                -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">1</div>
     <h2>Executive Summary</h2>
@@ -393,6 +468,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
     {{EXEC_TOP_3_PRIORITIES_HTML}}
   </div>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -404,6 +480,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 3: AI SEARCH VISIBILITY (THE MAIN VALUE PROP)                       -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">2</div>
     <h2>AI Search Visibility</h2>
@@ -455,6 +532,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <p class="data-note">Why this matters: 1 in 3 patients (Pew Research, 2025) now uses an AI tool at some point in their healthcare decision. Doctors who do not appear in AI recommendations are invisible at the decision moment — regardless of their Google rank. Improving the underlying signals (citations, schema markup, directory depth) typically moves AI scores by 15–25 points in 90 days.</p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -466,6 +544,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 4: 7-PILLAR VISIBILITY BREAKDOWN                                    -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">3</div>
     <h2>7-Pillar Visibility Breakdown</h2>
@@ -591,6 +670,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <p class="data-note">Score calculation: GMB (30) + Rating (20) + Reviews (15) + Photos (10) + Rank (15) + AI Visibility (5) + Directory (5) = 100 maximum. Your total must match the headline score; if you see a discrepancy, please contact hello@thedocmirror.com.</p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -602,6 +682,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 5: COMPETITOR INTELLIGENCE                                          -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">4</div>
     <h2>Competitor Intelligence</h2>
@@ -632,6 +713,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <p class="data-note">Competitor data sourced from Google Places API + SerpApi local pack results. AI mention counts reflect the queries we ran against ChatGPT, Gemini, Claude, and Perplexity on your behalf.</p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -643,6 +725,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 6: PATIENT LOSS ESTIMATE                                            -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">5</div>
     <h2>Patient Loss &amp; Revenue Impact</h2>
@@ -675,6 +758,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <p class="data-note">This estimate is intentionally conservative. It does not account for word-of-mouth amplification (each lost patient typically refers 1–2 more) or for high-value patient categories (long-term care patients can represent 5–10× the per-patient value shown here). The actual opportunity cost is likely higher.</p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -686,6 +770,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 7: PERSONALISED FIX GUIDE                                           -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">6</div>
     <h2>Personalised Fix Guide</h2>
@@ -694,6 +779,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   {{FIX_GUIDE_HTML}}
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -705,6 +791,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 8: REVIEW SENTIMENT + RESPONSE TEMPLATES                            -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">7</div>
     <h2>Review Sentiment Analysis</h2>
@@ -729,6 +816,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <p class="data-note">Sentiment analysis based on the {{REVIEW_COUNT}} most recent Google reviews, processed by Claude AI. Response templates are written in the doctor's voice — feel free to personalise before posting.</p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -740,6 +828,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 9: SEO KEYWORDS + CONTENT STRATEGY                                  -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">8</div>
     <h2>SEO Keyword &amp; Content Strategy</h2>
@@ -779,6 +868,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 
   <div class="content-cadence">{{CONTENT_CADENCE}}</div>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -787,19 +877,81 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════ -->
-<!-- PAGE 10: PATIENT JOURNEY AUDIT                                           -->
+<!-- PAGE 10: SOCIAL MEDIA CONTENT ENGINE (NEW v5.1)                          -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
     <div class="section-num">9</div>
-    <h2>Patient Journey Audit</h2>
+    <h2>Social Media Content Engine</h2>
   </div>
-  <p class="section-sub">Where you are winning and losing patients across their 5 decision stages. The most critical stage to fix: <strong>{{JOURNEY_CRITICAL_STAGE}}</strong>.</p>
+  <p class="section-sub">Topics, sub-categories, and a 30-day posting calendar built for {{SPECIALTY}}s practising in {{CITY}}. Every topic is specialty-appropriate and locally relevant.</p>
 
-  <div class="journey-stages">
-    {{JOURNEY_STAGES_HTML}}
+  <!-- 4-category content map -->
+  <div class="cat-grid">
+    <div class="cat-card">
+      <div class="cat-head"><div class="cat-num">1</div><div class="cat-name">Education &amp; Awareness</div></div>
+      <div class="cat-sub">
+        {{CAT1_SUBCATS_HTML}}
+      </div>
+    </div>
+    <div class="cat-card c2">
+      <div class="cat-head"><div class="cat-num">2</div><div class="cat-name">Lifestyle &amp; Prevention</div></div>
+      <div class="cat-sub">
+        {{CAT2_SUBCATS_HTML}}
+      </div>
+    </div>
+    <div class="cat-card c3">
+      <div class="cat-head"><div class="cat-num">3</div><div class="cat-name">Behind the Practice</div></div>
+      <div class="cat-sub">
+        {{CAT3_SUBCATS_HTML}}
+      </div>
+    </div>
+    <div class="cat-card c4">
+      <div class="cat-head"><div class="cat-num">4</div><div class="cat-name">Community &amp; Local Health</div></div>
+      <div class="cat-sub">
+        {{CAT4_SUBCATS_HTML}}
+      </div>
+    </div>
   </div>
 
+  <!-- 30-day visual calendar -->
+  <h3 style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px">30-day posting calendar · Mon/Wed/Fri cadence</h3>
+  <div class="calendar">
+    <div class="cal-head"></div>
+    <div class="cal-head">Monday</div>
+    <div class="cal-head">Wednesday</div>
+    <div class="cal-head">Friday</div>
+    {{CALENDAR_ROWS_HTML}}
+  </div>
+
+  <!-- Topic library -->
+  <h3 style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin:6px 0 4px">Ready-to-film topic library · {{SPECIALTY}} in {{CITY}}</h3>
+  <div class="topic-library">
+    {{TOPIC_LIBRARY_HTML}}
+  </div>
+
+  <!-- Platform mix -->
+  <h3 style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin:6px 0 4px">Platform mix &amp; cadence</h3>
+  <div class="platform-mix">
+    <div class="pm-card">
+      <div class="pm-name">Instagram</div>
+      <div class="pm-cadence">3 Reels + 2 carousels/week</div>
+      <div class="pm-format">Vertical (9:16) and square (1:1)</div>
+    </div>
+    <div class="pm-card">
+      <div class="pm-name">YouTube Shorts</div>
+      <div class="pm-cadence">Repurpose IG Reels, 3/week</div>
+      <div class="pm-format">Same content, different audience</div>
+    </div>
+    <div class="pm-card">
+      <div class="pm-name">WhatsApp Business</div>
+      <div class="pm-cadence">2 status updates/week</div>
+      <div class="pm-format">Direct patient reach in {{CITY}}</div>
+    </div>
+  </div>
+
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
@@ -808,11 +960,127 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 </div>
 
 <!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 11: PRODUCTION + COMPLIANCE GUIDE (NEW v5.1)                        -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-body">
+  <div class="section-hd">
+    <div class="section-num">10</div>
+    <h2>Production &amp; Compliance Guide</h2>
+  </div>
+  <p class="section-sub">How to shoot quality content with what you already have, how to write captions that convert, and what every {{SPECIALTY}} <strong>must avoid</strong> under {{COMPLIANCE_FRAMEWORK}}.</p>
+
+  <!-- Production tips -->
+  <h3 style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px">Shoot production essentials</h3>
+  <div class="prod-grid">
+    <div class="prod-card">
+      <div class="prod-icon">☀</div>
+      <div class="prod-title">Lighting</div>
+      <div class="prod-desc">Face a window for natural light. Avoid overhead fluorescent. A <strong>{{CURRENCY_SYMBOL}}2,000 ring light</strong> covers 90% of shoots.</div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">▢</div>
+      <div class="prod-title">Framing</div>
+      <div class="prod-desc">Shoot <strong>vertical (9:16)</strong> for Reels and Shorts. Phone at chest height. Keep some negative space above your head.</div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">●</div>
+      <div class="prod-title">Wardrobe &amp; Background</div>
+      <div class="prod-desc">White coat with stethoscope visible. <strong>Avoid pure white background</strong> with white coat — use a navy/colour wall. No busy patterns.</div>
+    </div>
+    <div class="prod-card">
+      <div class="prod-icon">♪</div>
+      <div class="prod-title">Audio</div>
+      <div class="prod-desc">Phone mic works close-up. A <strong>{{CURRENCY_SYMBOL}}1,500 lavalier mic</strong> transforms quality. Always do an audio test before filming.</div>
+    </div>
+  </div>
+
+  <!-- Caption framework -->
+  <h3 style="font-size:9pt;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin:6px 0 4px">Caption framework — hook, value, CTA</h3>
+  <div class="caption-framework">
+    <div class="cf-row"><span class="cf-label">Hook</span><span class="cf-text">First 1–2 lines. Must grab attention in 1 second. <em>"5 silent signs your heart is sending warnings"</em></span></div>
+    <div class="cf-row"><span class="cf-label">Value</span><span class="cf-text">3–5 lines of useful information patients can act on. Educational, not promotional.</span></div>
+    <div class="cf-row"><span class="cf-label">CTA</span><span class="cf-text">One clear ask. <em>"Save this post · Book consultation · Follow for more"</em></span></div>
+    <div class="cf-row"><span class="cf-label">Disclaimer</span><span class="cf-text">Small at the end. <em>"Educational content only. Consult a doctor for personal advice."</em></span></div>
+    <div class="cf-row"><span class="cf-label">Hashtags</span><span class="cf-text">5–10 total. Mix: location (#{{HASHTAG_LOCATION}}) + specialty (#{{HASHTAG_SPECIALTY}}) + condition + brand.</span></div>
+  </div>
+
+  <!-- Compliance — Universal -->
+  <div class="compliance-box">
+    <h4>Universal compliance — never publish content that</h4>
+    <div class="comp-list">
+      <div class="comp-item">Claims to <strong>cure</strong>, <strong>guarantee</strong>, or promise specific outcomes ("100% success", "money-back guarantee", "no side effects")</div>
+      <div class="comp-item">Uses <strong>comparative or superlative</strong> language ("best cardiologist", "better than any other clinic")</div>
+      <div class="comp-item">Shows <strong>identifiable patients</strong> (face, name, voice) without explicit written consent on file</div>
+      <div class="comp-item">Attributes outcomes to specific procedures without statistical context and source citation</div>
+      <div class="comp-item">Promotes <strong>non-medical products</strong> (supplements, devices) the practice does not endorse clinically</div>
+      <div class="comp-item">Advises patients to <strong>stop prescribed medications</strong> or skip recommended tests</div>
+    </div>
+  </div>
+
+  <!-- Specialty-specific don'ts -->
+  <div class="specialty-dos">
+    <h4>{{SPECIALTY}}-specific cautions</h4>
+    <div class="spec-list">
+      {{SPECIALTY_DONTS_HTML}}
+    </div>
+  </div>
+
+  <!-- Pre-publish checklist -->
+  <div class="checklist">
+    <h4>Pre-publish checklist — tick every box before posting</h4>
+    <div class="check-grid">
+      <div class="check-item">Disclaimer included at end of caption</div>
+      <div class="check-item">No patient face/name without consent</div>
+      <div class="check-item">No "cure" or "guarantee" language</div>
+      <div class="check-item">Source cited for any statistics</div>
+      <div class="check-item">No comparative claims vs other doctors</div>
+      <div class="check-item">Audio is clear and free of background noise</div>
+      <div class="check-item">Vertical 9:16 for Reels/Shorts</div>
+      <div class="check-item">5–10 relevant hashtags only</div>
+      <div class="check-item">CTA is clear and singular</div>
+      <div class="check-item">Caption proofread for grammar and tone</div>
+    </div>
+  </div>
+
+  </div>
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 11 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- PAGE 12: PATIENT JOURNEY AUDIT (renumbered from page 10)                 -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-body">
+  <div class="section-hd">
+    <div class="section-num">11</div>
+    <h2>Patient Journey Audit</h2>
+  </div>
+  <p class="section-sub">Where you are winning and losing patients across their 5 decision stages. The most critical stage to fix: <strong>{{JOURNEY_CRITICAL_STAGE}}</strong>.</p>
+
+  <div class="journey-stages">
+    {{JOURNEY_STAGES_HTML}}
+  </div>
+
+  </div>
+  <div class="footer">
+    <span class="footer-brand">The Doc <span>Mirror</span></span>
+    <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
+    <span>Page 12 of {{TOTAL_PAGES}}</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
 <!-- PAGE 11: 90-DAY ACTION PLAN                                              -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
-    <div class="section-num">10</div>
+    <div class="section-num">12</div>
     <h2>Your 90-Day Action Plan</h2>
   </div>
   <p class="section-sub">Every action below is fully completable without hiring an agency or third-party. Designed for {{SPECIALTY}}s practising in {{CITY}}.</p>
@@ -830,10 +1098,11 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
     </div>
   </div>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
-    <span>Page 11 of {{TOTAL_PAGES}}</span>
+    <span>Page 13 of {{TOTAL_PAGES}}</span>
   </div>
 </div>
 
@@ -841,6 +1110,7 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 12: MONITOR TIER UPSELL                                             -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page monitor-page">
+  <div class="page-body">
   <div class="monitor-eyebrow">Next step · Monitor plan</div>
   <h1 class="monitor-h1">Get this report <em>every Monday</em>, automatically.</h1>
   <p class="monitor-lede">This report you're reading right now is a snapshot. Your visibility changes every week — a competitor adds 20 new reviews, your AI ranking drops on Gemini, your local pack position shifts. Monitor catches these changes the moment they happen.</p>
@@ -883,10 +1153,11 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
     <a class="monitor-cta-button" href="https://thedocmirror.com/#pricing">Activate Monitor →</a>
   </div>
 
+  </div>
   <div class="footer" style="color:rgba(255,255,255,.4);border-top-color:rgba(255,255,255,.1)">
     <span style="color:rgba(255,255,255,.6);font-weight:600">The Doc <span style="color:var(--green)">Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
-    <span>Page 12 of {{TOTAL_PAGES}}</span>
+    <span>Page 14 of {{TOTAL_PAGES}}</span>
   </div>
 </div>
 
@@ -894,8 +1165,9 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 <!-- PAGE 13: METHODOLOGY                                                      -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <div class="page">
+  <div class="page-body">
   <div class="section-hd">
-    <div class="section-num">11</div>
+    <div class="section-num">13</div>
     <h2>Methodology</h2>
   </div>
   <p class="section-sub">How your Doctor Visibility Score was calculated, what data sources we used, and when each measurement was taken.</p>
@@ -932,10 +1204,11 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
     Report generated by automated analysis. Not a substitute for professional marketing consultation.
   </p>
 
+  </div>
   <div class="footer">
     <span class="footer-brand">The Doc <span>Mirror</span></span>
     <span>{{DOCTOR_NAME_CLEAN}} · {{REPORT_DATE}}</span>
-    <span>Page 13 of {{TOTAL_PAGES}}</span>
+    <span>Page 15 of {{TOTAL_PAGES}}</span>
   </div>
 </div>
 

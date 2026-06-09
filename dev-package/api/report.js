@@ -101,7 +101,41 @@ Phase 3 (Days 61-90): Authority building and competitive positioning.
 Respond ONLY with valid JSON:
 {"phase1":{"focus":"...","actions":["..."],"kpis":["..."],"estimatedScoreGain":5},"phase2":{"focus":"...","actions":["..."],"kpis":["..."],"estimatedScoreGain":5},"phase3":{"focus":"...","actions":["..."],"kpis":["..."],"estimatedScoreGain":5},"projectedScoreAt90Days":${Math.min(100, score + 15)}}`;
 
-  const [fixes, narrativeRes, execSummary, responseTemplates, seo, content, journey, plan] = await Promise.all([
+  const region = d.region || 'IN';
+
+  const socialContentPrompt = `Generate a 30-day social media content strategy for Dr. ${name}, a ${specialty} in ${city}, ${state}.
+Region: ${region === 'IN' ? 'India' : 'US'}.
+IMPORTANT: all topics must be specialty-appropriate (no before/after photos for psychiatrists; no patient imagery for pediatricians).
+
+Return ONLY valid JSON (no markdown):
+{
+  "categories": {
+    "cat1": ["subcat1","subcat2","subcat3"],
+    "cat2": ["subcat1","subcat2","subcat3"],
+    "cat3": ["subcat1","subcat2","subcat3"],
+    "cat4": ["subcat1","subcat2","subcat3"]
+  },
+  "topics": [
+    {"title":"Topic title","catNum":"1"},
+    {"title":"...","catNum":"2"}
+  ],
+  "calendar": [
+    {"week":1,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Community","catNum":"4","topic":"Topic"}},
+    {"week":2,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Behind Practice","catNum":"3","topic":"Topic"}},
+    {"week":3,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Community","catNum":"4","topic":"Topic"}},
+    {"week":4,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Behind Practice","catNum":"3","topic":"Topic"}}
+  ]
+}
+Categories: 1=Education & Awareness, 2=Lifestyle & Prevention, 3=Behind the Practice, 4=Community & Local Health.
+Provide exactly 12 topics and 4 calendar weeks.`;
+
+  const specialtyDontsPrompt = `List 5 specialty-specific social media compliance cautions for a ${specialty} practising in ${region === 'IN' ? 'India' : 'US'}.
+These must be SPECIFIC to ${specialty} — not generic medical rules.
+${region === 'IN' ? 'Reference MCI Code of Ethics / IMC Regulations 2002 where relevant.' : 'Reference FTC Guidelines / FDA Social Media Guidance / HIPAA where relevant.'}
+Respond ONLY with valid JSON (no markdown):
+{"donts":["caution1","caution2","caution3","caution4","caution5"]}`;
+
+  const [fixes, narrativeRes, execSummary, responseTemplates, seo, content, journey, plan, socialRes, dontsRes] = await Promise.all([
     runPrompt(client, fixesPrompt),
     narrativePrompt ? runPrompt(client, narrativePrompt) : Promise.resolve({ narrative: '' }),
     runPrompt(client, execSummaryPrompt),
@@ -110,6 +144,8 @@ Respond ONLY with valid JSON:
     runPrompt(client, contentPrompt),
     runPrompt(client, journeyPrompt),
     runPrompt(client, planPrompt),
+    runPrompt(client, socialContentPrompt).catch(() => ({})),
+    runPrompt(client, specialtyDontsPrompt).catch(() => ({ donts: [] })),
   ]);
 
   return {
@@ -121,29 +157,69 @@ Respond ONLY with valid JSON:
     contentStrategy:     content,
     patientJourney:      journey,
     ninetyDayPlan:       plan,
+    socialContent:       socialRes,
+    specialtyDonts:      dontsRes.donts           || [],
   };
 }
 
 // ── Render PDF with Puppeteer ──────────────────────────────────────────────
 async function renderPdf(html) {
   let browser;
-  if (process.env.VERCEL) {
-    const chromium  = require('@sparticuz/chromium');
+
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     const puppeteer = require('puppeteer-core');
+    const chromium  = require('@sparticuz/chromium');
     browser = await puppeteer.launch({
-      args:           chromium.args,
+      args:            chromium.args,
       defaultViewport: chromium.defaultViewport,
-      executablePath: await chromium.executablePath(),
-      headless:       chromium.headless,
+      executablePath:  await chromium.executablePath(),
+      headless:        chromium.headless,
     });
   } else {
-    const puppeteer = require('puppeteer');
-    browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
+    let puppeteer;
+    try {
+      puppeteer = require('puppeteer');
+    } catch (_) {
+      throw new Error(
+        'Puppeteer is not installed.\n' +
+        'Open a terminal inside the dev-package folder and run:\n' +
+        '  npm install\n' +
+        'Then restart server.js.'
+      );
+    }
+
+    const launchOptions = {
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    };
+
+    if (process.env.CHROME_PATH) {
+      launchOptions.executablePath = process.env.CHROME_PATH;
+    } else {
+      // Puppeteer v22+ returns a Promise from executablePath()
+      const chromiumPath = await puppeteer.executablePath();
+      if (!fs.existsSync(chromiumPath)) {
+        throw new Error(
+          'Puppeteer Chromium binary not found.\n' +
+          'Run: cd dev-package && npm install\n' +
+          'Then restart server.js.'
+        );
+      }
+      launchOptions.executablePath = chromiumPath;
+    }
+
+    browser = await puppeteer.launch(launchOptions);
   }
+
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
-    return await page.pdf({ format: 'A4', printBackground: true });
+    return await page.pdf({
+      format: 'A4',
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+    });
   } finally {
     await browser.close();
   }
@@ -170,7 +246,7 @@ async function sendEmail(email, doctorName, pdfBuffer) {
   <div style="background:#fff;padding:32px;border:1px solid #E2E8F0;border-top:none;border-radius:0 0 12px 12px">
     <h2 style="color:#0A2540;margin-top:0">Your Full Visibility Report is Ready</h2>
     <p>Hi Dr. ${cleanName},</p>
-    <p>Your complete 13-page Doctor Visibility Report is attached as a PDF. It includes:</p>
+    <p>Your complete 15-page Doctor Visibility Report is attached as a PDF. It includes:</p>
     <ul style="color:#3D4D5C;line-height:1.9">
       <li>Executive summary with revenue impact</li>
       <li>AI Visibility scores (Google, ChatGPT, Gemini, Claude)</li>
@@ -241,15 +317,21 @@ async function generateReport({ auditId, email }) {
   const ai = await runAllPrompts(d);
   console.log('[report] prompts done');
 
-  // Merge Claude output into d
-  d = { ...d, ...ai };
+  // Merge Claude output into d, plus v5.1 computed fields
+  d = {
+    ...d,
+    ...ai,
+    complianceFramework: region === 'IN'
+      ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
+      : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules',
+  };
 
   // 5. Load V5 template
   const templatePath = path.join(__dirname, '../public/pdf-report-template.html');
   let html = fs.readFileSync(templatePath, 'utf8');
 
   // 6. Replace every placeholder
-  const placeholders = buildPdfPlaceholders(d, 13);
+  const placeholders = buildPdfPlaceholders(d, 15);
   for (const [token, value] of Object.entries(placeholders)) {
     html = html.split(token).join(value);
   }
