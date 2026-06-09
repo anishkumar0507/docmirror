@@ -815,13 +815,23 @@ function doCheckout() {
   window.location.href = 'checkout.html';
 }
 
-// ── Download PDF ───────────────────────────────────────────────────────────
+// ── Download PDF (one job at a time — prevents duplicate Claude calls) ─────
+var _pdfGenerating = false;
+
+function _resetPdfBtn(btn, label) {
+  _pdfGenerating = false;
+  if (btn) { btn.disabled = false; btn.textContent = label || '⬇️ Download PDF Report'; }
+}
+
 function downloadPdf() {
+  if (_pdfGenerating) return;
+
   var btn = document.getElementById('download-pdf-btn');
   var auditData = window._tdmAuditData;
   if (!auditData) { alert('Audit data not found. Please run a free check first.'); return; }
 
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~45 sec)...'; }
+  _pdfGenerating = true;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~60 sec)...'; }
 
   fetch('/api/download-pdf', {
     method:  'POST',
@@ -829,6 +839,14 @@ function downloadPdf() {
     body:    JSON.stringify({ auditData: auditData })
   })
   .then(function(r) {
+    if (r.status === 429) {
+      return r.json().then(function(e) {
+        var err = new Error(e.error || 'AI service is busy.');
+        err.isRateLimit = true;
+        err.retryAfter = e.retryAfter || 30;
+        throw err;
+      });
+    }
     if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed'); });
     return r.blob();
   })
@@ -841,11 +859,15 @@ function downloadPdf() {
     a.click();
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
-    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Report'; }
+    _resetPdfBtn(btn);
   })
   .catch(function(err) {
-    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Report'; }
-    alert('PDF generation failed: ' + (err.message || 'Please try again.'));
+    _resetPdfBtn(btn);
+    if (err.isRateLimit) {
+      alert(err.message + '\n\nPlease wait ' + (err.retryAfter || 30) + ' seconds before trying again.');
+    } else {
+      alert('PDF generation failed: ' + (err.message || 'Please try again.'));
+    }
   });
 }
 
@@ -943,9 +965,14 @@ function doActualCheckout() {
               email:     email
             })
           })
-          .then(function(r) { return r.json(); })
+          .then(function(r) {
+            return r.json().then(function(data) {
+              if (r.status === 429) { data.ok = false; data.isRateLimit = true; }
+              return data;
+            });
+          })
           .then(function(verifyRes) {
-            if (verifyRes.ok) {
+            if (verifyRes.ok || verifyRes.isRateLimit) {
               // Unlock all locked sections immediately after payment
               document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
               document.querySelectorAll('.locked-content').forEach(function(el) {
@@ -964,7 +991,9 @@ function doActualCheckout() {
                 '<div style="font-size:2.5rem;margin-bottom:12px">✅</div>' +
                 '<h2 style="color:#fff;margin-bottom:8px">Payment Successful!</h2>' +
                 '<p style="color:rgba(255,255,255,.8);line-height:1.8;margin-bottom:4px">' +
-                  'Full report is being generated and sent to<br><strong>' + escH(email) + '</strong> — PDF arrives in ~60 seconds.</p>' +
+                  (verifyRes.isRateLimit
+                    ? 'Payment confirmed. AI is busy — use Download PDF below in ~30 sec.'
+                    : 'Full report is being generated and sent to<br><strong>' + escH(email) + '</strong> — PDF arrives in ~60 seconds.') + '</p>' +
                 '<p style="color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:16px">Or download it directly right now:</p>' +
                 downloadBtnHtml() +
                 '</div>';

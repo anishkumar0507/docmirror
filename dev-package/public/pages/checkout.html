@@ -264,7 +264,15 @@ function startPayment() {
               email:     email
             })
           })
-          .then(function(r) { return r.json(); })
+          .then(function(r) {
+            return r.json().then(function(data) {
+              if (r.status === 429) {
+                data.ok = false;
+                data.isRateLimit = true;
+              }
+              return data;
+            });
+          })
           .then(function(verifyRes) {
             if (verifyRes.ok) {
               // Store payment proof so the preview page knows it's paid
@@ -278,6 +286,9 @@ function startPayment() {
               } catch(_) {}
 
               // Show success state then redirect
+              showSuccess(email);
+            } else if (verifyRes.isRateLimit) {
+              showErr(verifyRes.error || 'Payment received — AI is busy. Use Download PDF in a minute.');
               showSuccess(email);
             } else {
               showErr(verifyRes.error || 'Verification failed. Contact support.');
@@ -328,17 +339,30 @@ function showSuccess(email) {
   }, 3000);
 }
 
-// ── Download PDF directly ──────────────────────────────────────────────────
+// ── Download PDF directly (deduped server-side + button lock) ─────────────
+var _pdfGenerating = false;
+
 function downloadPdf(email) {
+  if (_pdfGenerating) return;
+
   var btn = document.getElementById('dl-btn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~45 sec)…'; }
+  _pdfGenerating = true;
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~60 sec)…'; }
 
   fetch('/api/download-pdf', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ auditData: auditData })
+    body:    JSON.stringify({ auditData: auditData, email: email || '' })
   })
   .then(function(r) {
+    if (r.status === 429) {
+      return r.json().then(function(e) {
+        var err = new Error(e.error || 'AI service is busy.');
+        err.isRateLimit = true;
+        err.retryAfter = e.retryAfter || 30;
+        throw err;
+      });
+    }
     if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed'); });
     return r.blob();
   })
@@ -351,11 +375,17 @@ function downloadPdf(email) {
     a.click();
     document.body.removeChild(a);
     setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
+    _pdfGenerating = false;
     if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
   })
   .catch(function(err) {
+    _pdfGenerating = false;
     if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
-    alert('PDF failed: ' + (err.message || 'Try again'));
+    if (err.isRateLimit) {
+      alert(err.message + '\n\nWait ' + (err.retryAfter || 30) + ' seconds, then try again.');
+    } else {
+      alert('PDF failed: ' + (err.message || 'Try again'));
+    }
   });
 }
 

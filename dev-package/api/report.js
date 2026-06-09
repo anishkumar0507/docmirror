@@ -4,9 +4,10 @@ const path = require('path');
 const fs   = require('fs');
 require('../lib/env');
 
-const { createClient }    = require('@supabase/supabase-js');
-const Anthropic            = require('@anthropic-ai/sdk');
-const auditStore           = require('../lib/audit-store');
+const { createClient } = require('@supabase/supabase-js');
+const auditStore       = require('../lib/audit-store');
+const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
+const { runOncePerUser } = require('../lib/pdf-jobs');
 const {
   cleanDoctorName,
   detectRegion,
@@ -23,21 +24,10 @@ function db() {
   );
 }
 
-// ── Claude prompt runner ───────────────────────────────────────────────────
-async function runPrompt(client, prompt) {
-  const msg = await client.messages.create({
-    model:      'claude-haiku-4-5-20251001',
-    max_tokens: 2500,
-    messages:   [{ role: 'user', content: prompt }],
-  });
-  const raw = msg.content[0].text.trim()
-    .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-  return JSON.parse(raw);
-}
-
-// ── Run all 8 Claude prompts in parallel ───────────────────────────────────
+// ── Run all Claude prompts SEQUENTIALLY via global queue ─────────────────────
+// Previously Promise.all fired ~10 concurrent connections → 429 rate_limit_error.
+// Now one request at a time with retry/backoff. Social + compliance merged (9→8).
 async function runAllPrompts(d) {
-  const client   = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const city     = d.city || (d.cityState || '').split(',')[0].trim();
   const state    = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
   const specialty = d.specialty || 'General Practice';
@@ -103,63 +93,120 @@ Respond ONLY with valid JSON:
 
   const region = d.region || 'IN';
 
-  const socialContentPrompt = `Generate a 30-day social media content strategy for Dr. ${name}, a ${specialty} in ${city}, ${state}.
-Region: ${region === 'IN' ? 'India' : 'US'}.
-IMPORTANT: all topics must be specialty-appropriate (no before/after photos for psychiatrists; no patient imagery for pediatricians).
+  // OPTIMIZATION: merge social calendar + compliance donts into ONE API call (saves 1 request)
+  const socialAndCompliancePrompt = `For Dr. ${name}, ${specialty} in ${city}, ${state} (${region === 'IN' ? 'India' : 'US'}):
 
-Return ONLY valid JSON (no markdown):
-{
-  "categories": {
-    "cat1": ["subcat1","subcat2","subcat3"],
-    "cat2": ["subcat1","subcat2","subcat3"],
-    "cat3": ["subcat1","subcat2","subcat3"],
-    "cat4": ["subcat1","subcat2","subcat3"]
-  },
-  "topics": [
-    {"title":"Topic title","catNum":"1"},
-    {"title":"...","catNum":"2"}
-  ],
-  "calendar": [
-    {"week":1,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Community","catNum":"4","topic":"Topic"}},
-    {"week":2,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Behind Practice","catNum":"3","topic":"Topic"}},
-    {"week":3,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Community","catNum":"4","topic":"Topic"}},
-    {"week":4,"mon":{"cat":"Education","catNum":"1","topic":"Topic"},"wed":{"cat":"Lifestyle","catNum":"2","topic":"Topic"},"fri":{"cat":"Behind Practice","catNum":"3","topic":"Topic"}}
-  ]
-}
-Categories: 1=Education & Awareness, 2=Lifestyle & Prevention, 3=Behind the Practice, 4=Community & Local Health.
-Provide exactly 12 topics and 4 calendar weeks.`;
+1) 30-day social media strategy (specialty-appropriate topics only).
+2) 5 specialty-specific compliance cautions for social media.
+${region === 'IN' ? 'Reference MCI/IMC where relevant.' : 'Reference FTC/FDA/HIPAA where relevant.'}
 
-  const specialtyDontsPrompt = `List 5 specialty-specific social media compliance cautions for a ${specialty} practising in ${region === 'IN' ? 'India' : 'US'}.
-These must be SPECIFIC to ${specialty} — not generic medical rules.
-${region === 'IN' ? 'Reference MCI Code of Ethics / IMC Regulations 2002 where relevant.' : 'Reference FTC Guidelines / FDA Social Media Guidance / HIPAA where relevant.'}
-Respond ONLY with valid JSON (no markdown):
-{"donts":["caution1","caution2","caution3","caution4","caution5"]}`;
+Return ONLY valid JSON:
+{"socialContent":{"categories":{"cat1":["..."],"cat2":["..."],"cat3":["..."],"cat4":["..."]},"topics":[{"title":"...","catNum":"1"}],"calendar":[{"week":1,"mon":{"cat":"Education","catNum":"1","topic":"..."},"wed":{"cat":"Lifestyle","catNum":"2","topic":"..."},"fri":{"cat":"Community","catNum":"4","topic":"..."}}]},"specialtyDonts":["caution1","caution2","caution3","caution4","caution5"]}
+Provide 12 topics and 4 calendar weeks.`;
 
-  const [fixes, narrativeRes, execSummary, responseTemplates, seo, content, journey, plan, socialRes, dontsRes] = await Promise.all([
-    runPrompt(client, fixesPrompt),
-    narrativePrompt ? runPrompt(client, narrativePrompt) : Promise.resolve({ narrative: '' }),
-    runPrompt(client, execSummaryPrompt),
-    runPrompt(client, responseTemplatesPrompt),
-    runPrompt(client, seoPrompt),
-    runPrompt(client, contentPrompt),
-    runPrompt(client, journeyPrompt),
-    runPrompt(client, planPrompt),
-    runPrompt(client, socialContentPrompt).catch(() => ({})),
-    runPrompt(client, specialtyDontsPrompt).catch(() => ({ donts: [] })),
-  ]);
+  const promptSteps = [
+    { key: 'fixes',             label: 'fixes',             prompt: fixesPrompt,             optional: false },
+    { key: 'narrative',         label: 'competitor-narrative', prompt: narrativePrompt,       optional: true,  fallback: { narrative: '' } },
+    { key: 'execSummary',       label: 'exec-summary',      prompt: execSummaryPrompt,       optional: false },
+    { key: 'responseTemplates', label: 'review-templates',  prompt: responseTemplatesPrompt, optional: false },
+    { key: 'seo',               label: 'seo-keywords',      prompt: seoPrompt,               optional: false },
+    { key: 'content',           label: 'content-strategy',  prompt: contentPrompt,           optional: false },
+    { key: 'journey',           label: 'patient-journey',   prompt: journeyPrompt,           optional: false },
+    { key: 'plan',              label: '90-day-plan',       prompt: planPrompt,              optional: false },
+    { key: 'socialCompliance',  label: 'social-compliance', prompt: socialAndCompliancePrompt, optional: true, fallback: { socialContent: {}, specialtyDonts: [] } },
+  ];
+
+  const results = {};
+  let stepNum = 0;
+  const totalSteps = promptSteps.filter(s => s.prompt).length;
+
+  console.log(`[report] Claude queue stats before prompts:`, getQueueStats());
+
+  for (const step of promptSteps) {
+    if (!step.prompt) {
+      results[step.key] = step.fallback || {};
+      continue;
+    }
+
+    stepNum++;
+    console.log(`[report] prompt ${stepNum}/${totalSteps}: ${step.label}`);
+
+    try {
+      results[step.key] = await runClaudePrompt(step.prompt, {
+        label: step.label,
+        maxTokens: step.label === 'review-templates' ? 1200 : 2500,
+      });
+    } catch (err) {
+      if (step.optional) {
+        console.warn(`[report] optional prompt "${step.label}" failed — using fallback:`, err.message);
+        results[step.key] = step.fallback || {};
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  const socialCompliance = results.socialCompliance || {};
 
   return {
-    fixes:               fixes.fixes             || [],
-    competitorNarrative: narrativeRes.narrative   || '',
-    execSummary,
-    responseTemplates,
-    seoKeywords:         seo,
-    contentStrategy:     content,
-    patientJourney:      journey,
-    ninetyDayPlan:       plan,
-    socialContent:       socialRes,
-    specialtyDonts:      dontsRes.donts           || [],
+    fixes:               results.fixes?.fixes             || [],
+    competitorNarrative: results.narrative?.narrative    || '',
+    execSummary:         results.execSummary,
+    responseTemplates:   results.responseTemplates,
+    seoKeywords:         results.seo,
+    contentStrategy:     results.content,
+    patientJourney:      results.journey,
+    ninetyDayPlan:       results.plan,
+    socialContent:       socialCompliance.socialContent || {},
+    specialtyDonts:      socialCompliance.specialtyDonts || [],
   };
+}
+
+/** Build PDF buffer — shared by download-pdf and generateReport */
+async function buildPdfBuffer(auditData) {
+  const city    = auditData.city  || (auditData.cityState || '').split(',')[0].trim();
+  const state   = auditData.state || (auditData.cityState || '').split(',')[1]?.trim() || '';
+  const region  = auditData.region || detectRegion(city, state);
+  const pillars = computePillarsV5(auditData);
+
+  const d = {
+    ...auditData,
+    city, state, region,
+    score: pillars.total,
+    pillars: {
+      gmb: pillars.gmb, rating: pillars.rating, reviews: pillars.reviews,
+      photos: pillars.photos, rank: pillars.rank,
+      aiVisibility: pillars.aiVisibility, directories: pillars.directories,
+    },
+    doctorNameClean: cleanDoctorName(auditData.doctorName),
+    generatedAt:     auditData.generatedAt || new Date().toISOString(),
+  };
+
+  const v = validatePillarTotal(d);
+  if (!v.valid) throw new Error(`Pillar calculation error: ${v.actual} ≠ ${v.expected}`);
+
+  const ai = await runAllPrompts(d);
+  const full = {
+    ...d,
+    ...ai,
+    complianceFramework: region === 'IN'
+      ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
+      : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules',
+  };
+
+  const templatePath = path.join(__dirname, '../public/pdf-report-template.html');
+  let html = fs.readFileSync(templatePath, 'utf8');
+  const placeholders = buildPdfPlaceholders(full, 15);
+  for (const [token, value] of Object.entries(placeholders)) {
+    html = html.split(token).join(value);
+  }
+
+  const orphans = html.match(/{{[A-Z0-9_]+}}/g);
+  if (orphans) {
+    throw new Error(`Unreplaced placeholders: ${[...new Set(orphans)].join(', ')}`);
+  }
+
+  return renderPdf(html);
 }
 
 // ── Render PDF with Puppeteer ──────────────────────────────────────────────
@@ -272,7 +319,7 @@ async function sendEmail(email, doctorName, pdfBuffer) {
 }
 
 // ── generateReport — main pipeline ────────────────────────────────────────
-async function generateReport({ auditId, email }) {
+async function _generateReportCore({ auditId, email }) {
   console.log(`[report] ▶ start  auditId=${auditId}  email=${email}`);
   const supabase = db();
 
@@ -312,42 +359,9 @@ async function generateReport({ auditId, email }) {
   }
   console.log(`[report] pillars valid — total ${v.actual}/100`);
 
-  // 4. Run Claude prompts (all 8 in parallel)
-  console.log('[report] running Claude prompts (8 parallel)...');
-  const ai = await runAllPrompts(d);
-  console.log('[report] prompts done');
-
-  // Merge Claude output into d, plus v5.1 computed fields
-  d = {
-    ...d,
-    ...ai,
-    complianceFramework: region === 'IN'
-      ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
-      : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules',
-  };
-
-  // 5. Load V5 template
-  const templatePath = path.join(__dirname, '../public/pdf-report-template.html');
-  let html = fs.readFileSync(templatePath, 'utf8');
-
-  // 6. Replace every placeholder
-  const placeholders = buildPdfPlaceholders(d, 15);
-  for (const [token, value] of Object.entries(placeholders)) {
-    html = html.split(token).join(value);
-  }
-
-  // 7. Check for unreplaced placeholders
-  const orphans = html.match(/{{[A-Z0-9_]+}}/g);
-  if (orphans) {
-    const unique = [...new Set(orphans)];
-    console.error('[report] ✗ unreplaced placeholders:', unique.join(', '));
-    throw new Error(`Unreplaced placeholders in template: ${unique.join(', ')}`);
-  }
-  console.log('[report] ✓ no orphan placeholders');
-
-  // 8. Render PDF
-  console.log('[report] rendering PDF...');
-  const pdfBuffer = await renderPdf(html);
+  // 4–8. Claude prompts (sequential queue) + template + PDF
+  console.log('[report] building PDF...');
+  const pdfBuffer = await buildPdfBuffer(d);
   console.log(`[report] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
 
   // 9. Upload to Supabase Storage (optional)
@@ -374,6 +388,14 @@ async function generateReport({ auditId, email }) {
   console.log(`[report] ✓ done — Dr. ${d.doctorNameClean} → ${email}`);
 }
 
+/** Public entry — deduplicates concurrent jobs per email/auditId */
+async function generateReport({ auditId, email }) {
+  const fakeReq = { body: { auditId, email }, headers: {}, socket: {} };
+  return runOncePerUser(fakeReq, { auditId, email }, () =>
+    _generateReportCore({ auditId, email })
+  );
+}
+
 // ── HTTP handler (manual trigger / test) ──────────────────────────────────
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -386,7 +408,8 @@ async function handler(req, res) {
 
 module.exports = handler;
 module.exports.generateReport = generateReport;
+module.exports.buildPdfBuffer = buildPdfBuffer;
 module.exports.renderPdf      = renderPdf;
-// Legacy exports kept so download-pdf.js doesn't break during transition
-module.exports.computePillars = computePillarsV5;
 module.exports.runAllPrompts  = runAllPrompts;
+module.exports.RateLimitError = RateLimitError;
+module.exports.computePillars = computePillarsV5;

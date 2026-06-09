@@ -44,15 +44,27 @@ async function handler(req, res) {
     .update({ status: 'generating', stripe_session_id: orderId })  // reuse stripe_session_id column for razorpay orderId
     .eq('audit_id', auditId);
 
-  // Generate report (must complete before response — Vercel serverless kills background work)
-  const { generateReport } = require('./report');
+  const { generateReport, RateLimitError } = require('./report');
+  const { isRateLimitError } = require('../lib/claude-client');
+
   try {
     await generateReport({ auditId, email });
+    return res.json({ ok: true, message: 'Payment verified. Your report PDF has been emailed.' });
   } catch (err) {
     console.error('[verify] generateReport failed:', err.message);
+    if (err instanceof RateLimitError || isRateLimitError(err)) {
+      return res.status(429).json({
+        ok: false,
+        error: 'Payment received, but our AI is busy. Your report will be emailed within a few minutes — or tap Download PDF to retry.',
+        code: 'rate_limit',
+        retryAfter: err.retryAfter || 60,
+      });
+    }
+    return res.json({
+      ok: true,
+      message: 'Payment verified. Report generation is in progress — check your email shortly.',
+    });
   }
-
-  res.json({ ok: true, message: 'Payment verified. Your report PDF has been emailed.' });
 }
 
 module.exports = handler;

@@ -264,8 +264,7 @@ async function generateAllInsights(doctorData, competitors) {
   if (!apiKey) return { issues: [], recommendations: [], competitorExplanations: [], gapSummary: '' };
 
   try {
-    const Anthropic = require('@anthropic-ai/sdk');
-    const client    = new Anthropic({ apiKey });
+    const { runClaudePrompt } = require('../lib/claude-client');
 
     const compLines = competitors.length
       ? competitors.map((c, i) =>
@@ -300,15 +299,11 @@ Return ONLY valid JSON — no markdown, no extra text:
   "gapSummary": "one sentence (max 20 words) on the main visibility gap vs competitors"
 }`;
 
-    const msg = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 700,
-      messages:   [{ role: 'user', content: prompt }]
+    return await runClaudePrompt(prompt, {
+      label: 'audit-insights',
+      maxTokens: 700,
+      useCache: true,
     });
-
-    const text = msg.content[0].text.trim()
-      .replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    return JSON.parse(text);
 
   } catch (err) {
     console.error('[audit] Anthropic error:', err.message);
