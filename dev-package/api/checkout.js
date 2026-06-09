@@ -2,9 +2,9 @@
 
 require('../lib/env');
 
-const Razorpay         = require('razorpay');
+const Razorpay   = require('razorpay');
 const { createClient } = require('@supabase/supabase-js');
-const auditStore       = require('../lib/audit-store');
+const auditCache = require('../lib/audit-cache');
 
 function db() {
   return createClient(
@@ -28,57 +28,51 @@ async function handler(req, res) {
   }
 
   try {
-    // Unique key passed through the entire payment → report flow
+    // Unique key — full ID lives in notes.auditId, NOT in receipt (receipt may truncate)
     const auditId = `tdm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    console.log(`[checkout] created auditId=${auditId}`);
 
     const cityRaw = (auditData.cityState || '').split(',');
     const city    = (cityRaw[0] || '').trim();
     const state   = (cityRaw[1] || '').trim();
 
-    // Always store in memory first — guarantees report.js can find it
-    // even when Supabase is unavailable
-    auditStore.set(auditId, auditData);
+    // Persist before payment — memory + Supabase (survives Vercel cold starts)
+    await auditCache.set(auditId, auditData);
+    console.log(`[checkout] cached auditId=${auditId} before Razorpay order`);
 
-    // Best-effort Supabase persist (for dashboard/history)
     const supabase = db();
-    const { error: cacheErr } = await supabase.from('audit_cache').insert({
-      cache_key:   auditId,
-      doctor_name: auditData.doctorName || '',
-      specialty:   auditData.specialty  || '',
-      city,
-      state,
-      score:       auditData.score      || 0,
-      audit_data:  auditData
-    });
-    if (cacheErr) console.warn('[checkout] audit_cache insert warn:', cacheErr.message);
-
-    await supabase.from('paid_reports').insert({
+    const { error: paidErr } = await supabase.from('paid_reports').insert({
       audit_id: auditId,
       email,
-      status:   'pending'
+      status:   'pending',
     });
+    if (paidErr) console.warn('[checkout] paid_reports insert warn:', paidErr.message);
 
-    // Amount in smallest currency unit. For USD: cents ($19 = 1900). Override via env.
     const amountUnits = parseInt(process.env.RAZORPAY_AMOUNT_UNITS || '1900', 10);
+
+    // Short receipt for Razorpay internal ref — NEVER use receipt as auditId lookup
+    const receipt = `rpt_${Date.now()}`.slice(0, 40);
 
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const order    = await razorpay.orders.create({
       amount:   amountUnits,
       currency: process.env.RAZORPAY_CURRENCY || 'USD',
-      receipt:  auditId,
-      notes:    { auditId, email }
+      receipt,
+      notes:    { auditId, email },
     });
 
-    console.log(`[checkout] Razorpay order created: ${order.id}  auditId: ${auditId}  email: ${email}`);
+    console.log(
+      `[checkout] Razorpay order=${order.id} auditId=${auditId} ` +
+      `receipt=${receipt} email=${email}`
+    );
 
-    // Return everything the frontend needs to open the Razorpay modal
     return res.json({
-      orderId:  order.id,
-      amount:   order.amount,
-      currency: order.currency,
+      orderId:    order.id,
+      amount:     order.amount,
+      currency:   order.currency,
       keyId,
       auditId,
-      doctorName: auditData.doctorName || ''
+      doctorName: auditData.doctorName || '',
     });
 
   } catch (err) {

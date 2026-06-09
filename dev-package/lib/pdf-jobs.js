@@ -14,11 +14,13 @@ const activeJobs = new Map();
  * Prefer email; fall back to doctor+city+client IP for guest downloads.
  */
 function getJobKey(req, auditData = {}) {
-  const email = (req.body?.email || auditData.email || '').trim().toLowerCase();
-  if (email) return `email:${email}`;
+  const auditId = String(req.body?.auditId || auditData.auditId || '').trim();
+  const email   = String(req.body?.email || auditData.email || '').trim().toLowerCase();
 
-  const auditId = req.body?.auditId || auditData.auditId || '';
+  // One job per auditId+email — not email alone (prevents cross-order collisions)
+  if (auditId && email) return `job:${auditId}:${email}`;
   if (auditId) return `audit:${auditId}`;
+  if (email) return `email:${email}`;
 
   const ip = (
     req.headers['x-forwarded-for'] ||

@@ -4,6 +4,7 @@ const crypto = require('crypto');
 require('../lib/env');
 
 const { createClient } = require('@supabase/supabase-js');
+const auditCache       = require('../lib/audit-cache');
 
 function db() {
   return createClient(
@@ -16,11 +17,18 @@ async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { orderId, paymentId, signature, auditId, email } = req.body || {};
+  const { orderId, paymentId, signature, auditId: clientAuditId, email } = req.body || {};
 
-  if (!orderId || !paymentId || !signature || !auditId || !email) {
+  if (!orderId || !paymentId || !signature || !clientAuditId || !email) {
     return res.status(400).json({ error: 'orderId, paymentId, signature, auditId, email all required' });
   }
+
+  // Canonical ID from Razorpay notes — receipt field must NOT be used (can truncate)
+  const auditId = await auditCache.resolveAuditIdFromOrder(orderId, clientAuditId);
+  if (!auditId) {
+    return res.status(400).json({ error: 'Could not resolve auditId from payment order' });
+  }
+  console.log(`[verify] using auditId=${auditId} (client sent ${clientAuditId})`);
 
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });

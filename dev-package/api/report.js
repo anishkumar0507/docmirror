@@ -5,7 +5,7 @@ const fs   = require('fs');
 require('../lib/env');
 
 const { createClient } = require('@supabase/supabase-js');
-const auditStore       = require('../lib/audit-store');
+const auditCache       = require('../lib/audit-cache');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
 const { runOncePerUser } = require('../lib/pdf-jobs');
 const { launchBrowser } = require('../lib/puppeteer-loader');
@@ -273,20 +273,18 @@ async function sendEmail(email, doctorName, pdfBuffer) {
 
 // ── generateReport — main pipeline ────────────────────────────────────────
 async function _generateReportCore({ auditId, email }) {
-  console.log(`[report] ▶ start  auditId=${auditId}  email=${email}`);
+  const canonicalId = auditCache.normalizeAuditId(auditId);
+  console.log(`[report] ▶ start auditId=${canonicalId} email=${email} valid=${auditCache.isValidAuditId(canonicalId)}`);
   const supabase = db();
 
-  await supabase.from('paid_reports').update({ status: 'generating' }).eq('audit_id', auditId);
+  await supabase.from('paid_reports').update({ status: 'generating' }).eq('audit_id', canonicalId);
 
-  // 1. Fetch audit data (in-memory first, Supabase fallback)
-  let d = auditStore.get(auditId);
+  // 1. Fetch audit data — memory + Supabase (lib/audit-cache)
+  let d = await auditCache.get(canonicalId);
   if (!d) {
-    const { data: row, error } = await supabase
-      .from('audit_cache').select('audit_data').eq('cache_key', auditId).single();
-    if (error || !row?.audit_data) throw new Error(`audit_cache not found for ${auditId}`);
-    d = row.audit_data;
+    throw new Error(`audit_cache not found for ${canonicalId}`);
   }
-  console.log(`[report] audit data loaded — doctor: ${d.doctorName}`);
+  console.log(`[report] audit data loaded — doctor: ${d.doctorName} auditId=${d.auditId || canonicalId}`);
 
   // 2. Enrich with V5 fields
   const city    = d.city  || (d.cityState || '').split(',')[0].trim();
@@ -321,9 +319,9 @@ async function _generateReportCore({ auditId, email }) {
   let pdfUrl = null;
   try {
     const { error: upErr } = await supabase.storage.from('reports')
-      .upload(`${auditId}.pdf`, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+      .upload(`${canonicalId}.pdf`, pdfBuffer, { contentType: 'application/pdf', upsert: true });
     if (!upErr) {
-      const { data: u } = supabase.storage.from('reports').getPublicUrl(`${auditId}.pdf`);
+      const { data: u } = supabase.storage.from('reports').getPublicUrl(`${canonicalId}.pdf`);
       pdfUrl = u?.publicUrl || null;
     }
   } catch (_) {}
@@ -341,10 +339,10 @@ async function _generateReportCore({ auditId, email }) {
 
   // 11. Mark delivered — PDF succeeded even if email failed
   await supabase.from('paid_reports').update({
-    status:      emailSent ? 'delivered' : 'email_failed',
+    status:      emailSent ? 'delivered' : 'failed',
     pdf_url:     pdfUrl,
     delivered_at: new Date().toISOString(),
-  }).eq('audit_id', auditId);
+  }).eq('audit_id', canonicalId);
 
   console.log(
     emailSent
