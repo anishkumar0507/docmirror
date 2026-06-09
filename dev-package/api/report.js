@@ -8,6 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 const auditStore       = require('../lib/audit-store');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
 const { runOncePerUser } = require('../lib/pdf-jobs');
+const { launchBrowser } = require('../lib/puppeteer-loader');
 const {
   cleanDoctorName,
   detectRegion,
@@ -209,54 +210,9 @@ async function buildPdfBuffer(auditData) {
   return renderPdf(html);
 }
 
-// ── Render PDF with Puppeteer ──────────────────────────────────────────────
+// ── Render PDF with Puppeteer (ESM-safe via lib/puppeteer-loader) ──────────
 async function renderPdf(html) {
-  let browser;
-
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    const puppeteer = require('puppeteer-core');
-    const chromium  = require('@sparticuz/chromium');
-    browser = await puppeteer.launch({
-      args:            chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      executablePath:  await chromium.executablePath(),
-      headless:        chromium.headless,
-    });
-  } else {
-    let puppeteer;
-    try {
-      puppeteer = require('puppeteer');
-    } catch (_) {
-      throw new Error(
-        'Puppeteer is not installed.\n' +
-        'Open a terminal inside the dev-package folder and run:\n' +
-        '  npm install\n' +
-        'Then restart server.js.'
-      );
-    }
-
-    const launchOptions = {
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-    };
-
-    if (process.env.CHROME_PATH) {
-      launchOptions.executablePath = process.env.CHROME_PATH;
-    } else {
-      // Puppeteer v22+ returns a Promise from executablePath()
-      const chromiumPath = await puppeteer.executablePath();
-      if (!fs.existsSync(chromiumPath)) {
-        throw new Error(
-          'Puppeteer Chromium binary not found.\n' +
-          'Run: cd dev-package && npm install\n' +
-          'Then restart server.js.'
-        );
-      }
-      launchOptions.executablePath = chromiumPath;
-    }
-
-    browser = await puppeteer.launch(launchOptions);
-  }
+  const browser = await launchBrowser();
 
   try {
     const page = await browser.newPage();
