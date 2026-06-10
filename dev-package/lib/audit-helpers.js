@@ -40,9 +40,9 @@ function detectRegion(city, state) {
 // ── regionDefaults ─────────────────────────────────────────────────────────
 function regionDefaults(region) {
   if (region === 'IN') return {
-    currencySymbol:      '₹',
-    valuePerPatientLow:  500,
-    valuePerPatientHigh: 2000,
+    currencySymbol:      '$',
+    valuePerPatientLow:  200,
+    valuePerPatientHigh: 500,
     primaryDirectories:  ['Practo', 'JustDial', 'Lybrate', 'Apollo247'],
   };
   return {
@@ -390,7 +390,7 @@ function buildPdfPlaceholders(audit, totalPages = 15) {
     '{{STATE}}':              state,
     '{{STATE_DISPLAY}}':      stateDisp,
     '{{REGION}}':             region,
-    '{{REPORT_DATE}}':        new Date(genAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }),
+    '{{REPORT_DATE}}':        new Date(genAt).toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' }),
     '{{SCORE}}':              String(audit.score || 0),
     '{{VERDICT_LABEL}}':      verdict.label,
     '{{VERDICT_COLOR}}':      verdict.color,
@@ -431,9 +431,9 @@ function buildPdfPlaceholders(audit, totalPages = 15) {
     '{{AI_GEMINI_FILL}}':        fillForScore(aiGemini),
     '{{AI_CLAUDE_FILL}}':        fillForScore(aiClaude),
     '{{AI_IS_REAL_BADGE}}':      aiV.isReal ? '● Live queries run on your behalf' : '● Signal-based estimate',
-    '{{AI_RUN_TIMESTAMP}}':      new Date(genAt).toLocaleString('en-IN'),
+    '{{AI_RUN_TIMESTAMP}}':      new Date(genAt).toLocaleString('en-US'),
     '{{AI_RUN_TIMESTAMP_TEXT}}': aiV.isReal
-      ? `Queries run live on ${new Date(genAt).toLocaleString('en-IN')}.`
+      ? `Queries run live on ${new Date(genAt).toLocaleString('en-US')}.`
       : 'AI scores are estimated from public visibility signals. Real-time queries run on paid reports.',
     '{{AI_QUERIES_RAN_HTML}}':   buildAiQueriesHtml({ ...audit, city }),
     '{{AI_COMPETITORS_HTML}}':   (audit.aiCompetitors || []).slice(0, 3).map((name, i) =>
@@ -498,7 +498,7 @@ function buildPdfPlaceholders(audit, totalPages = 15) {
 
     // ── Methodology ────────────────────────────────────────────────────────
     '{{METHODOLOGY_SOURCES_HTML}}': buildMethodologySourcesHtml({ ...audit, city, state, region }),
-    '{{METHODOLOGY_TIMESTAMP}}':    new Date(genAt).toLocaleString('en-IN', { dateStyle: 'long', timeStyle: 'short' }),
+    '{{METHODOLOGY_TIMESTAMP}}':    new Date(genAt).toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }),
 
     // ── v5.1 Social Media Content Engine (page 10) ─────────────────────────
     '{{HASHTAG_LOCATION}}':  (city + (audit.specialty || '')).replace(/[^a-zA-Z0-9]/g, ''),

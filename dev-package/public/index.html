@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1720,7 +1720,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <h4>COMPANY</h4>
         <div class="footer-links">
           <a href="#about">About us</a>
-          <a href="mailto:hello@thedocmirror.com">Contact</a>
+          <a href="mailto:thedocmirror@gmail.com">Contact</a>
           <a href="./pages/privacy.html">Privacy</a>
           <a href="./pages/terms.html">Terms</a>
         </div>
@@ -1730,7 +1730,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <div class="footer-links">
           <a href="#faq">FAQ</a>
           <a href="./pages/help-center.html">Help Center</a>
-          <a href="mailto:hello@thedocmirror.com">Contact Support</a>
+          <a href="mailto:thedocmirror@gmail.com">Contact Support</a>
         </div>
       </div>
     </div>
@@ -2363,7 +2363,7 @@ function doUpgrade(plan){
   plan=plan||'monitor';
   fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:plan,auditId:_aid})})
   .then(function(r){return r.json();}).then(function(d){if(d.url)window.location.href=d.url;})
-  .catch(function(){window.location.href='mailto:hello@thedocmirror.com?subject='+encodeURIComponent('Monitor plan enquiry');});
+  .catch(function(){window.location.href='mailto:thedocmirror@gmail.com?subject='+encodeURIComponent('Monitor plan enquiry');});
 }
 function doOneTime(){
   if(!_aid){
@@ -2372,7 +2372,7 @@ function doOneTime(){
   }
   fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:'report',auditId:_aid})})
   .then(function(r){return r.json();}).then(function(d){if(d.url)window.location.href=d.url;})
-  .catch(function(){window.location.href='mailto:hello@thedocmirror.com?subject=Full%20Audit%20Report%20%2419';});
+  .catch(function(){window.location.href='mailto:thedocmirror@gmail.com?subject=Full%20Audit%20Report%20%2419';});
 }
 
 // ── RESET ──────────────────────────────────────────────────────────────────

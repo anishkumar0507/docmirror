@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const path = require('path');
 const fs   = require('fs');
@@ -261,7 +261,7 @@ async function sendEmail(email, doctorName, pdfBuffer) {
       <li>Monitor tier upsell details</li>
       <li>Methodology &amp; data sources</li>
     </ul>
-    <p style="margin-top:24px;color:#6B7A8D;font-size:13px">Questions? Reply to this email or reach us at hello@thedocmirror.com</p>
+    <p style="margin-top:24px;color:#6B7A8D;font-size:13px">Questions? Reply to this email or reach us at thedocmirror@gmail.com</p>
   </div>
 </div>`,
     attachments: [{
