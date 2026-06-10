@@ -80,7 +80,8 @@ function isTransientFetchError(err) {
     text.includes('network') ||
     text.includes('schema cache') ||
     text.includes('pgrst002') ||
-    text.includes('pgrst003')
+    text.includes('pgrst003') ||
+    text.includes('pgrst204')
   );
 }
 
@@ -140,7 +141,8 @@ function getSupabaseClient() {
     },
   });
 
-  console.log(`[supabase] singleton client ready url=${url}`);
+  const projectRef = url.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown';
+  console.log(`[supabase] singleton client ready project_ref=${projectRef} url=${url}`);
   return _client;
 }
 
@@ -191,15 +193,19 @@ async function verifyAuditCacheTable() {
   if (_tableCheckPromise) return _tableCheckPromise;
 
   _tableCheckPromise = (async () => {
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      const result = { ok: false, code: 'SUPABASE_NOT_CONFIGURED', message: 'Supabase env vars missing' };
-      console.error(`[supabase] audit_cache check FAILED: ${result.message}`);
-      return result;
+    const { discoverAuditCacheSchema } = require('./audit-cache-schema');
+
+    const schema = await discoverAuditCacheSchema();
+    if (!schema.ok) {
+      return {
+        ok: false,
+        code: schema.code || 'SCHEMA_MISMATCH',
+        message: schema.message,
+        schema,
+      };
     }
 
-    console.log('[supabase] audit_cache accessibility check starting...');
-
+    const supabase = getSupabaseClient();
     const { data, error } = await withSupabaseRetry(
       () => supabase.from('audit_cache').select('cache_key').limit(1),
       { label: 'audit-cache-table-check', attempts: 3 }
@@ -209,13 +215,14 @@ async function verifyAuditCacheTable() {
       const message = formatFetchError(error);
       console.error(`[supabase] audit_cache check FAILED: ${message}`);
       logSupabaseError('supabase', 'audit_cache table check', error);
-      return { ok: false, code: 'TABLE_INACCESSIBLE', message, error };
+      return { ok: false, code: 'TABLE_INACCESSIBLE', message, error, schema };
     }
 
     console.log(
-      `[supabase] audit_cache check OK (sample rows=${Array.isArray(data) ? data.length : 0})`
+      `[supabase] audit_cache check OK project_ref=${schema.projectRef} ` +
+      `columns=[${schema.present.join(', ')}] rows=${Array.isArray(data) ? data.length : 0}`
     );
-    return { ok: true };
+    return { ok: true, schema };
   })();
 
   return _tableCheckPromise;

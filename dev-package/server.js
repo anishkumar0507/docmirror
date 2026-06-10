@@ -4,9 +4,12 @@ const path = require('path');
 require('./lib/env');
 
 const { verifyAuditCacheTable } = require('./lib/supabase-client');
+const { discoverAuditCacheSchema } = require('./lib/audit-cache-schema');
+const { verifyGmailConnection } = require('./lib/gmail');
+const { verifyReportsBucket } = require('./api/report');
 
-const express      = require('express');
-const cors         = require('cors');
+const express = require('express');
+const cors    = require('cors');
 
 const auditModule             = require('./api/audit');
 const auditHandler            = auditModule;
@@ -55,10 +58,60 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Warm audit_cache connectivity check on cold start (non-blocking on Vercel)
-verifyAuditCacheTable().catch(err => {
-  console.error('[startup] audit_cache check error:', err.message);
-});
+// ── Startup health checks (non-blocking — do not prevent server from serving) ──
+// These run after the server is listening and log actionable errors if misconfigured.
+
+async function runStartupChecks() {
+  // 1. Supabase audit_cache schema (detects PGRST204 root cause)
+  discoverAuditCacheSchema().catch(err => {
+    console.error('[startup] audit_cache schema probe error:', err.message);
+  });
+
+  // 2. Supabase audit_cache table accessibility
+  const tableCheck = await verifyAuditCacheTable().catch(err => {
+    console.error('[startup] audit_cache check error:', err.message);
+    return { ok: false, message: err.message };
+  });
+  if (!tableCheck.ok) {
+    console.error(
+      '[startup] ✗ audit_cache unreachable — checkout will fail. ' +
+      'Run migration 002_audit_cache_audit_data.sql and ensure SUPABASE_SERVICE_ROLE_KEY is set.'
+    );
+  }
+
+  // 3. Supabase Storage bucket "reports"
+  const { getSupabaseClient } = require('./lib/supabase-client');
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    verifyReportsBucket(supabase).catch(err => {
+      console.error('[startup] storage bucket check error:', err.message);
+    });
+  } else {
+    console.warn('[startup] Supabase not configured — storage bucket check skipped');
+  }
+
+  // 4. Gmail SMTP credentials
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    verifyGmailConnection()
+      .then(() => {
+        console.log(`[startup] Gmail SMTP ✓  user=${process.env.GMAIL_USER}`);
+      })
+      .catch(err => {
+        console.error(
+          `[startup] Gmail SMTP ✗  user=${process.env.GMAIL_USER}  error=${err.message}`
+        );
+        console.error(
+          '[startup] Fix: ensure GMAIL_APP_PASSWORD is a valid Google App Password ' +
+          '(myaccount.google.com/apppasswords). Regenerate if in doubt.'
+        );
+      });
+  } else {
+    console.error(
+      '[startup] Gmail SMTP ✗  GMAIL_USER or GMAIL_APP_PASSWORD missing — ' +
+      'PDF delivery will fail for every paid order'
+    );
+  }
+}
 
 // Export for Vercel serverless
 module.exports = app;
@@ -73,10 +126,13 @@ if (require.main === module) {
     console.log(`  Razorpay    : ${process.env.RAZORPAY_KEY_ID          ? '✓' : '✗ MISSING'}`);
     console.log(`  Gmail       : ${process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD ? '✓' : '✗ MISSING'}`);
     console.log(`  Supabase    : ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗ MISSING'}`);
+    console.log('');
 
-    const tableCheck = await verifyAuditCacheTable();
-    console.log(
-      `  audit_cache : ${tableCheck.ok ? '✓ reachable' : '✗ ' + (tableCheck.message || 'unreachable')}\n`
-    );
+    await runStartupChecks();
+  });
+} else {
+  // Vercel cold start — run checks in background (non-blocking)
+  runStartupChecks().catch(err => {
+    console.error('[startup] checks failed:', err.message);
   });
 }

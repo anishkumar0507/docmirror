@@ -25,27 +25,13 @@ CREATE TABLE IF NOT EXISTS waitlist (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- ── 3. AUDIT CACHE (24hr TTL — prevents duplicate API calls) ─────────────
+-- ── 3. AUDIT CACHE (checkout → verify → report payload) ─────────────────
+-- Canonical minimal schema used by lib/audit-cache.js (cache_key + audit_data only).
+-- Extended columns below are optional legacy — app does NOT write them.
 CREATE TABLE IF NOT EXISTS audit_cache (
-  id                  UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
-  cache_key           TEXT        UNIQUE NOT NULL,
-  doctor_name         TEXT,
-  specialty           TEXT,
-  city                TEXT,
-  state               TEXT,
-  score               INTEGER,
+  cache_key           TEXT        PRIMARY KEY,
   audit_data          JSONB       NOT NULL,
-  youtube_data        JSONB,
-  brand_search_data   JSONB,
-  social_data         JSONB,
-  website_data        JSONB,
-  patient_journey     JSONB,
-  ninety_day_plan     JSONB,
-  seo_keywords        JSONB,
-  content_strategy    JSONB,
-  competitor_narrative TEXT,
-  created_at          TIMESTAMPTZ DEFAULT NOW(),
-  expires_at          TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours'
+  created_at          TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- ── 4. PAID REPORTS ($19 one-time) ────────────────────────────────────────
@@ -105,9 +91,7 @@ CREATE TABLE IF NOT EXISTS weekly_reports (
 );
 
 -- ── INDEXES ───────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_audit_cache_key        ON audit_cache(cache_key);
-CREATE INDEX IF NOT EXISTS idx_audit_cache_expires    ON audit_cache(expires_at);
-CREATE INDEX IF NOT EXISTS idx_audit_cache_spec_city  ON audit_cache(specialty, city);
+CREATE INDEX IF NOT EXISTS idx_audit_cache_created    ON audit_cache(created_at);
 CREATE INDEX IF NOT EXISTS idx_email_captures_email   ON email_captures(email);
 CREATE INDEX IF NOT EXISTS idx_subscribers_email      ON subscribers(email);
 CREATE INDEX IF NOT EXISTS idx_subscribers_status     ON subscribers(status);
@@ -155,9 +139,8 @@ CREATE POLICY "service_all_weekly_reports"
 -- Max file size: 10MB
 -- Allowed MIME types: application/pdf
 
--- ── AUTO-CLEANUP EXPIRED CACHE ────────────────────────────────────────────
--- Run this manually weekly, or set up pg_cron if available:
--- DELETE FROM audit_cache WHERE expires_at < NOW();
+-- ── AUTO-CLEANUP OLD CACHE ────────────────────────────────────────────────
+-- DELETE FROM audit_cache WHERE created_at < NOW() - INTERVAL '24 hours';
 
 
 -- ═══════════════════════════════════════════════════════════════════════════
@@ -187,13 +170,6 @@ CREATE INDEX IF NOT EXISTS idx_preview_public ON preview_pages(is_public);
 ALTER TABLE preview_pages ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "anon_read_public_previews" ON preview_pages FOR SELECT TO anon USING (is_public = TRUE);
 CREATE POLICY "service_all_previews"      ON preview_pages FOR ALL    TO service_role USING (true);
-
--- Add v4 audit_cache columns
-ALTER TABLE audit_cache
-  ADD COLUMN IF NOT EXISTS ai_visibility_data JSONB,
-  ADD COLUMN IF NOT EXISTS directories_data   JSONB,
-  ADD COLUMN IF NOT EXISTS patient_loss_data  JSONB,
-  ADD COLUMN IF NOT EXISTS preview_slug       TEXT;
 
 -- v4: Remove DFY plan from subscribers
 ALTER TABLE subscribers DROP CONSTRAINT IF EXISTS subscribers_plan_check;

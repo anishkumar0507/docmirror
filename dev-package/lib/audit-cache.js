@@ -8,6 +8,13 @@ const {
   withSupabaseRetry,
   verifyAuditCacheTable,
 } = require('./supabase-client');
+const {
+  PAYLOAD_COLUMN,
+  discoverAuditCacheSchema,
+  buildUpsertRow,
+  extractPayload,
+  getSelectColumns,
+} = require('./audit-cache-schema');
 
 const AUDIT_ID_RE = /^tdm_\d+_[a-z0-9]{4}$/;
 
@@ -46,31 +53,36 @@ function db() {
   return getSupabaseClient();
 }
 
-function buildRow(key, payload) {
-  const cityRaw = (payload.cityState || '').split(',');
-  const city    = payload.city || (cityRaw[0] || '').trim();
-  const state   = payload.state || (cityRaw[1] || '').trim();
-
-  return {
-    cache_key:   key,
-    doctor_name: payload.doctorName || '',
-    specialty:   payload.specialty  || '',
-    city,
-    state,
-    score:       payload.score || 0,
-    audit_data:  payload,
-  };
-}
-
 async function upsertAuditCache(supabase, key, row) {
-  console.log(`[audit-cache] WRITE start cache_key=${key}`);
+  const selectCols = getSelectColumns();
+
+  console.log(
+    `[audit-cache] WRITE start table=public.audit_cache cache_key=${key} ` +
+    `columns=[${Object.keys(row).join(', ')}]`
+  );
+  console.log(
+    `[audit-cache] WRITE payload ${PAYLOAD_COLUMN} keys=[${Object.keys(row[PAYLOAD_COLUMN] || {}).slice(0, 12).join(', ')}...]`
+  );
+
   const { data, error } = await withSupabaseRetry(
-    () => supabase.from('audit_cache').upsert(row, { onConflict: 'cache_key' }).select('cache_key'),
+    () =>
+      supabase
+        .from('audit_cache')
+        .upsert(row, { onConflict: 'cache_key' })
+        .select(selectCols),
     { label: 'audit-cache-write', attempts: 3 }
   );
 
   if (error) {
     logSupabaseError('audit-cache', `WRITE FAILED cache_key=${key}`, error);
+    if (error.code === 'PGRST204') {
+      console.error(
+        `[audit-cache] PGRST204 failing query: UPSERT public.audit_cache ` +
+        `ON CONFLICT (cache_key) SET ${JSON.stringify(Object.keys(row))} — ` +
+        `PostgREST cannot see column "${PAYLOAD_COLUMN}". ` +
+        'Run database/migrations/002_audit_cache_audit_data.sql and NOTIFY pgrst reload.'
+      );
+    }
     return { ok: false, error };
   }
 
@@ -79,12 +91,14 @@ async function upsertAuditCache(supabase, key, row) {
 }
 
 async function readAuditCacheRow(supabase, key) {
-  console.log(`[audit-cache] READ start cache_key=${key}`);
+  const selectCols = getSelectColumns();
+  console.log(`[audit-cache] READ start table=public.audit_cache cache_key=${key} select=${selectCols}`);
+
   return withSupabaseRetry(
     () =>
       supabase
         .from('audit_cache')
-        .select('audit_data, cache_key')
+        .select(selectCols)
         .eq('cache_key', key)
         .maybeSingle(),
     { label: 'audit-cache-read', attempts: 3 }
@@ -92,8 +106,7 @@ async function readAuditCacheRow(supabase, key) {
 }
 
 /**
- * Persist audit payload — memory + Supabase audit_cache (required).
- * Throws AuditCacheError if Supabase write fails — checkout must not proceed without cache.
+ * Persist audit payload — memory + public.audit_cache (cache_key + audit_data only).
  */
 async function set(auditId, auditData) {
   const key = normalizeAuditId(auditId);
@@ -116,6 +129,15 @@ async function set(auditId, auditData) {
     );
   }
 
+  const schema = await discoverAuditCacheSchema();
+  if (!schema.ok) {
+    throw new AuditCacheError(
+      'SCHEMA_MISMATCH',
+      schema.message,
+      { cache_key: key, schema }
+    );
+  }
+
   const tableCheck = await verifyAuditCacheTable();
   if (!tableCheck.ok) {
     throw new AuditCacheError(
@@ -125,13 +147,13 @@ async function set(auditId, auditData) {
     );
   }
 
-  const row = buildRow(key, payload);
+  const row = buildUpsertRow(key, payload);
   const write = await upsertAuditCache(supabase, key, row);
   if (!write.ok) {
     throw new AuditCacheError(
       'WRITE_FAILED',
       `audit_cache upsert failed for cache_key=${key}: ${formatFetchError(write.error)}`,
-      { cache_key: key, error: write.error }
+      { cache_key: key, error: write.error, rowKeys: Object.keys(row) }
     );
   }
 
@@ -144,16 +166,18 @@ async function set(auditId, auditData) {
       { cache_key: key, error: verifyErr }
     );
   }
-  if (!verifyRow?.audit_data) {
-    console.error(`[audit-cache] WRITE verify-read MISS cache_key=${key} (row empty after upsert)`);
+
+  const verified = extractPayload(verifyRow);
+  if (!verified) {
+    console.error(`[audit-cache] WRITE verify-read MISS cache_key=${key} (${PAYLOAD_COLUMN} empty)`);
     throw new AuditCacheError(
       'WRITE_VERIFY_MISS',
-      `audit_cache row missing immediately after upsert for cache_key=${key}`,
+      `audit_cache row missing ${PAYLOAD_COLUMN} immediately after upsert for cache_key=${key}`,
       { cache_key: key }
     );
   }
-  console.log(`[audit-cache] WRITE verified cache_key=${verifyRow.cache_key}`);
 
+  console.log(`[audit-cache] WRITE verified cache_key=${verifyRow.cache_key}`);
   return { cache_key: key, doctorName: payload.doctorName };
 }
 
@@ -218,6 +242,12 @@ async function getDetailed(auditId) {
 
   if (error) {
     logSupabaseError('audit-cache', `READ FAILED cache_key=${key}`, error);
+    if (error.code === 'PGRST204') {
+      console.error(
+        `[audit-cache] PGRST204 failing query: SELECT ${getSelectColumns()} ` +
+        `FROM public.audit_cache WHERE cache_key='${key}'`
+      );
+    }
     return {
       data: null,
       hit: false,
@@ -229,15 +259,16 @@ async function getDetailed(auditId) {
     };
   }
 
-  if (row?.audit_data) {
+  const auditPayload = extractPayload(row);
+  if (auditPayload) {
     if (row.cache_key !== key) {
       console.warn(
         `[audit-cache] cache_key mismatch row=${row.cache_key} searched=${key}`
       );
     }
     console.log(`[audit-cache] HIT supabase audit_cache cache_key=${key}`);
-    memoryStore.set(key, row.audit_data);
-    return { data: row.audit_data, hit: true, source: 'audit_cache', cache_key: key };
+    memoryStore.set(key, auditPayload);
+    return { data: auditPayload, hit: true, source: 'audit_cache', cache_key: key };
   }
 
   console.error(
@@ -325,4 +356,6 @@ module.exports = {
   AuditCacheError,
   AUDIT_ID_RE,
   verifyAuditCacheTable,
+  discoverAuditCacheSchema,
+  PAYLOAD_COLUMN,
 };

@@ -4,12 +4,12 @@ const path = require('path');
 const fs   = require('fs');
 require('../lib/env');
 
-const auditCache       = require('../lib/audit-cache');
-const paidReports      = require('../lib/paid-reports');
+const auditCache            = require('../lib/audit-cache');
+const paidReports           = require('../lib/paid-reports');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
-const { runOncePerUser } = require('../lib/pdf-jobs');
-const { launchBrowser } = require('../lib/puppeteer-loader');
+const { runOncePerUser }    = require('../lib/pdf-jobs');
+const { launchBrowser }     = require('../lib/puppeteer-loader');
 const { createGmailTransport } = require('../lib/gmail');
 const {
   cleanDoctorName,
@@ -24,17 +24,20 @@ function db() {
   return getSupabaseClient();
 }
 
-// ── Run all Claude prompts SEQUENTIALLY via global queue ─────────────────────
+// ── Run all Claude prompts SEQUENTIALLY via global queue ──────────────────
 // Previously Promise.all fired ~10 concurrent connections → 429 rate_limit_error.
 // Now one request at a time with retry/backoff. Social + compliance merged (9→8).
 async function runAllPrompts(d) {
-  const city     = d.city || (d.cityState || '').split(',')[0].trim();
-  const state    = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
+  const city      = d.city || (d.cityState || '').split(',')[0].trim();
+  const state     = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
   const specialty = d.specialty || 'General Practice';
-  const score    = d.score || 0;
-  const name     = cleanDoctorName(d.doctorName || '');
-  const comps    = (d.competitors || []).slice(0, 3);
-  const issuesTxt = (d.issues || []).map(i => typeof i === 'string' ? i : i.text || '').filter(Boolean).join('; ') || 'low review count, incomplete profile';
+  const score     = d.score || 0;
+  const name      = cleanDoctorName(d.doctorName || '');
+  const comps     = (d.competitors || []).slice(0, 3);
+  const issuesTxt = (d.issues || [])
+    .map(i => typeof i === 'string' ? i : i.text || '')
+    .filter(Boolean)
+    .join('; ') || 'low review count, incomplete profile';
 
   const fixesPrompt = `Generate 5 prioritised fixes for Dr. ${name}, a ${specialty} in ${city}, ${state}.
 Score: ${score}/100. Issues: ${issuesTxt}.
@@ -105,22 +108,22 @@ Return ONLY valid JSON:
 Provide 12 topics and 4 calendar weeks.`;
 
   const promptSteps = [
-    { key: 'fixes',             label: 'fixes',             prompt: fixesPrompt,             optional: false },
-    { key: 'narrative',         label: 'competitor-narrative', prompt: narrativePrompt,       optional: true,  fallback: { narrative: '' } },
-    { key: 'execSummary',       label: 'exec-summary',      prompt: execSummaryPrompt,       optional: false },
-    { key: 'responseTemplates', label: 'review-templates',  prompt: responseTemplatesPrompt, optional: false },
-    { key: 'seo',               label: 'seo-keywords',      prompt: seoPrompt,               optional: false },
-    { key: 'content',           label: 'content-strategy',  prompt: contentPrompt,           optional: false },
-    { key: 'journey',           label: 'patient-journey',   prompt: journeyPrompt,           optional: false },
-    { key: 'plan',              label: '90-day-plan',       prompt: planPrompt,              optional: false },
-    { key: 'socialCompliance',  label: 'social-compliance', prompt: socialAndCompliancePrompt, optional: true, fallback: { socialContent: {}, specialtyDonts: [] } },
+    { key: 'fixes',             label: 'fixes',               prompt: fixesPrompt,               optional: false },
+    { key: 'narrative',         label: 'competitor-narrative', prompt: narrativePrompt,           optional: true,  fallback: { narrative: '' } },
+    { key: 'execSummary',       label: 'exec-summary',         prompt: execSummaryPrompt,         optional: false },
+    { key: 'responseTemplates', label: 'review-templates',     prompt: responseTemplatesPrompt,   optional: false },
+    { key: 'seo',               label: 'seo-keywords',         prompt: seoPrompt,                 optional: false },
+    { key: 'content',           label: 'content-strategy',     prompt: contentPrompt,             optional: false },
+    { key: 'journey',           label: 'patient-journey',      prompt: journeyPrompt,             optional: false },
+    { key: 'plan',              label: '90-day-plan',          prompt: planPrompt,                optional: false },
+    { key: 'socialCompliance',  label: 'social-compliance',    prompt: socialAndCompliancePrompt, optional: true,  fallback: { socialContent: {}, specialtyDonts: [] } },
   ];
 
-  const results = {};
-  let stepNum = 0;
+  const results  = {};
+  let stepNum    = 0;
   const totalSteps = promptSteps.filter(s => s.prompt).length;
 
-  console.log(`[report] Claude queue stats before prompts:`, getQueueStats());
+  console.log(`[pdf] Claude queue stats before prompts:`, getQueueStats());
 
   for (const step of promptSteps) {
     if (!step.prompt) {
@@ -129,16 +132,16 @@ Provide 12 topics and 4 calendar weeks.`;
     }
 
     stepNum++;
-    console.log(`[report] prompt ${stepNum}/${totalSteps}: ${step.label}`);
+    console.log(`[pdf] prompt ${stepNum}/${totalSteps}: ${step.label}`);
 
     try {
       results[step.key] = await runClaudePrompt(step.prompt, {
-        label: step.label,
+        label:     step.label,
         maxTokens: step.label === 'review-templates' ? 1200 : 2500,
       });
     } catch (err) {
       if (step.optional) {
-        console.warn(`[report] optional prompt "${step.label}" failed — using fallback:`, err.message);
+        console.warn(`[pdf] optional prompt "${step.label}" failed — using fallback:`, err.message);
         results[step.key] = step.fallback || {};
       } else {
         throw err;
@@ -150,15 +153,15 @@ Provide 12 topics and 4 calendar weeks.`;
 
   return {
     fixes:               results.fixes?.fixes             || [],
-    competitorNarrative: results.narrative?.narrative    || '',
+    competitorNarrative: results.narrative?.narrative     || '',
     execSummary:         results.execSummary,
     responseTemplates:   results.responseTemplates,
     seoKeywords:         results.seo,
     contentStrategy:     results.content,
     patientJourney:      results.journey,
     ninetyDayPlan:       results.plan,
-    socialContent:       socialCompliance.socialContent || {},
-    specialtyDonts:      socialCompliance.specialtyDonts || [],
+    socialContent:       socialCompliance.socialContent   || {},
+    specialtyDonts:      socialCompliance.specialtyDonts  || [],
   };
 }
 
@@ -185,7 +188,7 @@ async function buildPdfBuffer(auditData) {
   const v = validatePillarTotal(d);
   if (!v.valid) throw new Error(`Pillar calculation error: ${v.actual} ≠ ${v.expected}`);
 
-  const ai = await runAllPrompts(d);
+  const ai   = await runAllPrompts(d);
   const full = {
     ...d,
     ...ai,
@@ -217,8 +220,8 @@ async function renderPdf(html) {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: 'networkidle0', timeout: 45000 });
     return await page.pdf({
-      format: 'A4',
-      printBackground: true,
+      format:           'A4',
+      printBackground:  true,
       preferCSSPageSize: true,
       margin: { top: '0', right: '0', bottom: '0', left: '0' },
     });
@@ -230,7 +233,7 @@ async function renderPdf(html) {
 // ── Send email via Gmail (nodemailer) ─────────────────────────────────────
 async function sendEmail(email, doctorName, pdfBuffer) {
   const transporter = createGmailTransport();
-  const cleanName = cleanDoctorName(doctorName);
+  const cleanName   = cleanDoctorName(doctorName);
   await transporter.sendMail({
     from:    `"The Doc Mirror" <${process.env.GMAIL_USER}>`,
     to:      email,
@@ -269,19 +272,58 @@ async function sendEmail(email, doctorName, pdfBuffer) {
   });
 }
 
+// ── Verify "reports" bucket exists in Supabase Storage ────────────────────
+// Called at startup and before first upload attempt.
+async function verifyReportsBucket(supabase) {
+  if (!supabase) return { ok: false, reason: 'supabase_not_configured' };
+  try {
+    const { data: buckets, error } = await supabase.storage.listBuckets();
+    if (error) {
+      console.error('[storage] listBuckets failed:', error.message);
+      return { ok: false, reason: error.message };
+    }
+    const found = (buckets || []).some(b => b.name === 'reports');
+    if (!found) {
+      console.error(
+        '[storage] bucket "reports" NOT FOUND. ' +
+        'Create it in Supabase → Storage → New bucket → name: reports → Public: true. ' +
+        'Also ensure the service role key has storage.objects INSERT permission.'
+      );
+      return { ok: false, reason: 'bucket_not_found' };
+    }
+    console.log('[storage] bucket "reports" exists ✓');
+    return { ok: true };
+  } catch (err) {
+    console.error('[storage] verifyReportsBucket exception:', err.message);
+    return { ok: false, reason: err.message };
+  }
+}
+
 // ── generateReport — main pipeline ────────────────────────────────────────
+/**
+ * @returns {{ success: true, pdfGenerated: boolean, emailSent: boolean, pdfUrl: string|null }}
+ * @throws  {AuditCacheError}  when audit payload cannot be loaded
+ * @throws  {Error}            when PDF generation itself fails (Puppeteer/pillar/Claude)
+ * Note: email failure does NOT throw — it returns emailSent:false in the result.
+ */
 async function _generateReportCore({ auditId, email }) {
   const canonicalId = auditCache.normalizeAuditId(auditId);
-  console.log(`[report] ▶ start auditId=${canonicalId} email=${email} valid=${auditCache.isValidAuditId(canonicalId)}`);
+  console.log(
+    `[report] ▶ start  auditId=${canonicalId}  email=${email}  ` +
+    `valid=${auditCache.isValidAuditId(canonicalId)}`
+  );
   const supabase = db();
 
   await paidReports.updateStatus(canonicalId, { status: 'generating' });
 
-  // 1. Fetch audit data — memory + Supabase (lib/audit-cache)
+  // 1. Fetch audit data — memory first, then Supabase audit_cache
   const cacheResult = await auditCache.getDetailed(canonicalId);
   if (!cacheResult.hit || !cacheResult.data) {
     const diagnostic = auditCache.formatDiagnostic(cacheResult);
-    console.error(`[report] audit_cache MISS cache_key=${canonicalId}`, JSON.stringify(diagnostic));
+    console.error(
+      `[report] audit_cache MISS  cache_key=${canonicalId}`,
+      JSON.stringify(diagnostic)
+    );
     const { AuditCacheError } = auditCache;
     throw new AuditCacheError(
       cacheResult.code || 'CACHE_MISS',
@@ -292,14 +334,14 @@ async function _generateReportCore({ auditId, email }) {
 
   let d = cacheResult.data;
   console.log(
-    `[report] audit data loaded source=${cacheResult.source} cache_key=${canonicalId} ` +
-    `doctor=${d.doctorName} auditId=${d.auditId || canonicalId}`
+    `[report] audit data loaded  source=${cacheResult.source}  cache_key=${canonicalId}  ` +
+    `doctor=${d.doctorName}  auditId=${d.auditId || canonicalId}`
   );
 
   // 2. Enrich with V5 fields
-  const city    = d.city  || (d.cityState || '').split(',')[0].trim();
-  const state   = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
-  const region  = d.region || detectRegion(city, state);
+  const city   = d.city  || (d.cityState || '').split(',')[0].trim();
+  const state  = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
+  const region = d.region || detectRegion(city, state);
   const pillars = computePillarsV5(d);
   const score   = pillars.total;
 
@@ -307,7 +349,15 @@ async function _generateReportCore({ auditId, email }) {
     ...d,
     city, state, region,
     score,
-    pillars: { gmb: pillars.gmb, rating: pillars.rating, reviews: pillars.reviews, photos: pillars.photos, rank: pillars.rank, aiVisibility: pillars.aiVisibility, directories: pillars.directories },
+    pillars: {
+      gmb:          pillars.gmb,
+      rating:       pillars.rating,
+      reviews:      pillars.reviews,
+      photos:       pillars.photos,
+      rank:         pillars.rank,
+      aiVisibility: pillars.aiVisibility,
+      directories:  pillars.directories,
+    },
     doctorNameClean: cleanDoctorName(d.doctorName || ''),
     generatedAt:     d.generatedAt || new Date().toISOString(),
   };
@@ -315,50 +365,119 @@ async function _generateReportCore({ auditId, email }) {
   // 3. Validate pillar total matches score
   const v = validatePillarTotal(d);
   if (!v.valid) {
-    console.error(`[report] ✗ pillar mismatch — expected ${v.expected}, got ${v.actual} — aborting`);
+    console.error(
+      `[report] ✗ pillar mismatch — expected ${v.expected}, got ${v.actual} — aborting`
+    );
     throw new Error(`Pillar total mismatch: ${v.actual} ≠ ${v.expected}`);
   }
   console.log(`[report] pillars valid — total ${v.actual}/100`);
 
-  // 4–8. Claude prompts (sequential queue) + template + PDF
-  console.log('[report] building PDF...');
-  const pdfBuffer = await buildPdfBuffer(d);
-  console.log(`[report] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
-
-  // 9. Upload to Supabase Storage (optional)
-  let pdfUrl = null;
+  // 4–8. Claude prompts (sequential queue) + HTML template + Puppeteer → PDF buffer
+  // Throws on any non-optional prompt failure or Puppeteer crash.
+  let pdfBuffer;
   try {
-    const { error: upErr } = await supabase.storage.from('reports')
-      .upload(`${canonicalId}.pdf`, pdfBuffer, { contentType: 'application/pdf', upsert: true });
-    if (!upErr) {
-      const { data: u } = supabase.storage.from('reports').getPublicUrl(`${canonicalId}.pdf`);
-      pdfUrl = u?.publicUrl || null;
-    }
-  } catch (_) {}
+    console.log('[pdf] building PDF buffer (Claude prompts + Puppeteer)...');
+    pdfBuffer = await buildPdfBuffer(d);
+    console.log(`[pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
+  } catch (pdfErr) {
+    console.error('[pdf] PDF generation FAILED:', pdfErr.message);
+    console.error('[pdf] stack:', pdfErr.stack || '(no stack)');
+    await paidReports.updateStatus(canonicalId, {
+      status:       'failed',
+      delivered_at: new Date().toISOString(),
+    });
+    throw pdfErr;   // propagate to verify-payment → code: PDF_GENERATION_FAILED
+  }
 
-  // 10. Send email (non-fatal — PDF already generated; user can download manually)
+  // 9. Upload to Supabase Storage bucket "reports" (non-fatal if bucket missing)
+  let pdfUrl = null;
+  if (supabase) {
+    const uploadPath = `${canonicalId}.pdf`;
+    console.log(`[storage] uploading ${uploadPath} to bucket "reports"...`);
+    try {
+      const { error: upErr } = await supabase.storage
+        .from('reports')
+        .upload(uploadPath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+
+      if (upErr) {
+        console.error(
+          `[storage] upload FAILED  path=${uploadPath}  ` +
+          `statusCode=${upErr.statusCode}  message=${upErr.message}`
+        );
+        if (upErr.statusCode === 404 || upErr.message?.includes('not found')) {
+          console.error(
+            '[storage] Bucket "reports" does not exist. ' +
+            'Fix: Supabase dashboard → Storage → New bucket → name=reports, Public=true'
+          );
+        }
+      } else {
+        const { data: pubData } = supabase.storage.from('reports').getPublicUrl(uploadPath);
+        pdfUrl = pubData?.publicUrl || null;
+        console.log(`[storage] upload OK  pdfUrl=${pdfUrl}`);
+      }
+    } catch (storageErr) {
+      console.error(
+        `[storage] upload exception  path=${uploadPath}:`,
+        storageErr.message
+      );
+    }
+  } else {
+    console.warn('[storage] Supabase not configured — skipping PDF upload');
+  }
+
+  // 10. Send email with PDF attachment
   let emailSent = false;
-  console.log(`[report] sending email → ${email}`);
+  let emailError = null;
+  console.log(`[email] sending to ${email}  doctor=${d.doctorNameClean}...`);
   try {
     await sendEmail(email, d.doctorName || 'Doctor', pdfBuffer);
     emailSent = true;
-    console.log('[report] email sent ✓');
+    console.log(`[email] sent ✓  to=${email}`);
   } catch (mailErr) {
-    console.error('[report] email failed (PDF still available):', mailErr.message);
+    emailError = mailErr;
+    console.error(`[email] FAILED  to=${email}  error=${mailErr.message}`);
+    if (mailErr.responseCode) {
+      console.error(`[email] SMTP response code: ${mailErr.responseCode}`);
+    }
+    if (mailErr.response) {
+      console.error(`[email] SMTP server response: ${mailErr.response}`);
+    }
+    console.error(`[email] stack: ${mailErr.stack || '(no stack)'}`);
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+      console.error('[email] GMAIL_USER or GMAIL_APP_PASSWORD env var is missing');
+    }
   }
 
-  // 11. Mark delivered — PDF succeeded even if email failed
+  // 11. Update paid_reports status:
+  //   'delivered' — PDF generated AND emailed
+  //   'generated' — PDF generated, email failed (user can still download)
+  //   'failed'    — PDF generation itself failed (set in the PDF catch block above)
+  const finalStatus = emailSent ? 'delivered' : 'generated';
   await paidReports.updateStatus(canonicalId, {
-    status:       emailSent ? 'delivered' : 'failed',
+    status:       finalStatus,
     pdf_url:      pdfUrl,
     delivered_at: new Date().toISOString(),
   });
 
-  console.log(
-    emailSent
-      ? `[report] ✓ done — Dr. ${d.doctorNameClean} → ${email}`
-      : `[report] ✓ PDF ready — email not sent; user can Download PDF (${email})`
-  );
+  if (emailSent) {
+    console.log(
+      `[report] ✓ complete  doctor=${d.doctorNameClean}  email=${email}  ` +
+      `status=delivered  pdfUrl=${pdfUrl || '(not stored)'}`
+    );
+  } else {
+    console.warn(
+      `[report] PDF generated but email FAILED  auditId=${canonicalId}  email=${email}  ` +
+      `status=generated  pdfUrl=${pdfUrl || '(not stored)'}`
+    );
+  }
+
+  return {
+    success:         true,
+    pdfGenerated:    true,
+    emailSent,
+    pdfUrl,
+    doctorNameClean: d.doctorNameClean,
+  };
 }
 
 /** Public entry — deduplicates concurrent jobs per email/auditId */
@@ -375,14 +494,19 @@ async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
   const { auditId, email } = req.body || {};
   if (!auditId || !email) return res.status(400).json({ error: 'auditId and email required' });
+
+  // Respond immediately — generation is async and can take 60-180 seconds
   res.json({ ok: true, message: 'Report generation started. PDF will arrive in ~60 seconds.' });
-  generateReport({ auditId, email }).catch(err => console.error('[report] handler error:', err.message));
+  generateReport({ auditId, email }).catch(err =>
+    console.error('[report] handler error:', err.message)
+  );
 }
 
 module.exports = handler;
-module.exports.generateReport = generateReport;
-module.exports.buildPdfBuffer = buildPdfBuffer;
-module.exports.renderPdf      = renderPdf;
-module.exports.runAllPrompts  = runAllPrompts;
-module.exports.RateLimitError = RateLimitError;
-module.exports.computePillars = computePillarsV5;
+module.exports.generateReport    = generateReport;
+module.exports.buildPdfBuffer    = buildPdfBuffer;
+module.exports.renderPdf         = renderPdf;
+module.exports.runAllPrompts     = runAllPrompts;
+module.exports.verifyReportsBucket = verifyReportsBucket;
+module.exports.RateLimitError    = RateLimitError;
+module.exports.computePillars    = computePillarsV5;
