@@ -3,6 +3,8 @@
 const path = require('path');
 require('./lib/env');
 
+const { verifyAuditCacheTable } = require('./lib/supabase-client');
+
 const express      = require('express');
 const cors         = require('cors');
 
@@ -53,18 +55,28 @@ app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Warm audit_cache connectivity check on cold start (non-blocking on Vercel)
+verifyAuditCacheTable().catch(err => {
+  console.error('[startup] audit_cache check error:', err.message);
+});
+
 // Export for Vercel serverless
 module.exports = app;
 
 // Local dev server
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`\n  The Doc Mirror`);
     console.log(`  http://localhost:${PORT}\n`);
     console.log(`  Places key  : ${process.env.GOOGLE_PLACES_API_KEY    ? '✓' : '✗ MISSING'}`);
     console.log(`  Anthropic   : ${process.env.ANTHROPIC_API_KEY        ? '✓' : '✗ MISSING'}`);
     console.log(`  Razorpay    : ${process.env.RAZORPAY_KEY_ID          ? '✓' : '✗ MISSING'}`);
     console.log(`  Gmail       : ${process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD ? '✓' : '✗ MISSING'}`);
-    console.log(`  Supabase    : ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗ MISSING'}\n`);
+    console.log(`  Supabase    : ${process.env.NEXT_PUBLIC_SUPABASE_URL ? '✓' : '✗ MISSING'}`);
+
+    const tableCheck = await verifyAuditCacheTable();
+    console.log(
+      `  audit_cache : ${tableCheck.ok ? '✓ reachable' : '✗ ' + (tableCheck.message || 'unreachable')}\n`
+    );
   });
 }

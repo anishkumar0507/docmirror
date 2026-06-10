@@ -2,13 +2,10 @@
 
 require('../../lib/env');
 
-const { createClient } = require('@supabase/supabase-js');
+const { getSupabaseClient } = require('../../lib/supabase-client');
 
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  return getSupabaseClient();
 }
 
 async function handler(req, res) {
@@ -34,7 +31,7 @@ async function handler(req, res) {
     if (reports?.length) return res.json({ success: true });
 
     const { data: monitors } = await supabase
-      .from('monitor_subscribers')
+      .from('subscribers')
       .select('id')
       .eq('email', email)
       .eq('status', 'active')

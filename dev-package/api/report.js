@@ -4,8 +4,9 @@ const path = require('path');
 const fs   = require('fs');
 require('../lib/env');
 
-const { createClient } = require('@supabase/supabase-js');
 const auditCache       = require('../lib/audit-cache');
+const paidReports      = require('../lib/paid-reports');
+const { getSupabaseClient } = require('../lib/supabase-client');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
 const { runOncePerUser } = require('../lib/pdf-jobs');
 const { launchBrowser } = require('../lib/puppeteer-loader');
@@ -20,10 +21,7 @@ const {
 
 // ── Supabase ───────────────────────────────────────────────────────────────
 function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
+  return getSupabaseClient();
 }
 
 // ── Run all Claude prompts SEQUENTIALLY via global queue ─────────────────────
@@ -277,14 +275,26 @@ async function _generateReportCore({ auditId, email }) {
   console.log(`[report] ▶ start auditId=${canonicalId} email=${email} valid=${auditCache.isValidAuditId(canonicalId)}`);
   const supabase = db();
 
-  await supabase.from('paid_reports').update({ status: 'generating' }).eq('audit_id', canonicalId);
+  await paidReports.updateStatus(canonicalId, { status: 'generating' });
 
   // 1. Fetch audit data — memory + Supabase (lib/audit-cache)
-  let d = await auditCache.get(canonicalId);
-  if (!d) {
-    throw new Error(`audit_cache not found for ${canonicalId}`);
+  const cacheResult = await auditCache.getDetailed(canonicalId);
+  if (!cacheResult.hit || !cacheResult.data) {
+    const diagnostic = auditCache.formatDiagnostic(cacheResult);
+    console.error(`[report] audit_cache MISS cache_key=${canonicalId}`, JSON.stringify(diagnostic));
+    const { AuditCacheError } = auditCache;
+    throw new AuditCacheError(
+      cacheResult.code || 'CACHE_MISS',
+      cacheResult.message || `No audit data for cache_key=${canonicalId}`,
+      cacheResult
+    );
   }
-  console.log(`[report] audit data loaded — doctor: ${d.doctorName} auditId=${d.auditId || canonicalId}`);
+
+  let d = cacheResult.data;
+  console.log(
+    `[report] audit data loaded source=${cacheResult.source} cache_key=${canonicalId} ` +
+    `doctor=${d.doctorName} auditId=${d.auditId || canonicalId}`
+  );
 
   // 2. Enrich with V5 fields
   const city    = d.city  || (d.cityState || '').split(',')[0].trim();
@@ -338,11 +348,11 @@ async function _generateReportCore({ auditId, email }) {
   }
 
   // 11. Mark delivered — PDF succeeded even if email failed
-  await supabase.from('paid_reports').update({
-    status:      emailSent ? 'delivered' : 'failed',
-    pdf_url:     pdfUrl,
+  await paidReports.updateStatus(canonicalId, {
+    status:       emailSent ? 'delivered' : 'failed',
+    pdf_url:      pdfUrl,
     delivered_at: new Date().toISOString(),
-  }).eq('audit_id', canonicalId);
+  });
 
   console.log(
     emailSent

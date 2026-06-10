@@ -61,6 +61,10 @@ CREATE TABLE IF NOT EXISTS paid_reports (
   delivered_at      TIMESTAMPTZ
 );
 
+CREATE INDEX IF NOT EXISTS idx_paid_reports_audit_id ON paid_reports(audit_id);
+CREATE INDEX IF NOT EXISTS idx_paid_reports_email    ON paid_reports(email);
+CREATE INDEX IF NOT EXISTS idx_paid_reports_status   ON paid_reports(status);
+
 -- ── 5. SUBSCRIBERS (Monitor only — DFY removed in v4) ───────────────────────────────
 CREATE TABLE IF NOT EXISTS subscribers (
   id                     UUID        DEFAULT gen_random_uuid() PRIMARY KEY,

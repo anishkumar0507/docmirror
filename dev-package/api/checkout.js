@@ -3,15 +3,9 @@
 require('../lib/env');
 
 const Razorpay   = require('razorpay');
-const { createClient } = require('@supabase/supabase-js');
 const auditCache = require('../lib/audit-cache');
-
-function db() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-  );
-}
+const paidReports = require('../lib/paid-reports');
+const { verifyAuditCacheTable } = require('../lib/supabase-client');
 
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -28,29 +22,27 @@ async function handler(req, res) {
   }
 
   try {
-    // Unique key — full ID lives in notes.auditId, NOT in receipt (receipt may truncate)
+    const tableCheck = await verifyAuditCacheTable();
+    if (!tableCheck.ok) {
+      console.error('[checkout] audit_cache not ready:', tableCheck.message);
+      return res.status(503).json({
+        error: 'Audit storage temporarily unavailable. Please try again in a moment.',
+        code: tableCheck.code || 'TABLE_INACCESSIBLE',
+      });
+    }
+
     const auditId = `tdm_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
-    console.log(`[checkout] created auditId=${auditId}`);
+    console.log(`[checkout] created auditId=${auditId} format_valid=${auditCache.isValidAuditId(auditId)}`);
 
-    const cityRaw = (auditData.cityState || '').split(',');
-    const city    = (cityRaw[0] || '').trim();
-    const state   = (cityRaw[1] || '').trim();
+    // MUST complete before Razorpay order — throws if Supabase write fails
+    const cached = await auditCache.set(auditId, auditData);
+    console.log(
+      `[checkout] audit_cache persisted cache_key=${cached.cache_key} doctor=${cached.doctorName || '(unknown)'}`
+    );
 
-    // Persist before payment — memory + Supabase (survives Vercel cold starts)
-    await auditCache.set(auditId, auditData);
-    console.log(`[checkout] cached auditId=${auditId} before Razorpay order`);
-
-    const supabase = db();
-    const { error: paidErr } = await supabase.from('paid_reports').insert({
-      audit_id: auditId,
-      email,
-      status:   'pending',
-    });
-    if (paidErr) console.warn('[checkout] paid_reports insert warn:', paidErr.message);
+    await paidReports.insertPending({ auditId, email });
 
     const amountUnits = parseInt(process.env.RAZORPAY_AMOUNT_UNITS || '1900', 10);
-
-    // Short receipt for Razorpay internal ref — NEVER use receipt as auditId lookup
     const receipt = `rpt_${Date.now()}`.slice(0, 40);
 
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
@@ -76,6 +68,15 @@ async function handler(req, res) {
     });
 
   } catch (err) {
+    if (err.name === 'AuditCacheError') {
+      console.error(`[checkout] audit_cache error code=${err.code}:`, err.message);
+      return res.status(503).json({
+        error: 'Could not save audit data before payment. Please retry.',
+        code: err.code,
+        cache_key: err.details?.cache_key,
+        detail: err.message,
+      });
+    }
     console.error('[checkout] error:', err.message);
     return res.status(500).json({ error: 'Checkout failed: ' + err.message });
   }
