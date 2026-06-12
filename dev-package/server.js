@@ -24,6 +24,16 @@ const weeklyCheckHandler      = require('./api/weekly-check');
 const authLoginHandler        = require('./api/auth/login');
 const stripeWebhookHandler    = require('./api/webhook');
 
+// ── Multi-tier SaaS additions ──────────────────────────────────────────────
+const clientConfigHandler      = require('./api/config');
+const authSignupHandler        = require('./api/auth/signup');
+const userMeHandler            = require('./api/user/me');
+const userReportsHandler       = require('./api/user/reports');
+const userAlertsHandler        = require('./api/user/alerts');
+const checkoutSubHandler          = require('./api/checkout-subscription');
+const verifySubPaymentHandler     = require('./api/verify-subscription-payment');
+const webhookRazorpayHandler      = require('./api/webhook-razorpay');
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
@@ -32,23 +42,35 @@ app.use(cors());
 // Stripe webhook needs raw body — register before express.json()
 app.post('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhookHandler);
 
+// Razorpay subscription webhook needs raw body too
+app.post('/api/webhook-razorpay', express.raw({ type: 'application/json' }), webhookRazorpayHandler);
+
 app.use(express.json({ limit: '2mb' }));
 
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API routes ─────────────────────────────────────────────────────────────
-app.get('/api/debug-competitors', debugCompetitorsHandler);
-app.post('/api/audit',            auditHandler);
-app.post('/api/checkout',         checkoutHandler);
-app.post('/api/verify-payment',   verifyPaymentHandler);
-app.post('/api/download-pdf',     downloadPdfHandler);
-app.post('/api/report',           reportHandler);
-app.post('/api/email-capture',    emailCaptureHandler);
-app.post('/api/waitlist',         waitlistHandler);
-app.get('/api/weekly-check',      weeklyCheckHandler);
-app.post('/api/weekly-check',     weeklyCheckHandler);
-app.post('/api/auth/login',       authLoginHandler);
+app.get('/api/debug-competitors',         debugCompetitorsHandler);
+app.post('/api/audit',                    auditHandler);
+app.post('/api/checkout',                 checkoutHandler);
+app.post('/api/verify-payment',           verifyPaymentHandler);
+app.post('/api/download-pdf',             downloadPdfHandler);
+app.post('/api/report',                   reportHandler);
+app.post('/api/email-capture',            emailCaptureHandler);
+app.post('/api/waitlist',                 waitlistHandler);
+app.get('/api/weekly-check',              weeklyCheckHandler);
+app.post('/api/weekly-check',             weeklyCheckHandler);
+app.post('/api/auth/login',               authLoginHandler);
+
+// ── Multi-tier SaaS routes ─────────────────────────────────────────────────
+app.get('/api/client-config',             clientConfigHandler);
+app.post('/api/auth/signup',              authSignupHandler);
+app.get('/api/user/me',                   userMeHandler);
+app.get('/api/user/reports',              userReportsHandler);
+app.get('/api/user/alerts',               userAlertsHandler);
+app.post('/api/checkout-subscription',        checkoutSubHandler);
+app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

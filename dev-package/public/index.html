@@ -615,6 +615,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .footer-bottom{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.95rem;text-align:center;max-width:1200px;width:100%}
 @media(max-width:960px){.footer-grid{grid-template-columns:repeat(2,minmax(140px,1fr));gap:28px}}
 @media(max-width:680px){.site-footer{padding:32px 1rem 16px}.footer-card{padding:32px 24px 20px}.footer-grid{grid-template-columns:1fr;gap:24px}.footer-col h4{padding-bottom:0.9rem}}
+@media(max-width:560px){
+  .field-grid{grid-template-columns:1fr}
+  .sentiment-cols,.cs-grid,.ai-platforms{grid-template-columns:1fr}
+  .tool-card{padding:1.1rem}
+}
 </style>
 </head>
 <body>
@@ -627,12 +632,15 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   <div class="nav-mid">
     <a href="#how-it-works">How it works</a>
     <a href="#tool">Free audit</a>
-    <a href="#pricing">Pricing</a>
+    <a href="/pages/pricing.html">Pricing</a>
     <a href="/pages/resources.html">Resources</a>
     <a href="#about">About</a>
     <a href="#faq">FAQ</a>
   </div>
-  <a class="nav-cta" href="#tool">Check my listing free</a>
+  <div style="display:flex;align-items:center;gap:10px">
+    <a href="/pages/auth.html?tab=login" style="font-size:.82rem;color:var(--slate-light);text-decoration:none;font-weight:500;padding:7px 12px">Log In</a>
+    <a class="nav-cta" href="#tool">Check free →</a>
+  </div>
 </nav>
 
 <section class="hero" id="tool">
@@ -2361,18 +2369,22 @@ function fb(url,cb){var ta=document.createElement('textarea');ta.value=url;ta.st
 // ── UPGRADE ────────────────────────────────────────────────────────────────
 function doUpgrade(plan){
   plan=plan||'monitor';
-  fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:plan,auditId:_aid})})
-  .then(function(r){return r.json();}).then(function(d){if(d.url)window.location.href=d.url;})
-  .catch(function(){window.location.href='mailto:thedocmirror@gmail.com?subject='+encodeURIComponent('Monitor plan enquiry');});
+  // Doctor must run the free check first so we have their details for the report/dashboard.
+  if(!_aid){
+    document.getElementById('tool').scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  // Go straight to checkout — NO account is created before payment.
+  // The $49 account is created on successful subscription payment.
+  window.location.href='/pages/checkout-subscription.html';
 }
 function doOneTime(){
   if(!_aid){
     document.getElementById('tool').scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
-  fetch('/api/checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({plan:'report',auditId:_aid})})
-  .then(function(r){return r.json();}).then(function(d){if(d.url)window.location.href=d.url;})
-  .catch(function(){window.location.href='mailto:thedocmirror@gmail.com?subject=Full%20Audit%20Report%20%2419';});
+  // $19 is anonymous — pay and the PDF is emailed. No account created.
+  window.location.href='/pages/checkout.html';
 }
 
 // ── RESET ──────────────────────────────────────────────────────────────────

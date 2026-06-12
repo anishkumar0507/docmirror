@@ -1,12 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Unlock Full Report — The Doc Mirror</title>
+<title>Unlock Monitor Plan — The Doc Mirror</title>
 <meta name="robots" content="noindex,nofollow">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--navy:#0A2540;--green:#00A878;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;--red:#DC2626}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -62,8 +63,6 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 .success-state p{color:var(--slate-light);font-size:.9rem;line-height:1.7;margin-bottom:1.25rem}
 .view-btn{display:inline-flex;align-items:center;gap:8px;background:var(--green);color:#fff;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;font-size:.95rem;border:none;cursor:pointer;font-family:inherit}
 .view-btn:hover{background:#007a57}
-.download-btn{display:inline-flex;align-items:center;gap:8px;background:#fff;color:var(--navy);padding:11px 24px;border-radius:8px;font-weight:700;font-size:.9rem;border:1.5px solid var(--border);cursor:pointer;font-family:inherit;margin-top:.65rem}
-.download-btn:hover{border-color:var(--navy)}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -86,7 +85,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
     </div>
     <span class="logo-word">The Doc <span>Mirror</span></span>
   </a>
-  <a class="back-link" href="preview-report.html">← Back to report</a>
+  <a class="back-link" href="pricing.html">← Back to pricing</a>
 </nav>
 
 <main>
@@ -103,46 +102,50 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <h3>What's included</h3>
     <ul class="feature-list">
-      <li>7-Pillar visibility breakdown with real scores</li>
-      <li>5 AI-written fixes with copy-paste text</li>
-      <li>Competitor visibility leaderboard (full scores)</li>
-      <li>Potential patient loss estimate</li>
-      <li>Search &amp; AI result simulation</li>
-      <li>SEO keyword strategy (3 tiers)</li>
-      <li>Content strategy brief &amp; Reel ideas</li>
-      <li>90-day action plan (3 phases)</li>
-      <li>PDF delivered to your email</li>
+      <li>Weekly Visibility Audit (PDF to your inbox)</li>
+      <li>AI Rank Tracker — ChatGPT, Claude, Gemini</li>
+      <li>Competitor Watchlist &amp; Change Alerts</li>
+      <li>Full Dashboard — scores, trends &amp; history</li>
+      <li>Weekly AI-written Action Tasks</li>
+      <li>Monthly Content Pack &amp; Reel ideas</li>
+      <li>Review Growth Engine</li>
+      <li>Reputation Monitor</li>
+      <li>30/60/90-Day Roadmap</li>
+      <li>Cancel anytime</li>
     </ul>
 
     <div class="price-row">
       <div>
         <div class="price-label">Total</div>
-        <div class="price-note">One-time · No subscription</div>
+        <div class="price-note">Monthly · Cancel anytime</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount">$19</div>
-        <div class="price-note">Instant PDF delivery</div>
+        <div class="price-amount">$49</div>
+        <div class="price-note">per month</div>
       </div>
     </div>
   </div>
 
   <!-- PAYMENT FORM -->
   <div class="pay-card" id="pay-card">
-    <h2>Complete your order</h2>
-    <p class="subtitle">Enter your email — the full PDF report is delivered here.</p>
+    <h2>Start your subscription</h2>
+    <p class="subtitle">Create your account — your dashboard &amp; weekly reports live here. Your account is created only after payment.</p>
 
     <label class="field-label" for="email-input">Email address</label>
     <input class="field-input" type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
+
+    <label class="field-label" for="pass-input" style="margin-top:1rem">Create a password</label>
+    <input class="field-input" type="password" id="pass-input" placeholder="Minimum 8 characters" autocomplete="new-password">
     <div class="field-err" id="email-err"></div>
 
-    <button class="pay-btn" id="pay-btn" onclick="startPayment()">
+    <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Unlock Full Report — $19
+      Subscribe — $49/month
     </button>
 
     <div class="pay-secure">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Secure payment via Razorpay
+      Secure payment via Razorpay · Cancel anytime
     </div>
     <div class="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
   </div>
@@ -154,50 +157,39 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 </div>
 
 <script>
-// $19 Visibility Audit — no login required, anonymous payment flow
+var _session  = null;
 var auditData = null;
+var _auditId  = null;
 
-// ── Load audit data and pre-fill form (no auth required) ─────────────────
-(function initPage() {
-  // Read audit data from localStorage (set by the free visibility check)
+// ── No auth gate — account is created AFTER payment (anonymous until then) ──
+async function initPage() {
+  // ── Read audit data from the free check (no login required) ───────────────
   try {
     var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
     if (raw) auditData = JSON.parse(raw);
   } catch(_) {}
 
-  if (!auditData) {
-    // No audit data — user arrived without running the free check
-    var payCard = document.getElementById('pay-card');
-    if (payCard) {
-      payCard.innerHTML =
-        '<div style="text-align:center;padding:2rem 0">' +
-        '<div style="font-size:2rem;margin-bottom:12px">⚠️</div>' +
-        '<h2 style="color:#0A2540;margin-bottom:8px">No audit data found</h2>' +
-        '<p style="color:#6B7A8D;margin-bottom:1.5rem;line-height:1.6">Run the free visibility check first to generate your report.</p>' +
-        '<a href="/" style="background:#0A2540;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:700">← Run free check</a>' +
-        '</div>';
-    }
-    return;
-  }
-
-  // Show doctor summary card
-  if (auditData.doctorName) {
+  // Show doctor summary card if we have data
+  if (auditData && auditData.doctorName) {
     var summaryEl = document.getElementById('doc-summary');
     var initialEl = document.getElementById('doc-initial');
     var nameLbl   = document.getElementById('doc-name-lbl');
     var metaLbl   = document.getElementById('doc-meta-lbl');
+
     if (summaryEl) summaryEl.style.display = 'flex';
     if (nameLbl)   nameLbl.textContent  = auditData.doctorName;
     if (metaLbl)   metaLbl.textContent  = (auditData.specialty || '') + (auditData.cityState ? ' · ' + auditData.cityState : '');
     if (initialEl) initialEl.textContent = (auditData.doctorName || 'D').replace(/^Dr\.?\s*/i,'').charAt(0).toUpperCase();
   }
 
-  // Pre-fill email from previous checkout session if saved
-  try {
-    var saved = localStorage.getItem('tdm_checkout_email') || '';
-    if (saved) document.getElementById('email-input').value = saved;
-  } catch(_) {}
-})();
+  // ── Pre-fill email from session or previous entry ─────────────────────────
+  var savedEmail = '';
+  try { savedEmail = localStorage.getItem('tdm_checkout_email') || ''; } catch(_) {}
+  var emailVal = savedEmail || (_session && _session.user && _session.user.email) || '';
+  if (emailVal) document.getElementById('email-input').value = emailVal;
+}
+
+initPage();
 
 // ── Load Razorpay SDK ──────────────────────────────────────────────────────
 function loadRzp(cb) {
@@ -225,96 +217,94 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Unlock Full Report — $19';
+    ' Subscribe — $49/month';
 }
 
 // ── Main payment flow ──────────────────────────────────────────────────────
 function startPayment() {
   var emailEl = document.getElementById('email-input');
+  var passEl  = document.getElementById('pass-input');
   var email   = (emailEl ? emailEl.value : '').trim();
+  var pass    = passEl ? passEl.value : '';
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     showErr('Please enter a valid email address.');
     if (emailEl) emailEl.focus();
     return;
   }
-  showErr('');
-
-  if (!auditData) {
-    showErr('Audit data not found. Please run a free check first.');
+  if (!pass || pass.length < 8) {
+    showErr('Create a password of at least 8 characters for your account.');
+    if (passEl) passEl.focus();
     return;
   }
+  showErr('');
 
-  // Save email for convenience
   try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
 
-  setBtnLoading('Creating order…');
+  setBtnLoading('Creating subscription…');
 
-  // Step 1: Create Razorpay order on backend (no auth required for $19)
-  fetch('/api/checkout', {
+  // Step 1: Create Razorpay subscription on backend (anonymous — no account yet)
+  fetch('/api/checkout-subscription', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email: email, auditData: auditData })
+    body:    JSON.stringify({ email: email, auditData: auditData || null })
   })
   .then(function(r) { return r.json(); })
-  .then(function(orderRes) {
-    if (orderRes.error) { showErr(orderRes.error); setBtnReady(); return; }
+  .then(function(subRes) {
+    if (subRes.error) { showErr(subRes.error); setBtnReady(); return; }
+
+    _auditId = subRes.auditId || null;
 
     setBtnLoading('Opening payment…');
 
-    // Step 2: Open Razorpay modal
+    // Step 2: Open Razorpay subscription modal
     loadRzp(function() {
       var options = {
-        key:         orderRes.keyId,
-        amount:      orderRes.amount,
-        currency:    orderRes.currency,
-        name:        'The Doc Mirror',
-        description: 'Doctor Visibility Full Report — ' + (auditData.doctorName || ''),
-        order_id:    orderRes.orderId,
-        prefill:     { email: email },
-        theme:       { color: '#0A2540' },
+        key:             subRes.keyId,
+        subscription_id: subRes.subscriptionId,
+        name:            'The Doc Mirror',
+        description:     'Doctor Visibility Monitor™ — $49/month',
+        prefill:         { email: email },
+        theme:           { color: '#0A2540' },
 
-        // Step 3: Payment success — verify on backend (no auth required for $19)
+        // Step 3: Payment success — verify on backend then redirect
         handler: function(response) {
-          setBtnLoading('Verifying payment…');
+          setBtnLoading('Creating your account…');
 
-          fetch('/api/verify-payment', {
+          fetch('/api/verify-subscription-payment', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-              orderId:   response.razorpay_order_id,
-              paymentId: response.razorpay_payment_id,
-              signature: response.razorpay_signature,
-              auditId:   orderRes.auditId,
-              email:     email
+              subscriptionId: response.razorpay_subscription_id,
+              paymentId:      response.razorpay_payment_id,
+              signature:      response.razorpay_signature,
+              auditId:        _auditId,
+              email:          email,
+              password:       pass,
+              name:           (auditData && auditData.doctorName) ? auditData.doctorName : ''
             })
           })
           .then(function(r) {
             return r.json().then(function(data) {
-              if (r.status === 429) {
-                data.ok = false;
-                data.isRateLimit = true;
-              }
+              if (r.status === 429) { data.ok = false; data.isRateLimit = true; }
               return data;
             });
           })
           .then(function(verifyRes) {
             if (verifyRes.ok) {
-              // Store payment proof so the preview page knows it's paid
-              try {
-                localStorage.setItem('tdm_paid_session', JSON.stringify({
-                  auditId:   orderRes.auditId,
-                  email:     email,
-                  paymentId: response.razorpay_payment_id,
-                  paidAt:    Date.now()
-                }));
-              } catch(_) {}
-
-              // Show success state then redirect
-              showSuccess(email);
+              // Store the session created at payment so the dashboard opens logged in.
+              if (verifyRes.accessToken && verifyRes.refreshToken) {
+                try {
+                  localStorage.setItem('tdm_access_token',  verifyRes.accessToken);
+                  localStorage.setItem('tdm_refresh_token', verifyRes.refreshToken);
+                  if (verifyRes.userId) localStorage.setItem('tdm_user_id', verifyRes.userId);
+                  localStorage.setItem('tdm_user_email', email);
+                } catch(_) {}
+              }
+              showSuccess(email, verifyRes.needsLogin);
             } else if (verifyRes.isRateLimit) {
-              showErr(verifyRes.error || 'Payment received — AI is busy. Use Download PDF in a minute.');
-              showSuccess(email);
+              showErr(verifyRes.error || 'Subscription active — AI is busy. Report will arrive shortly.');
+              showSuccess(email, false);
             } else {
               showErr(verifyRes.error || 'Verification failed. Contact support.');
               setBtnReady();
@@ -336,80 +326,36 @@ function startPayment() {
       setBtnReady();
     });
   })
-  .catch(function(err) {
+  .catch(function() {
     showErr('Something went wrong. Please try again.');
     setBtnReady();
   });
 }
 
-// ── Success state — thank you page, no dashboard (not a SaaS product) ──────
-function showSuccess(email) {
+// ── Success state ──────────────────────────────────────────────────────────
+function showSuccess(email, needsLogin) {
   var card = document.getElementById('pay-card');
   if (!card) return;
 
+  var dest = needsLogin ? '/pages/auth.html?tab=login' : '/dashboard.html';
+  var note = needsLogin
+    ? 'This email already had an account — please log in to open your dashboard.'
+    : 'Your full report history and live data are available in the dashboard.';
+
   card.innerHTML =
     '<div class="success-state">' +
-    '<div class="tick">✅</div>' +
-    '<h2>Payment Confirmed!</h2>' +
-    '<p>Your full 15-page visibility report is being generated.<br>' +
-    'PDF will be sent to <strong>' + escH(email) + '</strong><br>within 60 seconds.</p>' +
-    '<button class="view-btn" id="dl-btn" onclick="downloadPdf(\'' + escH(email) + '\')">⬇️ Download PDF Now</button>' +
-    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:1rem">' +
-    'Check your inbox in ~60 seconds. Didn\'t arrive? Use the button above.</p>' +
-    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:.5rem">' +
-    'Want weekly monitoring? <a href="/pages/checkout-subscription.html" style="color:#00A878;font-weight:600">Upgrade to Monitor $49/mo →</a></p>' +
+    '<div class="tick">🎉</div>' +
+    '<h2>Subscription Active!</h2>' +
+    '<p>Your Doctor Visibility Monitor™ is now live.<br>' +
+    'First weekly report will be sent to <strong>' + escH(email) + '</strong><br>within 60 seconds.</p>' +
+    '<a class="view-btn" href="' + dest + '">' + (needsLogin ? 'Log In →' : 'Open Dashboard →') + '</a>' +
+    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:1rem">' + note + '</p>' +
     '</div>';
-  // No redirect — $19 is one-time, no dashboard, no account
-}
 
-// ── Download PDF directly (deduped server-side + button lock) ─────────────
-var _pdfGenerating = false;
-
-function downloadPdf(email) {
-  if (_pdfGenerating) return;
-
-  var btn = document.getElementById('dl-btn');
-  _pdfGenerating = true;
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating PDF (~60 sec)…'; }
-
-  fetch('/api/download-pdf', {
-    method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ auditData: auditData, email: email || '' })
-  })
-  .then(function(r) {
-    if (r.status === 429) {
-      return r.json().then(function(e) {
-        var err = new Error(e.error || 'AI service is busy.');
-        err.isRateLimit = true;
-        err.retryAfter = e.retryAfter || 30;
-        throw err;
-      });
-    }
-    if (!r.ok) return r.json().then(function(e) { throw new Error(e.error || 'Failed'); });
-    return r.blob();
-  })
-  .then(function(blob) {
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'DocMirror-Visibility-Report.pdf';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function() { URL.revokeObjectURL(url); }, 5000);
-    _pdfGenerating = false;
-    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
-  })
-  .catch(function(err) {
-    _pdfGenerating = false;
-    if (btn) { btn.disabled = false; btn.textContent = '⬇️ Download PDF Now'; }
-    if (err.isRateLimit) {
-      alert(err.message + '\n\nWait ' + (err.retryAfter || 30) + ' seconds, then try again.');
-    } else {
-      alert('PDF failed: ' + (err.message || 'Try again'));
-    }
-  });
+  // Auto-redirect after 3 seconds (replace so back button goes home, not here)
+  setTimeout(function() {
+    window.location.replace(dest);
+  }, 3000);
 }
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }

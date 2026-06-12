@@ -18,7 +18,9 @@ async function handler(req, res) {
 
   try {
     // One PDF job per user — duplicate clicks join the in-flight job
-    const pdfBuffer = await runOncePerUser(req, auditData, () => buildPdfBuffer(auditData));
+    // buildPdfBuffer now returns { buffer, insights } — we only need the buffer here
+    const result    = await runOncePerUser(req, auditData, () => buildPdfBuffer(auditData));
+    const pdfBuffer = result.buffer || result; // handle both new {buffer} and legacy Buffer
 
     const safeName = cleanDoctorName(auditData.doctorName).replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-');
     console.log(`[download-pdf] done — ${Math.round(pdfBuffer.length / 1024)} KB`);

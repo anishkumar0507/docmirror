@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign In — The Doc Mirror</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;--red:#DC2626}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+nav{background:#fff;border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2rem);height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.logo-word span{color:var(--green)}
+.back-link{font-size:.85rem;color:var(--slate-light);text-decoration:none}
+.back-link:hover{color:var(--navy)}
+main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:3rem clamp(1rem,4vw,2rem) 5rem}
+.auth-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:2.25rem;width:100%;max-width:420px}
+.auth-card h1{font-size:1.45rem;font-weight:800;color:var(--navy);margin-bottom:.3rem}
+.auth-card .sub{font-size:.9rem;color:var(--slate-light);margin-bottom:1.75rem}
+.tabs{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;padding:3px;margin-bottom:1.75rem;background:var(--warm)}
+.tab{flex:1;padding:8px 0;font-size:.88rem;font-weight:600;color:var(--slate-light);background:transparent;border:none;border-radius:8px;cursor:pointer;font-family:inherit;transition:all .15s}
+.tab.active{background:#fff;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.field-label{font-size:.8rem;font-weight:600;color:var(--slate);margin-bottom:.4rem;display:block}
+.field-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:.93rem;font-family:inherit;color:var(--navy);outline:none;transition:border-color .15s;margin-bottom:1rem}
+.field-input:focus{border-color:var(--navy)}
+.field-input.err{border-color:var(--red)}
+.field-err{font-size:.78rem;color:var(--red);margin-top:-0.75rem;margin-bottom:.75rem;min-height:1.1em}
+.submit-btn{width:100%;padding:13px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:.5rem;transition:background .15s}
+.submit-btn:hover:not(:disabled){background:#0e3060}
+.submit-btn:disabled{opacity:.6;cursor:not-allowed}
+.msg{padding:.75rem 1rem;border-radius:8px;font-size:.88rem;margin-top:1rem;display:none}
+.msg.error{background:#fef2f2;color:var(--red);border:1px solid #fecaca;display:block}
+.msg.success{background:var(--green-light);color:#065f46;border:1px solid #a7f3d0;display:block}
+.form-panel{display:none}
+.form-panel.active{display:block}
+.divider{text-align:center;font-size:.78rem;color:var(--slate-light);margin:.85rem 0;position:relative}
+.divider::before,.divider::after{content:'';position:absolute;top:50%;width:42%;height:1px;background:var(--border)}
+.divider::before{left:0}.divider::after{right:0}
+.switch-link{text-align:center;font-size:.83rem;color:var(--slate-light);margin-top:1rem}
+.switch-link a{color:var(--green);font-weight:600;text-decoration:none}
+.switch-link a:hover{text-decoration:underline}
+footer{text-align:center;padding:1.5rem;font-size:.78rem;color:var(--slate-light)}
+footer a{color:var(--slate-light)}
+@media(max-width:480px){
+  nav{padding:0 1rem;height:56px}
+  main{padding:1.5rem 1rem 3rem}
+  .auth-card{padding:1.5rem;border-radius:16px}
+}
+</style>
+</head>
+<body>
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="9" rx="1.5" fill="#fff" opacity=".9"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="#fff" opacity=".6"/><rect x="10" y="10" width="6" height="4" rx="1.5" fill="#fff" opacity=".4"/></svg></div>
+    <span class="logo-word">The Doc <span>Mirror</span></span>
+  </a>
+  <a href="/" class="back-link">← Back to home</a>
+</nav>
+
+<main>
+  <div class="auth-card">
+    <h1 id="card-title">Welcome back</h1>
+    <p class="sub" id="card-sub">Sign in to access your visibility dashboard.</p>
+
+    <!-- LOG IN (accounts are created at checkout — there is no standalone sign-up) -->
+    <div class="form-panel active" id="panel-login">
+      <label class="field-label" for="li-email">Email Address</label>
+      <input class="field-input" id="li-email" type="email" placeholder="you@example.com" autocomplete="email">
+
+      <label class="field-label" for="li-pass">Password</label>
+      <input class="field-input" id="li-pass" type="password" placeholder="Your password" autocomplete="current-password">
+
+      <button class="submit-btn" id="li-btn" onclick="doLogin()">Log In</button>
+      <div class="msg" id="li-msg"></div>
+
+      <div class="switch-link" style="margin-top:.9rem">
+        <a href="#" onclick="showForgot(event)">Forgot password?</a>
+      </div>
+    </div>
+
+    <!-- FORGOT PASSWORD -->
+    <div class="form-panel" id="panel-forgot">
+      <label class="field-label" for="fp-email">Email Address</label>
+      <input class="field-input" id="fp-email" type="email" placeholder="you@example.com" autocomplete="email">
+
+      <button class="submit-btn" id="fp-btn" onclick="doForgot()">Send reset link</button>
+      <div class="msg" id="fp-msg"></div>
+
+      <div class="switch-link" style="margin-top:.9rem">
+        <a href="#" onclick="showLogin(event)">← Back to login</a>
+      </div>
+    </div>
+
+    <div class="switch-link" style="margin-top:1.25rem">
+      Don't have an account yet?<br>
+      <a href="/pages/pricing.html">Choose a plan to get started →</a>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <a href="/pages/privacy.html">Privacy</a> &nbsp;·&nbsp; <a href="/pages/terms.html">Terms</a>
+</footer>
+
+<script>
+var _supabase = null;
+var _returnTo = null;
+var _plan     = null;
+
+async function initSupabase() {
+  var params = new URLSearchParams(window.location.search);
+  _returnTo  = params.get('return_to') || 'dashboard';
+  _plan      = params.get('plan') || null;
+
+  try {
+    var cfg = await fetch('/api/client-config').then(function(r){ return r.json(); });
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      _supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+
+      // Only auto-redirect an already-logged-in user when they are mid-purchase
+      // (arrived via a plan / checkout link). When they deliberately click Log In or
+      // Sign Up, DO NOT bounce them away — show the form so they can switch accounts.
+      var s = await _supabase.auth.getSession();
+      if (s.data.session && intentDestination()) {
+        storeTokens(s.data.session);
+        window.location.replace(intentDestination());
+        return;
+      }
+    }
+  } catch(e) {
+    console.error('Supabase init error', e);
+  }
+
+  // Login-only page — accounts are created at checkout, not here.
+}
+
+function showMsg(id, text, type) {
+  var el = document.getElementById(id);
+  el.textContent = text;
+  el.className   = 'msg ' + type;
+}
+
+function setLoading(btnId, loading) {
+  var btn = document.getElementById(btnId);
+  btn.disabled   = loading;
+  btn.textContent = loading ? 'Signing in…' : 'Log In';
+}
+
+function storeTokens(session) {
+  localStorage.setItem('tdm_access_token',  session.access_token);
+  localStorage.setItem('tdm_refresh_token', session.refresh_token);
+  localStorage.setItem('tdm_user_id',       session.user.id);
+  localStorage.setItem('tdm_user_email',    session.user.email);
+}
+
+// Destination implied by an explicit purchase intent (plan / return_to params).
+// Returns a checkout URL when the user is mid-purchase, otherwise null.
+function intentDestination() {
+  if (_returnTo === 'checkout' || _plan === 'audit')   return '/pages/checkout.html';
+  if (_returnTo === 'checkout-subscription' || _plan === 'monitor') return '/pages/checkout-subscription.html';
+  return null;
+}
+
+// Route to the right page after login or page-load with an existing session.
+// All navigations use replace() so auth.html never lingers in back-button history.
+//   viaSignup = true  → brand-new account → Pricing / Plan Selection (both plans)
+//   purchase intent   → matching checkout page
+//   otherwise         → route by the user's actual plan
+async function routeAfterAuth(session, viaSignup) {
+  storeTokens(session);
+
+  // A purchase intent (clicked a specific plan) always wins — go straight to checkout.
+  var intent = intentDestination();
+  if (intent) { window.location.replace(intent); return; }
+
+  if (viaSignup) {
+    // Generic new account with no chosen plan → Pricing / Plan Selection (both plans).
+    window.location.replace('/pages/pricing.html');
+    return;
+  }
+
+  // Plain login → route by the user's real plan
+  try {
+    var profile = await fetch('/api/user/me', {
+      headers: { 'Authorization': 'Bearer ' + session.access_token }
+    }).then(function(r){ return r.json(); });
+
+    var plan = profile && profile.plan ? profile.plan : 'free';
+    if (plan === 'monitor') {
+      window.location.replace('/dashboard.html');
+    } else if (plan === 'audit') {
+      window.location.replace('/pages/audit-history.html');
+    } else {
+      window.location.replace('/pages/pricing.html');
+    }
+  } catch(e) {
+    window.location.replace('/pages/pricing.html');
+  }
+}
+
+async function doLogin() {
+  var email = document.getElementById('li-email').value.trim();
+  var pass  = document.getElementById('li-pass').value;
+
+  if (!email) { showMsg('li-msg', 'Email is required.', 'error'); return; }
+  if (!pass)  { showMsg('li-msg', 'Password is required.', 'error'); return; }
+
+  setLoading('li-btn', true);
+  showMsg('li-msg', '', '');
+
+  try {
+    if (!_supabase) {
+      showMsg('li-msg', 'Auth service unavailable.', 'error');
+      setLoading('li-btn', false);
+      return;
+    }
+    var { data, error } = await _supabase.auth.signInWithPassword({ email, password: pass });
+    if (error || !data.session) {
+      showMsg('li-msg', error?.message || 'Invalid email or password.', 'error');
+      setLoading('li-btn', false);
+      return;
+    }
+    await routeAfterAuth(data.session, false);
+
+  } catch(e) {
+    showMsg('li-msg', 'Network error. Please try again.', 'error');
+    setLoading('li-btn', false);
+  }
+}
+
+// ── Forgot-password flow ───────────────────────────────────────────────────
+function showForgot(e) {
+  if (e) e.preventDefault();
+  document.getElementById('panel-login').classList.remove('active');
+  document.getElementById('panel-forgot').classList.add('active');
+  document.getElementById('card-title').textContent = 'Reset your password';
+  document.getElementById('card-sub').textContent   = 'We\'ll email you a secure link to set a new password.';
+  var li = document.getElementById('li-email').value.trim();
+  if (li) document.getElementById('fp-email').value = li;
+}
+
+function showLogin(e) {
+  if (e) e.preventDefault();
+  document.getElementById('panel-forgot').classList.remove('active');
+  document.getElementById('panel-login').classList.add('active');
+  document.getElementById('card-title').textContent = 'Welcome back';
+  document.getElementById('card-sub').textContent   = 'Sign in to access your dashboard.';
+}
+
+async function doForgot() {
+  var email = document.getElementById('fp-email').value.trim();
+  if (!email) { showMsg('fp-msg', 'Email is required.', 'error'); return; }
+  if (!_supabase) { showMsg('fp-msg', 'Auth service unavailable.', 'error'); return; }
+
+  var btn = document.getElementById('fp-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  showMsg('fp-msg', '', '');
+
+  try {
+    var redirectTo = window.location.origin + '/pages/reset-password.html';
+    var { error } = await _supabase.auth.resetPasswordForEmail(email, { redirectTo: redirectTo });
+    // Always show success to avoid leaking which emails are registered.
+    if (error && !/rate|limit/i.test(error.message || '')) {
+      console.warn('resetPasswordForEmail:', error.message);
+    }
+    showMsg('fp-msg', 'If an account exists for ' + email + ', a password reset link is on its way. Check your inbox.', 'success');
+  } catch (e) {
+    showMsg('fp-msg', 'Network error. Please try again.', 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Send reset link';
+}
+
+// Enter key support
+document.addEventListener('keydown', function(e){
+  if (e.key !== 'Enter') return;
+  var fp = document.getElementById('panel-forgot');
+  if (fp && fp.classList.contains('active')) doForgot();
+  else doLogin();
+});
+
+initSupabase();
+</script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -8,156 +8,267 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{
-  --navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;
-  --warm:#F7F6F3;--white:#fff;--slate:#3D4D5C;--slate-light:#6B7A8D;--slate-muted:#9aabba;
-  --border:#E2E8F0;--red:#DC2626;--red-light:#FEF2F2;--amber:#D97706;--amber-light:#FFFBEB;
-  --sidebar:220px;
+  --navy:#0A2540;--navy-2:#142E50;--green:#00A878;--green-dark:#007a57;
+  --green-light:#e6f7f2;--warm:#F7F6F3;--warm-2:#FEFCF7;--slate:#3D4D5C;
+  --slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0;
+  --red:#DC2626;--red-light:#FEF2F2;--amber:#D97706;--amber-light:#FFFBEB;
+  --blue:#0C447C;--blue-light:#E6F1FB;--purple:#5b3fb8;--purple-light:#EEEDFE;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'DM Sans',system-ui,sans-serif;background:var(--warm);color:var(--slate);-webkit-font-smoothing:antialiased;min-height:100vh}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);-webkit-font-smoothing:antialiased;line-height:1.55;font-size:14px}
 
-/* ── AUTH GATE ── */
-.auth-gate{display:none;position:fixed;inset:0;background:var(--navy);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:1.5rem;padding:2rem;text-align:center}
+/* ── AUTH GATE ─────────────────────────────────────────────────────────── */
+.auth-gate{display:none;position:fixed;inset:0;background:var(--navy);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:1rem;padding:2rem;text-align:center}
 .auth-gate.show{display:flex}
-.auth-gate .logo{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.02em;margin-bottom:8px}
+.auth-gate .logo{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.02em}
 .auth-gate .logo span{color:var(--green)}
-.auth-gate h2{font-size:1.5rem;font-weight:700;color:#fff;max-width:360px}
-.auth-gate p{font-size:14px;color:rgba(255,255,255,.6);max-width:340px;line-height:1.6}
-.auth-form{width:100%;max-width:340px;display:flex;flex-direction:column;gap:8px}
-.auth-input{background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 14px;font-size:14px;color:#fff;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
-.auth-input::placeholder{color:rgba(255,255,255,.35)}
-.auth-input:focus{border-color:var(--green)}
-.auth-btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s}
-.auth-btn:hover{background:var(--green-dark)}
-.auth-err{font-size:12px;color:#FCA5A5;display:none}
-.auth-err.on{display:block}
-.auth-note{font-size:12px;color:rgba(255,255,255,.35)}
+.auth-gate h2{font-size:1.25rem;font-weight:700;color:#fff}
+.auth-gate p{font-size:13px;color:rgba(255,255,255,.55)}
 
-/* ── LAYOUT ── */
-.layout{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
+/* ── LAYOUT ─────────────────────────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:#fff;border-right:.5px solid var(--border);padding:1.5rem 1rem;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:8px;margin-bottom:1rem;text-decoration:none;color:var(--navy)}
+.brand-mark{width:28px;height:28px;flex-shrink:0}
+.brand-name{font-size:1rem;font-weight:700;letter-spacing:-.02em}
+.brand-name span{color:var(--green)}
+.brand-tier{font-size:10px;color:var(--green-dark);font-weight:700;background:var(--green-light);padding:2px 7px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;margin-left:6px}
+.brand-tier.audit{background:var(--warm);color:var(--slate-light)}
 
-/* ── SIDEBAR ── */
-.sidebar{background:var(--navy);padding:0;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
-.sidebar-logo{padding:1.25rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
-.sidebar-logo .logo-text{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
-.sidebar-logo .logo-text span{color:var(--green)}
-.sidebar-logo .plan-badge{font-size:10px;font-weight:600;background:var(--green);color:#fff;padding:2px 8px;border-radius:20px;margin-top:4px;display:inline-block}
-.sidebar-doctor{padding:1rem 1.5rem;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
-.sidebar-av{width:36px;height:36px;border-radius:50%;background:rgba(0,168,120,.3);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;margin-bottom:6px}
-.sidebar-name{font-size:13px;font-weight:600;color:#fff;line-height:1.3}
-.sidebar-spec{font-size:11px;color:rgba(255,255,255,.45)}
-.sidebar-nav{flex:1;padding:1rem 0}
-.nav-section{padding:0 1.5rem;margin-bottom:.5rem}
-.nav-section-label{font-size:10px;font-weight:600;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;margin-top:12px}
-.nav-item{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:13px;color:rgba(255,255,255,.6);cursor:pointer;transition:all .15s;text-decoration:none;margin-bottom:2px;border:none;background:none;width:100%;font-family:'DM Sans',sans-serif;text-align:left}
-.nav-item:hover{background:rgba(255,255,255,.07);color:#fff}
-.nav-item.active{background:rgba(0,168,120,.18);color:var(--green)}
-.nav-item svg{width:16px;height:16px;flex-shrink:0}
-.sidebar-footer{padding:1rem 1.5rem;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
-.upgrade-nudge{background:rgba(255,255,255,.06);border-radius:10px;padding:12px;text-align:center}
-.upgrade-nudge p{font-size:12px;color:rgba(255,255,255,.55);line-height:1.5;margin-bottom:8px}
-.upgrade-nudge button{background:var(--green);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%}
+.doctor-info{background:var(--warm);border-radius:10px;padding:10px 12px;margin-bottom:1.25rem}
+.doctor-av{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:6px}
+.doctor-name{font-size:13px;font-weight:700;color:var(--navy);line-height:1.3}
+.doctor-spec{font-size:11px;color:var(--slate-light);margin-top:1px}
 
-/* ── MAIN ── */
-.main{padding:2rem;max-width:900px}
-.page-header{margin-bottom:1.75rem}
-.page-header h1{font-size:1.5rem;font-weight:700;color:var(--navy);letter-spacing:-.02em;margin-bottom:4px}
-.page-header p{font-size:14px;color:var(--slate-light)}
-.last-updated{font-size:12px;color:var(--slate-muted);margin-top:2px}
+.nav-section-label{font-size:10px;font-weight:600;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.07em;padding:.5rem .5rem .25rem}
+.nav-link{display:flex;align-items:center;gap:8px;padding:.5rem .65rem;border-radius:7px;color:var(--slate);text-decoration:none;font-size:13px;font-weight:500;margin:1px 0;transition:background .12s,color .12s}
+.nav-link:hover{background:var(--warm)}
+.nav-link.active{background:var(--green-light);color:var(--green-dark)}
+.nav-link .icon{width:14px;height:14px;flex-shrink:0;opacity:.7}
+.nav-badge{margin-left:auto;font-size:10px;background:var(--red);color:#fff;border-radius:20px;padding:1px 6px;font-weight:600}
+.nav-lock{margin-left:auto;font-size:10px;color:var(--slate-muted)}
 
-/* ── SECTIONS ── */
-.dash-section{display:none}
-.dash-section.active{display:block}
+.sidebar-footer{margin-top:auto;padding-top:1rem;border-top:.5px solid var(--border)}
+.sidebar-footer a,.sidebar-footer button{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--slate-light);text-decoration:none;padding:6px 4px;background:none;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;border-radius:6px;width:100%}
+.sidebar-footer a:hover,.sidebar-footer button:hover{color:var(--red);background:var(--red-light)}
 
-/* ── KPI ROW ── */
-.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:1.5rem}
-.kpi{background:var(--white);border-radius:14px;padding:1.25rem;border:1px solid var(--border)}
-.kpi-label{font-size:11px;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
-.kpi-value{font-size:2rem;font-weight:700;color:var(--navy);letter-spacing:-.04em;line-height:1;font-family:'DM Mono',monospace}
-.kpi-change{font-size:12px;font-weight:500;margin-top:5px;display:flex;align-items:center;gap:3px}
-.kc-up{color:#085041}
-.kc-down{color:var(--red)}
-.kc-same{color:var(--slate-muted)}
+main{padding:1.5rem 2rem 4rem;max-width:1200px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:1rem}
+.topbar-left h1{font-size:1.5rem;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.topbar-left .topbar-sub{font-size:13px;color:var(--slate-light);margin-top:2px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.week-pill{font-size:12px;font-weight:600;color:var(--slate);background:#fff;border:.5px solid var(--border);border-radius:20px;padding:5px 12px}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0}
 
-/* ── SCORE CHART ── */
-.chart-card{background:var(--white);border-radius:14px;padding:1.25rem;border:1px solid var(--border);margin-bottom:1.25rem}
-.chart-card h3{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1.25rem}
-.chart-wrap{position:relative;height:200px}
+/* ── SECTION COMMON ─────────────────────────────────────────────────────── */
+.section{margin-bottom:1.5rem;scroll-margin-top:1rem}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:1rem}
+.section-title{font-size:1.05rem;font-weight:700;color:var(--navy);letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.section-title .tag{font-size:9px;font-weight:700;background:var(--green-light);color:var(--green-dark);padding:2px 7px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase}
+.section-title .tag.new{background:#FFE9F0;color:#B83260}
+.section-action{font-size:12px;color:var(--slate-light);font-weight:500;text-decoration:none;cursor:pointer}
+.section-action:hover{color:var(--green-dark)}
+.card{background:#fff;border-radius:14px;padding:1.25rem 1.5rem;border:.5px solid var(--border)}
 
-/* ── ALERTS ── */
-.alerts-list{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
-.alert-item{background:var(--white);border-radius:12px;padding:1rem 1.25rem;border:1px solid var(--border);display:flex;align-items:flex-start;gap:12px}
-.alert-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px}
-.ai-red{background:var(--red-light)}
-.ai-amber{background:var(--amber-light)}
-.ai-green{background:var(--green-light)}
-.alert-body h4{font-size:13px;font-weight:600;color:var(--navy);margin-bottom:2px}
-.alert-body p{font-size:12px;color:var(--slate-light);line-height:1.5}
-.alert-time{font-size:11px;color:var(--slate-muted);margin-left:auto;flex-shrink:0;padding-top:2px}
-.no-alerts{background:var(--white);border-radius:12px;padding:2rem;text-align:center;border:1px solid var(--border)}
-.no-alerts p{font-size:14px;color:var(--slate-light)}
+/* ── LOCKED SECTIONS ─────────────────────────────────────────────────────── */
+.locked-card{background:#fff;border:2px dashed var(--border);border-radius:14px;padding:3rem 2rem;text-align:center}
+.locked-card .lock-icon{font-size:2.5rem;margin-bottom:.75rem}
+.locked-card h3{font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:.4rem}
+.locked-card p{font-size:.85rem;color:var(--slate-light);margin-bottom:1.25rem;max-width:340px;margin-left:auto;margin-right:auto;line-height:1.6}
+.locked-btn{display:inline-block;background:var(--navy);color:#fff;padding:10px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.88rem;transition:background .15s}
+.locked-btn:hover{background:var(--green)}
 
-/* ── RANK TRACKER ── */
-.rank-card{background:var(--white);border-radius:14px;padding:1.25rem;border:1px solid var(--border);margin-bottom:1.25rem}
-.rank-card h3{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem}
-.rank-row{display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:0.5px solid var(--border)}
-.rank-row:last-child{border-bottom:none}
-.rr-query{flex:1;font-size:13px;color:var(--slate);font-family:'DM Mono',monospace}
-.rr-pos{font-size:18px;font-weight:700;color:var(--navy);min-width:36px;text-align:center;font-family:'DM Mono',monospace}
-.rr-pos.t3{color:#085041}
-.rr-pos.t5{color:#633806}
-.rr-pos.low{color:var(--red)}
-.rr-change{font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
-.rrc-up{background:var(--green-light);color:#085041}
-.rrc-dn{background:var(--red-light);color:var(--red)}
-.rrc-eq{background:var(--warm);color:var(--slate-muted)}
+/* ── EMPTY STATES ─────────────────────────────────────────────────────────── */
+.empty-card{background:#fff;border-radius:14px;padding:2.5rem 2rem;text-align:center;border:.5px solid var(--border)}
+.empty-icon{font-size:2rem;margin-bottom:.75rem}
+.empty-title{font-size:.95rem;font-weight:700;color:var(--navy);margin-bottom:.35rem}
+.empty-sub{font-size:.8rem;color:var(--slate-light);line-height:1.6;max-width:300px;margin:0 auto}
 
-/* ── COMPETITOR TABLE ── */
-.comp-card{background:var(--white);border-radius:14px;padding:1.25rem;border:1px solid var(--border);margin-bottom:1.25rem;overflow-x:auto}
-.comp-card h3{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem}
-table.ctbl{width:100%;border-collapse:collapse;font-size:13px}
-.ctbl th{font-size:11px;font-weight:600;color:var(--slate-light);text-transform:uppercase;letter-spacing:.05em;padding:7px 10px;background:var(--warm);text-align:left;white-space:nowrap}
-.ctbl td{padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--slate)}
-.ctbl tr.you td{background:rgba(0,168,120,.05);font-weight:500}
-.ctbl td.win{color:#085041;font-weight:600}
-.ctbl td.lose{color:var(--red)}
-.score-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
-.sb-you{background:var(--green-light);color:#085041}
-.sb-them{background:var(--red-light);color:var(--red)}
+/* ── 1. CAMPAIGN BANNER ─────────────────────────────────────────────────── */
+.campaign-banner{background:linear-gradient(135deg,#3a1c71 0%,#9b5fb8 50%,#d76d77 100%);color:#fff;border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.campaign-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06)}
+.campaign-banner::after{content:'';position:absolute;bottom:-80px;left:-30px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+.campaign-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.65);margin-bottom:6px;position:relative;display:flex;align-items:center;gap:8px}
+.campaign-eyebrow::before{content:'';width:6px;height:6px;background:#fff;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.campaign-title{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin-bottom:6px;position:relative}
+.campaign-sub{font-size:14px;color:rgba(255,255,255,.75);line-height:1.55;max-width:600px;margin-bottom:14px;position:relative}
+.campaign-cta{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#7b3380;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;position:relative;transition:transform .15s}
+.campaign-cta:hover{transform:translateY(-1px)}
+.campaign-activating{background:rgba(255,255,255,.08);border-radius:10px;padding:14px 18px;position:relative;font-size:13px;color:rgba(255,255,255,.75);margin-top:10px}
 
-/* ── SENTIMENT ── */
-.sentiment-card{background:var(--white);border-radius:14px;padding:1.25rem;border:1px solid var(--border);margin-bottom:1.25rem}
-.sentiment-card h3{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.07em;margin-bottom:1rem}
-.sentiment-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
-.sg-col h4{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
-.sg-col.pos h4{color:#085041}
-.sg-col.neg h4{color:var(--red)}
-.word-cloud{display:flex;flex-wrap:wrap;gap:6px}
-.wc-tag{padding:4px 11px;border-radius:20px;font-size:13px;font-weight:500}
-.wc-pos{background:var(--green-light);color:#085041}
-.wc-neg{background:var(--red-light);color:var(--red)}
-.wc-lg{font-size:15px;padding:5px 14px}
-.wc-sm{font-size:12px;padding:3px 9px}
+/* ── 2. SCORE HERO ──────────────────────────────────────────────────────── */
+.hero-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.score-hero{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;border-radius:14px;padding:1.5rem;position:relative;overflow:hidden}
+.score-hero::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:rgba(0,168,120,.08)}
+.sh-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:8px;position:relative}
+.sh-num{font-size:3.5rem;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.04em;line-height:1;position:relative}
+.sh-out{font-size:1.4rem;color:rgba(255,255,255,.4);font-weight:500}
+.sh-delta{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;margin-top:10px;position:relative}
+.delta-up{background:rgba(0,168,120,.2);color:#6EE7C0}
+.delta-down{background:rgba(220,38,38,.2);color:#FCA5A5}
+.delta-same{background:rgba(255,255,255,.1);color:rgba(255,255,255,.55)}
+.sh-meta{font-size:11px;color:rgba(255,255,255,.5);margin-top:8px;position:relative}
+.kpi-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-light);margin-bottom:6px}
+.kpi-num{font-size:1.6rem;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;color:var(--navy);line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--slate-light);margin-top:4px}
+.kpi-delta{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px;margin-top:6px}
+.kpi-delta.up{background:var(--green-light);color:var(--green-dark)}
+.kpi-delta.down{background:var(--red-light);color:#991B1B}
+.kpi-delta.same{background:var(--warm);color:var(--slate-muted)}
 
-/* ── WEEKLY REPORTS ── */
+/* ── 3. AI TRACKER ──────────────────────────────────────────────────────── */
+.ai-tracker-card{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;border-radius:14px;padding:1.5rem;position:relative;overflow:hidden}
+.ai-tracker-card::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(0,168,120,.06);pointer-events:none}
+.ai-tracker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;position:relative}
+.ai-platform-card{background:rgba(255,255,255,.06);border-radius:10px;padding:14px 12px;border:.5px solid rgba(255,255,255,.08)}
+.ai-pc-name{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:4px}
+.ai-pc-rank{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:8px;font-family:'DM Mono',monospace}
+.ai-pc-rank .pos{font-size:1.8rem}
+.ai-pc-rank .of{font-size:10px;color:rgba(255,255,255,.4)}
+.ai-pc-trend{font-size:10px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:4px}
+.ai-pc-trend .up{color:#6EE7C0;font-weight:700}
+.ai-pc-trend .same{color:rgba(255,255,255,.4)}
+.ai-tracker-info{font-size:11px;color:rgba(255,255,255,.5);margin-top:14px;position:relative;line-height:1.6;border-top:.5px solid rgba(255,255,255,.08);padding-top:10px}
+
+/* ── 4. TREND CHART ─────────────────────────────────────────────────────── */
+.chart-container{position:relative;height:240px;margin-top:8px}
+
+/* ── 5. COMPETITOR WATCHLIST ────────────────────────────────────────────── */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.comp-grid.you-row{grid-template-columns:1fr}
+.comp-card-v6{background:#fff;border-radius:12px;padding:1rem;border:.5px solid var(--border);position:relative}
+.comp-card-v6.is-you{border-color:var(--green);background:var(--green-light)}
+.comp-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;line-height:1.3;padding-right:60px}
+.comp-rank-pill{position:absolute;top:1rem;right:1rem;font-size:10px;font-weight:700;background:var(--blue-light);color:var(--blue);padding:2px 8px;border-radius:20px}
+.comp-rank-pill.you{background:var(--green-light);color:var(--green-dark)}
+.comp-score{font-size:1.5rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--navy);letter-spacing:-.02em;margin-bottom:8px}
+.comp-score .of{font-size:10px;color:var(--slate-muted);font-weight:500}
+.comp-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;font-size:11px;color:var(--slate)}
+.comp-stat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:.5px solid var(--border)}
+.comp-stat:last-child,.comp-stat:nth-last-child(2){border-bottom:none}
+.comp-stat-label{color:var(--slate-light)}
+.comp-stat-val{font-weight:600;color:var(--navy);font-family:'DM Mono',monospace}
+.comp-stat-val.up{color:var(--green-dark)}
+.comp-stat-val.down{color:var(--red)}
+.no-comps{background:#fff;border-radius:14px;padding:2rem;text-align:center;border:.5px solid var(--border);font-size:13px;color:var(--slate-light)}
+
+/* ── 6. ALERTS FEED ─────────────────────────────────────────────────────── */
+.alert-feed{background:#fff;border-radius:14px;padding:1rem 1.25rem;border:.5px solid var(--border)}
+.alert-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ai-rev{background:#FFE9F0;color:#B83260}
+.ai-rank{background:var(--amber-light);color:var(--amber)}
+.ai-post{background:var(--green-light);color:var(--green-dark)}
+.alert-body{flex:1}
+.alert-text{font-size:13px;color:var(--slate);line-height:1.5}
+.alert-text strong{color:var(--navy);font-weight:600}
+.alert-time{font-size:10px;color:var(--slate-muted);margin-top:2px}
+.alert-impact{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--warm);color:var(--slate-light);white-space:nowrap;flex-shrink:0;margin-top:2px}
+
+/* ── 7. TASKS ───────────────────────────────────────────────────────────── */
+.tasks-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.tasks-summary{display:flex;align-items:center;justify-content:space-between;padding-bottom:.75rem;margin-bottom:.5rem;border-bottom:.5px solid var(--border)}
+.tasks-completed{font-size:12px;color:var(--slate-light)}
+.tasks-completed strong{color:var(--navy);font-weight:700;font-family:'DM Mono',monospace}
+.tasks-est-gain{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--green-light);color:var(--green-dark)}
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:.5px solid var(--border)}
+.task-row:last-child{border-bottom:none}
+.task-checkbox{width:18px;height:18px;border:1.5px solid var(--slate-muted);border-radius:5px;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:transparent;transition:all .15s}
+.task-checkbox.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-body{flex:1}
+.task-title{font-size:13px;color:var(--slate);font-weight:500;line-height:1.45}
+.task-title.done{text-decoration:line-through;color:var(--slate-muted)}
+.task-meta{font-size:10px;color:var(--slate-muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.task-pts{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--green-light);color:var(--green-dark);white-space:nowrap;flex-shrink:0;margin-top:2px}
+
+/* ── 8. CONTENT PACK ────────────────────────────────────────────────────── */
+.content-pack-card{background:linear-gradient(135deg,#0F2D4D 0%,#1a3d6b 100%);color:#fff;border-radius:14px;padding:1.25rem 1.5rem;position:relative;overflow:hidden}
+.content-pack-card::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(0,168,120,.04)}
+.cp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;position:relative}
+.cp-title{font-size:1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.cp-title-tag{font-size:9px;font-weight:700;background:rgba(0,168,120,.2);color:#6EE7C0;padding:2px 8px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase}
+.cp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative}
+.cp-item{background:rgba(255,255,255,.05);border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.06)}
+.cp-platform{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.cp-platform-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.cp-headline{font-size:11px;color:#fff;font-weight:600;margin-bottom:3px;line-height:1.35}
+.cp-preview{font-size:10px;color:rgba(255,255,255,.55);line-height:1.4}
+.cp-footer{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;font-size:11px;color:rgba(255,255,255,.5);position:relative}
+
+/* ── 9. REVIEW GROWTH ───────────────────────────────────────────────────── */
+.review-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.review-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1rem;flex-wrap:wrap}
+.review-stat-label{font-size:10px;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.review-stat-num{font-size:1.5rem;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;line-height:1}
+.review-stat-sub{font-size:10px;color:var(--slate-light);margin-top:2px}
+.review-bar-wrap{height:8px;background:var(--warm);border-radius:4px;overflow:hidden;margin:6px 0}
+.review-bar{height:100%;background:linear-gradient(90deg,var(--green) 0%,var(--green-dark) 100%);border-radius:4px;transition:width .8s ease}
+.review-cta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.review-cta{background:var(--warm);border-radius:8px;padding:8px 10px;cursor:pointer;transition:background .15s;text-decoration:none;color:var(--slate);font-size:11px;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px;border:none;font-family:'DM Sans',sans-serif}
+.review-cta:hover{background:var(--green-light);color:var(--green-dark)}
+
+/* ── 10. REPUTATION ─────────────────────────────────────────────────────── */
+.reputation-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border);border-left:3px solid var(--amber)}
+.rep-alert-row{display:flex;align-items:flex-start;gap:10px;padding:.75rem 0;border-bottom:.5px solid var(--border)}
+.rep-alert-row:last-child{border-bottom:none}
+.rep-alert-row:first-child{padding-top:0}
+.rep-stars{font-size:13px;color:var(--amber);letter-spacing:1px;flex-shrink:0;margin-top:1px}
+.rep-content{flex:1}
+.rep-title{font-size:13px;color:var(--navy);font-weight:600;line-height:1.4;margin-bottom:3px}
+.rep-snippet{font-size:11px;color:var(--slate-light);font-style:italic;line-height:1.45;margin-bottom:6px}
+.rep-suggested{background:var(--green-light);border-radius:6px;padding:6px 9px;font-size:11px;color:var(--green-dark);line-height:1.45}
+.rep-suggested strong{font-weight:600;display:block;margin-bottom:2px;text-transform:uppercase;font-size:9px;letter-spacing:.05em}
+
+/* ── 11. SEO HEALTH ─────────────────────────────────────────────────────── */
+.seo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.seo-card{background:#fff;border-radius:10px;padding:.75rem 1rem;border:.5px solid var(--border);text-align:center}
+.seo-icon{font-size:18px;margin-bottom:4px}
+.seo-name{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:3px}
+.seo-status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.seo-status.ok{background:var(--green-light);color:var(--green-dark)}
+.seo-status.warn{background:var(--amber-light);color:var(--amber)}
+.seo-status.err{background:var(--red-light);color:#991B1B}
+.seo-status.na{background:var(--warm);color:var(--slate-muted)}
+
+/* ── 12. ROADMAP ────────────────────────────────────────────────────────── */
+.roadmap-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.roadmap-row{display:grid;grid-template-columns:90px 1fr;gap:1rem;padding:.875rem 0;border-bottom:.5px solid var(--border)}
+.roadmap-row:last-child{border-bottom:none}
+.roadmap-phase{font-size:9px;font-weight:700;color:#fff;background:var(--navy);padding:5px;border-radius:8px;text-align:center;letter-spacing:.05em;height:fit-content}
+.roadmap-phase.p2{background:var(--green-dark)}
+.roadmap-phase.p3{background:var(--purple)}
+.roadmap-phase-days{font-size:10px;font-weight:500;display:block;color:rgba(255,255,255,.7);margin-top:2px;letter-spacing:0;text-transform:none}
+.roadmap-content h4{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.roadmap-content ul{list-style:none}
+.roadmap-content li{font-size:11px;color:var(--slate);padding:2px 0 2px 14px;position:relative;line-height:1.5}
+.roadmap-content li::before{content:'→';position:absolute;left:0;color:var(--green);font-weight:700}
+.roadmap-target{font-size:10px;font-weight:700;color:var(--green-dark);background:var(--green-light);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:6px}
+
+/* ── REPORTS LIST ───────────────────────────────────────────────────────── */
 .reports-list{display:flex;flex-direction:column;gap:8px}
-.report-item{background:var(--white);border-radius:12px;padding:1rem 1.25rem;border:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.report-item{background:#fff;border-radius:12px;padding:1rem 1.25rem;border:.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap}
 .ri-left h4{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:3px}
 .ri-left p{font-size:12px;color:var(--slate-light)}
 .ri-score{text-align:center;flex-shrink:0}
 .ri-score .n{font-size:22px;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;line-height:1}
 .ri-score .l{font-size:10px;color:var(--slate-muted);margin-top:2px}
 .ri-change{font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px}
-.dl-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif}
+.ri-change.up{background:var(--green-light);color:var(--green-dark)}
+.ri-change.down{background:var(--red-light);color:#991B1B}
+.dl-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;display:inline-block}
 .dl-btn:hover{background:var(--green)}
 
-/* ── SETTINGS ── */
-.settings-card{background:var(--white);border-radius:14px;padding:1.5rem;border:1px solid var(--border);margin-bottom:1rem}
+/* ── SETTINGS CARD ──────────────────────────────────────────────────────── */
+.settings-card{background:#fff;border-radius:14px;padding:1.5rem;border:.5px solid var(--border);margin-bottom:1rem}
 .settings-card h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:1rem}
-.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:0.5px solid var(--border)}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:.5px solid var(--border)}
 .setting-row:last-child{border-bottom:none}
 .setting-label{font-size:14px;color:var(--slate)}
 .setting-desc{font-size:12px;color:var(--slate-light);margin-top:2px}
@@ -167,27 +278,120 @@ table.ctbl{width:100%;border-collapse:collapse;font-size:13px}
 .toggle input:checked+.toggle-slider{background:var(--green)}
 .toggle-slider::after{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:transform .2s}
 .toggle input:checked+.toggle-slider::after{transform:translateX(18px)}
-.logout-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;margin-top:12px}
-.logout-btn:hover{border-color:var(--red);color:var(--red)}
 
-/* ── EMPTY STATES ── */
-.empty-state{text-align:center;padding:3rem 1rem}
-.es-icon{font-size:36px;margin-bottom:12px}
-.es-title{font-size:16px;font-weight:700;color:var(--navy);margin-bottom:6px}
-.es-sub{font-size:14px;color:var(--slate-light);line-height:1.6;max-width:320px;margin:0 auto}
+/* ── UPGRADE NUDGE ──────────────────────────────────────────────────────── */
+.upgrade-nudge{background:var(--green-light);border-radius:10px;padding:12px;text-align:center;margin-top:1rem}
+.upgrade-nudge p{font-size:11px;color:var(--green-dark);line-height:1.5;margin-bottom:8px;font-weight:500}
+.upgrade-nudge a{background:var(--navy);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;display:block;text-align:center;text-decoration:none}
 
-/* ── MOBILE ── */
-.mob-menu{display:none;position:fixed;top:0;left:0;right:0;height:56px;background:var(--navy);z-index:200;align-items:center;padding:0 1rem;justify-content:space-between}
-.mob-menu .logo{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
-.mob-menu .logo span{color:var(--green)}
-.mob-toggle{background:none;border:none;color:#fff;cursor:pointer;padding:4px}
-.mob-toggle svg{width:22px;height:22px;display:block}
-@media(max-width:768px){
-  .mob-menu{display:flex}
-  .layout{grid-template-columns:1fr;padding-top:56px}
-  .sidebar{position:fixed;top:56px;left:-100%;width:var(--sidebar);height:calc(100vh - 56px);z-index:150;transition:left .25s}
-  .sidebar.open{left:0}
-  .main{padding:1.25rem}
+/* ── EXEC SUMMARY ───────────────────────────────────────────────────────── */
+.exec-card{background:linear-gradient(135deg,var(--navy) 0%,#1a3a5c 100%);color:#fff;border-radius:14px;padding:1.5rem}
+.exec-headline{font-size:1.15rem;font-weight:700;color:#fff;line-height:1.3;margin-bottom:1rem}
+.exec-priorities{display:flex;flex-direction:column;gap:6px;margin-top:.75rem}
+.exec-priority{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:rgba(255,255,255,.8);line-height:1.5}
+.exec-priority-num{width:20px;height:20px;background:rgba(0,168,120,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#6EE7C0;flex-shrink:0}
+.exec-paras{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.exec-para{font-size:11px;color:rgba(255,255,255,.65);line-height:1.6}
+
+/* ── TASK FIXES (insights.fixes) ────────────────────────────────────────── */
+.task-fix-card{background:#fff;border-radius:12px;padding:1rem 1.25rem;border:.5px solid var(--border);margin-bottom:8px}
+.task-fix-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:8px}
+.task-fix-num{width:24px;height:24px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.task-fix-title{font-size:14px;font-weight:700;color:var(--navy);line-height:1.3}
+.task-fix-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.task-fix-impact{font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.05em}
+.task-fix-impact.high{background:#FFE9F0;color:#B83260}
+.task-fix-impact.medium{background:var(--amber-light);color:var(--amber)}
+.task-fix-impact.low{background:var(--green-light);color:var(--green-dark)}
+.task-fix-time{font-size:9px;color:var(--slate-light);background:var(--warm);padding:2px 7px;border-radius:20px}
+.task-fix-pillar{font-size:9px;color:var(--blue);background:var(--blue-light);padding:2px 7px;border-radius:20px}
+.task-fix-steps{font-size:12px;color:var(--slate);line-height:1.6;margin:8px 0}
+.task-fix-copy{background:var(--warm);border-radius:8px;padding:10px 12px;margin-top:6px}
+.task-fix-copy-label{font-size:9px;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.copy-btn{font-size:10px;font-weight:600;background:var(--navy);color:#fff;border:none;border-radius:4px;padding:2px 8px;cursor:pointer;font-family:'DM Sans',sans-serif}
+.copy-btn.copied{background:var(--green)}
+.task-fix-copy-text{font-size:11px;color:var(--slate);font-family:'DM Mono',monospace;white-space:pre-wrap;word-break:break-word}
+
+/* ── CONTENT PACK ENHANCED ──────────────────────────────────────────────── */
+.cp-body{padding:1rem 0;position:relative}
+.cp-section{margin-bottom:1rem}
+.cp-section-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:rgba(255,255,255,.45);margin-bottom:6px}
+.cp-pillars-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.cp-pillar{background:rgba(255,255,255,.06);border-radius:8px;padding:8px 12px;font-size:12px;color:rgba(255,255,255,.85);border:.5px solid rgba(255,255,255,.08)}
+.cp-reel{background:rgba(255,255,255,.06);border-radius:8px;padding:10px 12px;border:.5px solid rgba(255,255,255,.08);margin-bottom:6px}
+.cp-reel-hook{font-size:12px;font-weight:700;color:#fff;margin-bottom:4px}
+.cp-reel-topic{font-size:11px;color:rgba(255,255,255,.55)}
+.cp-blog{display:flex;align-items:flex-start;gap:8px;font-size:12px;color:rgba(255,255,255,.8);padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.06)}
+.cp-blog:last-child{border-bottom:none}
+.cp-cadence{font-size:11px;color:rgba(255,255,255,.5);margin-top:10px;padding-top:10px;border-top:.5px solid rgba(255,255,255,.08)}
+
+/* ── SEO KEYWORDS ───────────────────────────────────────────────────────── */
+.seo-kw-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.kw-section-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--slate-light);margin-bottom:6px;margin-top:12px}
+.kw-section-label:first-child{margin-top:0}
+.kw-tags{display:flex;flex-wrap:wrap;gap:6px}
+.kw-tag{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.kw-tag.primary{background:var(--navy);color:#fff}
+.kw-tag.secondary{background:var(--blue-light);color:var(--blue)}
+.kw-tag.longtail{background:var(--warm);color:var(--slate)}
+
+/* ── PATIENT JOURNEY ────────────────────────────────────────────────────── */
+.journey-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.journey-stages{display:flex;flex-direction:column;gap:10px}
+.journey-stage{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:flex-start}
+.journey-stage-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.journey-stage-num.winning{background:var(--green-light);color:var(--green-dark)}
+.journey-stage-num.losing{background:var(--red-light);color:#991B1B}
+.journey-stage-num.neutral{background:var(--warm);color:var(--slate)}
+.journey-stage-body{}
+.journey-stage-name{font-size:13px;font-weight:700;color:var(--navy);line-height:1.3}
+.journey-stage-touch{font-size:11px;color:var(--slate-light);margin-top:1px}
+.journey-stage-gap{font-size:11px;color:var(--red);margin-top:3px}
+.journey-stage-win{font-size:11px;color:var(--green-dark);margin-top:3px}
+.journey-status-badge{font-size:9px;font-weight:700;padding:1px 7px;border-radius:20px;text-transform:uppercase;letter-spacing:.04em;margin-left:6px}
+.journey-status-badge.winning{background:var(--green-light);color:var(--green-dark)}
+.journey-status-badge.losing{background:var(--red-light);color:#991B1B}
+.journey-status-badge.neutral{background:var(--warm);color:var(--slate)}
+
+/* ── COMPETITOR NARRATIVE ───────────────────────────────────────────────── */
+.comp-narrative{background:var(--blue-light);border-radius:10px;padding:12px 14px;margin-top:10px;font-size:12px;color:var(--blue);line-height:1.6;border-left:3px solid var(--blue)}
+.roadmap-projection{text-align:center;margin-top:12px;font-size:12px;color:var(--green-dark);font-weight:600;padding:8px;background:var(--green-light);border-radius:8px}
+
+/* ── REVIEW TEMPLATE MODAL ──────────────────────────────────────────────── */
+.tmpl-modal{position:fixed;inset:0;background:rgba(10,37,64,.7);z-index:500;display:none;align-items:center;justify-content:center;padding:1rem}
+.tmpl-modal.show{display:flex}
+.tmpl-box{background:#fff;border-radius:16px;padding:1.5rem;max-width:500px;width:100%;position:relative}
+.tmpl-close{position:absolute;top:12px;right:12px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--slate-light)}
+.tmpl-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:12px}
+.tmpl-text{font-size:13px;color:var(--slate);line-height:1.7;background:var(--warm);border-radius:8px;padding:12px 14px;white-space:pre-wrap;word-break:break-word}
+.tmpl-copy-row{margin-top:10px;display:flex;justify-content:flex-end}
+.tmpl-copy-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif}
+.tmpl-copy-btn.copied{background:var(--green)}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────── */
+@media(max-width:1100px){
+  .hero-grid{grid-template-columns:1fr 1fr}
+  .comp-grid{grid-template-columns:1fr 1fr}
+  .cp-grid{grid-template-columns:1fr 1fr}
+  .seo-grid{grid-template-columns:repeat(2,1fr)}
+  .review-progress{grid-template-columns:1fr 1fr}
+}
+@media(max-width:720px){
+  .app{grid-template-columns:1fr}
+  aside{position:relative;height:auto;border-right:none;border-bottom:.5px solid var(--border)}
+  /* Collapse the long anchor-nav on mobile — the page scrolls through every section anyway */
+  aside .nav-section-label{display:none}
+  aside .nav-link{display:none}
+  .sidebar-footer{margin-top:.75rem;display:flex;gap:8px;flex-wrap:wrap}
+  main{padding:1rem}
+  .topbar{flex-wrap:wrap}
+  .hero-grid,.comp-grid,.cp-grid,.seo-grid,.ai-tracker-grid,.review-progress,
+  .exec-paras,.cp-pillars-grid,.cp-grid{grid-template-columns:1fr}
+  .review-cta-row{grid-template-columns:1fr}
+}
+@media(max-width:420px){
+  .sh-num{font-size:2.6rem}
+  .seo-grid{grid-template-columns:1fr 1fr}
 }
 </style>
 </head>
@@ -195,483 +399,1215 @@ table.ctbl{width:100%;border-collapse:collapse;font-size:13px}
 
 <!-- AUTH GATE -->
 <div class="auth-gate" id="auth-gate">
-  <div>
-    <div class="logo">The Doc <span>Mirror</span></div>
-    <h2>Sign in to your dashboard</h2>
-    <p>Access your weekly Doctor Visibility Score, competitor tracking, and AI fix suggestions.</p>
-  </div>
-  <div class="auth-form">
-    <input type="email" id="login-email" class="auth-input" placeholder="your@email.com" autocomplete="email">
-    <input type="password" id="login-pass" class="auth-input" placeholder="Password" autocomplete="current-password">
-    <button class="auth-btn" onclick="doLogin()" type="button">Sign in</button>
-    <div class="auth-err" id="auth-err" role="alert">Invalid email or password</div>
-    <div class="auth-note">Monitor subscribers only &middot; <a href="/" style="color:rgba(255,255,255,.5)">Back to free check</a></div>
-  </div>
+  <div class="logo">The Doc <span>Mirror</span></div>
+  <h2>Checking your session&hellip;</h2>
+  <p>Redirecting to sign-in.</p>
 </div>
 
-<!-- MOBILE NAV -->
-<div class="mob-menu">
-  <span class="logo">The Doc <span>Mirror</span></span>
-  <button class="mob-toggle" onclick="toggleSidebar()" type="button" aria-label="Toggle menu">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-</div>
+<div class="app" id="app" style="display:none">
 
-<div class="layout">
+  <!-- ─── SIDEBAR ────────────────────────────────────────────────────────── -->
+  <aside>
+    <a href="/" class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="11.5" stroke="#00A878" stroke-width="2"/><path d="M9 14C9 11 11 9 14 9S19 11 19 14" stroke="#0A2540" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="19" r="2" fill="#00A878"/></svg></div>
+      <div><span class="brand-name">The Doc <span>Mirror</span></span><span class="brand-tier" id="brand-tier">Monitor</span></div>
+    </a>
 
-  <!-- SIDEBAR -->
-  <aside class="sidebar" id="sidebar" role="navigation" aria-label="Dashboard navigation">
-    <div class="sidebar-logo">
-      <div class="logo-text">The Doc <span>Mirror</span></div>
-      <span class="plan-badge" id="plan-badge">Monitor</span>
+    <div class="doctor-info">
+      <div class="doctor-av" id="doc-av">DR</div>
+      <div class="doctor-name" id="doc-name">Loading&hellip;</div>
+      <div class="doctor-spec" id="doc-spec">&mdash;</div>
     </div>
-    <div class="sidebar-doctor">
-      <div class="sidebar-av" id="dash-av">SJ</div>
-      <div class="sidebar-name" id="dash-name">Dr. Sarah Johnson</div>
-      <div class="sidebar-spec" id="dash-spec">Cardiologist &middot; Houston, TX</div>
-    </div>
-    <nav class="sidebar-nav">
-      <div class="nav-section">
-        <div class="nav-section-label">Overview</div>
-        <button class="nav-item active" onclick="showSection('overview',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          Overview
-        </button>
-        <button class="nav-item" onclick="showSection('alerts',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
-          Alerts
-          <span id="alert-count" style="background:var(--red);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;margin-left:auto">3</span>
-        </button>
-      </div>
-      <div class="nav-section">
-        <div class="nav-section-label">Visibility</div>
-        <button class="nav-item" onclick="showSection('rank',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Rank Tracker
-        </button>
-        <button class="nav-item" onclick="showSection('competitors',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-          Competitors
-        </button>
-        <button class="nav-item" onclick="showSection('sentiment',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg>
-          Sentiment
-        </button>
-      </div>
-      <div class="nav-section">
-        <div class="nav-section-label">Reports</div>
-        <button class="nav-item" onclick="showSection('reports',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Weekly Reports
-        </button>
-        <button class="nav-item" onclick="showSection('settings',this)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-          Settings
-        </button>
-      </div>
-    </nav>
+
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-link active" href="#campaign" id="nav-campaign"><span class="icon">📣</span>Topical Campaign</a>
+    <a class="nav-link" href="#exec"><span class="icon">📋</span>Executive Summary</a>
+    <a class="nav-link" href="#score"><span class="icon">📊</span>Visibility Score</a>
+    <a class="nav-link" href="#trend"><span class="icon">📈</span>Score Trend</a>
+    <a class="nav-link" href="#reports"><span class="icon">📄</span>Reports &amp; PDFs</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">AI Intelligence</div>
+    <a class="nav-link" href="#ai-tracker" id="nav-ai"><span class="icon">🤖</span>AI Rank Tracker</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Intelligence</div>
+    <a class="nav-link" href="#competitors"><span class="icon">⚡</span>Competitor Watch</a>
+    <a class="nav-link" href="#alerts" id="nav-alerts"><span class="icon">🔔</span>Change Alerts</a>
+    <a class="nav-link" href="#journey"><span class="icon">🧭</span>Patient Journey</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Action</div>
+    <a class="nav-link" href="#tasks" id="nav-tasks"><span class="icon">✓</span>Priority Fixes</a>
+    <a class="nav-link" href="#content" id="nav-content"><span class="icon">🎬</span>Content Pack</a>
+    <a class="nav-link" href="#reviews" id="nav-reviews"><span class="icon">★</span>Review Growth</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Health</div>
+    <a class="nav-link" href="#reputation" id="nav-reputation"><span class="icon">🛡</span>Review Responses</a>
+    <a class="nav-link" href="#seo"><span class="icon">🔍</span>Local SEO</a>
+    <a class="nav-link" href="#keywords"><span class="icon">🔑</span>SEO Keywords</a>
+    <a class="nav-link" href="#roadmap" id="nav-roadmap"><span class="icon">🗺</span>90-Day Plan</a>
+    <a class="nav-link" href="#settings"><span class="icon">⚙</span>Settings</a>
+
     <div class="sidebar-footer">
-      <a href="/" style="display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.45);text-decoration:none;padding:8px 0">
+      <a href="/">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Run a new check
       </a>
+      <button onclick="doLogout()" type="button">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sign out
+      </button>
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
-  <main class="main">
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────── -->
+  <main>
 
-    <!-- ── OVERVIEW ─────────────────────────────────────────────────────── -->
-    <div class="dash-section active" id="sec-overview">
-      <div class="page-header">
-        <h1>Your visibility overview</h1>
-        <p>Week of <span id="week-label">May 13, 2026</span></p>
-        <div class="last-updated">Last checked: <span id="last-checked">Monday 9:00 AM EST</span></div>
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 id="practice-name">Dashboard</h1>
+        <div class="topbar-sub" id="practice-sub">Loading your data&hellip;</div>
       </div>
+      <div class="topbar-right">
+        <span class="week-pill" id="week-label">&mdash;</span>
+        <div class="avatar" id="topbar-av">DR</div>
+      </div>
+    </div>
 
-      <div class="kpi-row">
-        <div class="kpi">
-          <div class="kpi-label">Doctor Visibility Score</div>
-          <div class="kpi-value" id="kpi-score">68</div>
-          <div class="kpi-change kc-up" id="kpi-score-change">&#8593; +3 from last week</div>
+    <!-- 1. Topical Campaign Banner -->
+    <section id="campaign">
+      <div id="campaign-content"></div>
+    </section>
+
+    <!-- 1b. Executive Summary -->
+    <section id="exec" class="section">
+      <div class="section-head">
+        <div class="section-title">Executive Summary <span class="tag">AI</span></div>
+      </div>
+      <div id="exec-content"></div>
+    </section>
+
+    <!-- 2. Score Hero -->
+    <section id="score">
+      <div class="hero-grid">
+        <div class="score-hero">
+          <div class="sh-label">Doctor Visibility Score &middot; Latest Report</div>
+          <div class="sh-num" id="hero-score">&mdash;<span class="sh-out">/100</span></div>
+          <span class="sh-delta delta-same" id="hero-delta">First report</span>
+          <div class="sh-meta" id="hero-meta">Run your first audit to see your score</div>
         </div>
-        <div class="kpi">
-          <div class="kpi-label">Google Ranking</div>
-          <div class="kpi-value" id="kpi-rank">#2</div>
-          <div class="kpi-change kc-up" id="kpi-rank-change">&#8593; up 1 position</div>
+        <div class="kpi-card">
+          <div class="kpi-label">Google Reviews</div>
+          <div class="kpi-num" id="kpi-reviews">&mdash;</div>
+          <div class="kpi-sub" id="kpi-reviews-sub">Awaiting data</div>
+          <span class="kpi-delta same" id="kpi-reviews-delta">—</span>
         </div>
-        <div class="kpi">
-          <div class="kpi-label">Review Count</div>
-          <div class="kpi-value" id="kpi-reviews">31</div>
-          <div class="kpi-change kc-up" id="kpi-reviews-change">&#8593; +2 this week</div>
-        </div>
-        <div class="kpi">
+        <div class="kpi-card">
           <div class="kpi-label">Star Rating</div>
-          <div class="kpi-value" id="kpi-rating">4.3</div>
-          <div class="kpi-change kc-same" id="kpi-rating-change">&#8212; unchanged</div>
+          <div class="kpi-num" id="kpi-rating">&mdash;</div>
+          <div class="kpi-sub" id="kpi-rating-sub">Google average</div>
+          <span class="kpi-delta same" id="kpi-rating-delta">—</span>
         </div>
       </div>
+    </section>
 
-      <div class="chart-card">
-        <h3>Doctor Visibility Score &mdash; 12 week trend</h3>
-        <div class="chart-wrap">
-          <canvas id="score-chart"></canvas>
+    <!-- 3. Score Trend Chart -->
+    <section id="trend" class="section">
+      <div class="section-head">
+        <div class="section-title">Score Trend</div>
+        <span class="section-action" id="trend-reports-count"></span>
+      </div>
+      <div class="card">
+        <div class="chart-container" id="trend-chart-wrap">
+          <canvas id="trendChart"></canvas>
         </div>
       </div>
+    </section>
 
-      <div class="alerts-list" id="overview-alerts"></div>
-    </div>
+    <!-- 4. Reports & PDFs -->
+    <section id="reports" class="section">
+      <div class="section-head">
+        <div class="section-title">Reports &amp; PDFs</div>
+      </div>
+      <div class="reports-list" id="reports-list">
+        <div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div><div class="empty-sub">After your first paid audit, your PDF will appear here and be emailed to you.</div></div>
+      </div>
+    </section>
 
-    <!-- ── ALERTS ────────────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-alerts">
-      <div class="page-header">
-        <h1>Alerts</h1>
-        <p>Issues and changes that need your attention</p>
+    <!-- 5. AI Rank Tracker -->
+    <section id="ai-tracker" class="section">
+      <div class="section-head">
+        <div class="section-title">AI Search Rank Tracker <span class="tag" id="ai-tag">monitor</span></div>
       </div>
-      <div class="alerts-list" id="alerts-list"></div>
-    </div>
+      <div id="ai-tracker-content"></div>
+    </section>
 
-    <!-- ── RANK TRACKER ──────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-rank">
-      <div class="page-header">
-        <h1>Patient Search Rank Tracker</h1>
-        <p>Where you appear when patients search your specialty in your city</p>
+    <!-- 6. Competitor Watchlist -->
+    <section id="competitors" class="section">
+      <div class="section-head">
+        <div class="section-title">Competitor Watchlist</div>
+        <span class="section-action" id="comp-date"></span>
       </div>
-      <div class="rank-card">
-        <h3>This week&rsquo;s rankings</h3>
-        <div id="rank-list"></div>
-      </div>
-      <div class="chart-card">
-        <h3>Rank position trend &mdash; primary search term</h3>
-        <div class="chart-wrap">
-          <canvas id="rank-chart"></canvas>
-        </div>
-      </div>
-    </div>
+      <div id="comp-grid-wrap"></div>
+    </section>
 
-    <!-- ── COMPETITORS ───────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-competitors">
-      <div class="page-header">
-        <h1>Competitor Intelligence</h1>
-        <p>How you compare to the top practices in your area</p>
+    <!-- 7. Change Alerts -->
+    <section id="alerts" class="section">
+      <div class="section-head">
+        <div class="section-title">Competitor Change Alerts</div>
       </div>
-      <div class="comp-card">
-        <h3>You vs top competitors this week</h3>
-        <table class="ctbl" id="comp-table">
-          <thead><tr><th>Practice</th><th>Score</th><th>Rating</th><th>Reviews</th><th>Photos</th><th>Rank</th></tr></thead>
-          <tbody id="comp-table-body"></tbody>
-        </table>
-      </div>
-    </div>
+      <div id="alerts-content"></div>
+    </section>
 
-    <!-- ── SENTIMENT ─────────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-sentiment">
-      <div class="page-header">
-        <h1>Review Sentiment</h1>
-        <p>What patients consistently say about your practice</p>
+    <!-- 7b. Patient Journey -->
+    <section id="journey" class="section">
+      <div class="section-head">
+        <div class="section-title">Patient Journey Audit <span class="tag">AI</span></div>
       </div>
-      <div class="sentiment-card">
-        <h3>Sentiment heatmap</h3>
-        <div class="sentiment-grid">
-          <div class="sg-col pos">
-            <h4>Patients praise</h4>
-            <div class="word-cloud" id="dash-pos-words"></div>
-          </div>
-          <div class="sg-col neg">
-            <h4>Patients flag</h4>
-            <div class="word-cloud" id="dash-neg-words"></div>
-          </div>
-        </div>
-      </div>
-      <div class="chart-card">
-        <h3>Sentiment trend &mdash; positive vs negative mentions</h3>
-        <div class="chart-wrap">
-          <canvas id="sentiment-chart"></canvas>
-        </div>
-      </div>
-    </div>
+      <div id="journey-content"></div>
+    </section>
 
-    <!-- ── REPORTS ───────────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-reports">
-      <div class="page-header">
-        <h1>Weekly Reports</h1>
-        <p>Your full audit PDF from every Monday check</p>
+    <!-- 8. Priority Fixes -->
+    <section id="tasks" class="section">
+      <div class="section-head">
+        <div class="section-title">Priority Fixes <span class="tag">AI</span></div>
       </div>
-      <div class="reports-list" id="reports-list"></div>
-    </div>
+      <div id="tasks-content"></div>
+    </section>
 
-    <!-- ── SETTINGS ──────────────────────────────────────────────────────── -->
-    <div class="dash-section" id="sec-settings">
-      <div class="page-header">
-        <h1>Settings</h1>
-        <p>Manage your account and notification preferences</p>
+    <!-- 9. Content Pack -->
+    <section id="content" class="section">
+      <div class="section-head">
+        <div class="section-title">This Week's Content Pack</div>
+      </div>
+      <div id="content-content"></div>
+    </section>
+
+    <!-- 10. Review Growth -->
+    <section id="reviews" class="section">
+      <div class="section-head">
+        <div class="section-title">Review Growth Engine</div>
+      </div>
+      <div id="reviews-content"></div>
+    </section>
+
+    <!-- 11. Reputation Monitor -->
+    <section id="reputation" class="section">
+      <div class="section-head">
+        <div class="section-title">Reputation Monitor</div>
+      </div>
+      <div id="reputation-content"></div>
+    </section>
+
+    <!-- 12. Local SEO Health -->
+    <section id="seo" class="section">
+      <div class="section-head">
+        <div class="section-title">Local SEO Health</div>
+      </div>
+      <div class="seo-grid" id="seo-grid"></div>
+    </section>
+
+    <!-- 12b. SEO Keyword Strategy -->
+    <section id="keywords" class="section">
+      <div class="section-head">
+        <div class="section-title">SEO Keyword Strategy <span class="tag">AI</span></div>
+      </div>
+      <div id="keywords-content"></div>
+    </section>
+
+    <!-- 13. Growth Roadmap -->
+    <section id="roadmap" class="section">
+      <div class="section-head">
+        <div class="section-title">30/60/90 Growth Roadmap</div>
+      </div>
+      <div id="roadmap-content"></div>
+    </section>
+
+    <!-- 14. Settings -->
+    <section id="settings" class="section">
+      <div class="section-head">
+        <div class="section-title">Settings</div>
       </div>
       <div class="settings-card">
         <h3>Notifications</h3>
         <div class="setting-row">
-          <div><div class="setting-label">Email when score drops</div><div class="setting-desc">Get alerted immediately if your Doctor Visibility Score drops 3+ points</div></div>
-          <label class="toggle"><input type="checkbox" id="notif-drop" checked><span class="toggle-slider"></span></label>
+          <div><div class="setting-label">Email when score drops</div><div class="setting-desc">Get alerted if your Doctor Visibility Score drops 3+ points</div></div>
+          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
         </div>
         <div class="setting-row">
-          <div><div class="setting-label">Competitor gains a position</div><div class="setting-desc">Alert when a competitor moves above you in local search results</div></div>
-          <label class="toggle"><input type="checkbox" id="notif-comp" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">New negative review</div><div class="setting-desc">Alert when a review below 3 stars is posted to your listing</div></div>
-          <label class="toggle"><input type="checkbox" id="notif-review" checked><span class="toggle-slider"></span></label>
-        </div>
-        <div class="setting-row">
-          <div><div class="setting-label">Weekly report email</div><div class="setting-desc">Receive your full weekly report every Monday at 9:00 AM EST</div></div>
-          <label class="toggle"><input type="checkbox" id="notif-weekly" checked><span class="toggle-slider"></span></label>
+          <div><div class="setting-label">Weekly report email</div><div class="setting-desc">Receive your full report every Monday at 9:00 AM</div></div>
+          <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
         </div>
       </div>
       <div class="settings-card">
         <h3>Account</h3>
         <div class="setting-row">
-          <div><div class="setting-label" id="settings-email">doctor@practice.com</div><div class="setting-desc">Your login email</div></div>
+          <div><div class="setting-label" id="settings-email"></div><div class="setting-desc">Your login email</div></div>
         </div>
         <div class="setting-row">
-          <div><div class="setting-label">Plan</div><div class="setting-desc" id="settings-plan">Monitor &mdash; $49/month &middot; Renews monthly</div></div>
-          <button style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif" onclick="window.location.href='mailto:thedocmirror@gmail.com?subject=Subscription enquiry'">Manage plan</button>
+          <div><div class="setting-label">Plan</div><div class="setting-desc" id="settings-plan"></div></div>
+          <button onclick="window.location.href='mailto:thedocmirror@gmail.com?subject=Subscription enquiry'" style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif" type="button">Manage plan</button>
         </div>
-        <button class="logout-btn" onclick="doLogout()" type="button">Sign out</button>
+        <button onclick="doLogout()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:12px;transition:all .15s" type="button" onmouseover="this.style.borderColor='#DC2626';this.style.color='#DC2626'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--slate)'">Sign out</button>
       </div>
-    </div>
+    </section>
 
   </main>
 </div>
 
 <script>
-// ── DEMO DATA — replaced by real API data once backend is live ─────────────
-var DEMO = {
-  doctor: {name:'Dr. Sarah Johnson',spec:'Cardiologist',city:'Houston, TX',email:'doctor@practice.com',plan:'monitor'},
-  score: 68,
-  scoreHistory: [52,55,54,58,60,62,63,65,64,66,65,68],
-  weekLabels: ['Feb 17','Feb 24','Mar 3','Mar 10','Mar 17','Mar 24','Mar 31','Apr 7','Apr 14','Apr 21','Apr 28','May 5'],
-  rank: {current:2,change:1},
-  reviews: {count:31,change:2},
-  rating: {value:4.3,change:0},
-  rankData: [
-    {query:'cardiologist houston tx',position:2,change:1},
-    {query:'cardiologist near me houston',position:4,change:-1},
-    {query:'heart doctor houston',position:7,change:0},
-    {query:'best cardiologist houston',position:3,change:2}
-  ],
-  rankHistory: [5,5,4,4,3,3,3,2,2,3,2,2],
-  competitors: [
-    {name:'Dr. Sarah Johnson',score:68,rating:4.3,reviews:31,photos:3,rank:2,isYou:true},
-    {name:'Dr. Michael Torres',score:84,rating:4.8,reviews:89,photos:14,rank:1,isYou:false},
-    {name:'Houston Heart Center',score:71,rating:4.4,reviews:47,photos:8,rank:3,isYou:false},
-    {name:'Dr. Linda Chen',score:59,rating:4.1,reviews:22,photos:2,rank:5,isYou:false}
-  ],
-  sentiment: {
-    positive: [{word:'knowledgeable',size:'lg'},{word:'caring',size:'md'},{word:'thorough',size:'md'},{word:'professional',size:'sm'},{word:'listens',size:'sm'},{word:'helpful',size:'sm'}],
-    negative: [{word:'wait time',size:'lg'},{word:'rushed',size:'md'},{word:'billing',size:'sm'}]
-  },
-  sentimentHistory: {
-    pos: [12,14,13,15,16,17,17,18,19,19,21,22],
-    neg: [5,4,5,4,4,3,4,3,3,4,3,3]
-  },
-  alerts: [
-    {type:'red',icon:'⬇',title:'Score dropped 3 points last Tuesday',desc:'Your score fell from 71 to 68. Main cause: Dr. Torres gained 4 new reviews.',time:'5 days ago'},
-    {type:'amber',icon:'⚔',title:'Competitor gained a position',desc:'Dr. Torres moved from #2 to #1 for "cardiologist houston tx" on Wednesday.',time:'4 days ago'},
-    {type:'green',icon:'⭐',title:'2 new 5-star reviews received',desc:'Patients left positive reviews mentioning your bedside manner and expertise.',time:'This week'}
-  ],
-  reports: [
-    {date:'May 5, 2026',score:68,change:'+3',auditId:'rpt_may5'},
-    {date:'Apr 28, 2026',score:65,change:'-1',auditId:'rpt_apr28'},
-    {date:'Apr 21, 2026',score:66,change:'+2',auditId:'rpt_apr21'},
-    {date:'Apr 14, 2026',score:64,change:'+1',auditId:'rpt_apr14'},
-    {date:'Apr 7, 2026',score:63,change:'+1',auditId:'rpt_apr7'}
-  ]
+var _supabase = null, _session = null, _profile = null, _token = null;
+
+// ── AUTH ─────────────────────────────────────────────────────────────────
+async function checkAuth() {
+  try {
+    var cfg = await fetch('/api/client-config').then(function(r){ return r.json(); });
+    if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+      _supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+      var at = localStorage.getItem('tdm_access_token');
+      var rt = localStorage.getItem('tdm_refresh_token');
+      if (at && rt) {
+        var s = await _supabase.auth.setSession({ access_token: at, refresh_token: rt });
+        _session = s.data.session;
+        if (_session) {
+          localStorage.setItem('tdm_access_token', _session.access_token);
+          localStorage.setItem('tdm_refresh_token', _session.refresh_token);
+        }
+      }
+      if (!_session) {
+        var chk = await _supabase.auth.getSession();
+        _session = chk.data.session;
+      }
+    }
+  } catch(e) { console.error('Auth init error', e); }
+
+  if (!_session) {
+    document.getElementById('auth-gate').classList.add('show');
+    window.location.href = '/pages/auth.html?return_to=dashboard';
+    return;
+  }
+
+  _token = _session.access_token;
+
+  try {
+    _profile = await api('/api/user/me');
+  } catch(e) {
+    _profile = { plan: 'free', email: _session.user.email };
+  }
+
+  // Gate: only monitor plan users can access the dashboard.
+  // Audit plan → their own audit history page. No plan → pricing.
+  var plan = _profile ? (_profile.plan || 'free') : 'free';
+  if (plan === 'audit') {
+    window.location.replace('/pages/audit-history.html');
+    return;
+  }
+  if (plan !== 'monitor') {
+    document.getElementById('auth-gate').innerHTML =
+      '<div class="logo">The Doc <span>Mirror</span></div>' +
+      '<h2 style="color:#fff;margin-bottom:.5rem">Dashboard Requires Monitor Plan</h2>' +
+      '<p style="color:rgba(255,255,255,.6);max-width:340px;line-height:1.6;margin-bottom:1.5rem">' +
+      'The dashboard is included in the Doctor Visibility Monitor ($49/month). ' +
+      'Subscribe to unlock weekly monitoring, rank tracking, competitor alerts, and more.</p>' +
+      '<a href="/pages/checkout-subscription.html" style="background:#00A878;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem">Start Monitor — $49/month →</a>' +
+      '<p style="margin-top:1rem;font-size:.78rem;color:rgba(255,255,255,.35)">' +
+      'Want the one-time audit PDF instead? <a href="/" style="color:rgba(255,255,255,.5)">Run a free check →</a></p>';
+    document.getElementById('auth-gate').classList.add('show');
+    return;
+  }
+
+  var reports = [];
+  try {
+    var r = await api('/api/user/reports');
+    reports = Array.isArray(r) ? r : [];
+  } catch(e) { reports = []; }
+
+  initDashboard(_profile, reports);
+}
+
+function api(url) {
+  return fetch(url, { headers: { 'Authorization': 'Bearer ' + _token } }).then(function(r){ return r.json(); });
+}
+
+async function doLogout() {
+  if (_supabase) await _supabase.auth.signOut();
+  ['tdm_access_token','tdm_refresh_token','tdm_user_id','tdm_user_email'].forEach(function(k){ localStorage.removeItem(k); });
+  window.location.href = '/';
+}
+
+function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── MAIN INIT ────────────────────────────────────────────────────────────
+function initDashboard(profile, reports) {
+  var plan  = 'monitor'; // Only monitor users reach this function (gate enforced in checkAuth)
+  var email = profile.email || (_session && _session.user && _session.user.email) || '';
+
+  var latest = reports[0] || null;
+  var prev   = reports[1] || null;
+
+  // ── localStorage fallback for brand-new monitor subscribers ───────────────
+  // After subscription payment, the user is redirected to dashboard immediately.
+  // The reports table row is saved before redirect, but if the upsert was very
+  // recent the API may return an empty array on the first load. In that case,
+  // pull the audit preview data from localStorage so the dashboard shows real
+  // data (score, rating, competitors etc.) while the PDF generates in the background.
+  if (!latest) {
+    try {
+      var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
+      if (raw) {
+        var ad = JSON.parse(raw);
+        if (ad && ad.doctorName) {
+          var adCity = (ad.cityState || ad.city || '').split(',')[0].trim() || null;
+          latest = {
+            doctor_name:  ad.doctorName  || null,
+            score:        ad.score       || null,
+            rating:       ad.rating      || null,
+            review_count: ad.reviewCount || null,
+            photo_count:  ad.photoCount  || null,
+            specialty:    ad.specialty   || null,
+            city:         adCity,
+            competitors:  Array.isArray(ad.competitors) ? ad.competitors : [],
+            pdf_url:      null,
+            created_at:   new Date().toISOString(),
+            _fromCache:   true,
+          };
+          console.log('[dashboard] using localStorage audit data while reports table loads');
+        }
+      }
+    } catch(_) {}
+  }
+
+  // Derive doctor name + specialty + city from latest report or email
+  var doctorName = (latest && latest.doctor_name) ? latest.doctor_name : email.split('@')[0];
+  var specialty  = (latest && latest.specialty) || '';
+  var city       = (latest && latest.city) || '';
+
+  // Initials
+  var parts    = doctorName.split(' ').filter(Boolean);
+  var initials = parts.length >= 2
+    ? (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
+    : doctorName.slice(0, 2).toUpperCase() || 'DR';
+
+  // Sidebar doctor info
+  el('doc-av').textContent   = initials;
+  el('doc-name').textContent = doctorName;
+  el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
+  el('brand-tier').textContent = 'Monitor';
+  el('brand-tier').className   = 'brand-tier';
+
+  // Topbar
+  el('practice-name').textContent = doctorName;
+  el('practice-sub').textContent  = [specialty, city].filter(Boolean).join(' · ') + ' · Monitor active';
+  el('topbar-av').textContent    = initials;
+  el('topbar-av').title          = doctorName;
+  el('week-label').textContent   = 'Week of ' + weekOf();
+
+  // Settings
+  el('settings-email').textContent = email;
+  el('settings-plan').textContent  = 'Doctor Visibility Monitor™ — $49/month';
+
+  // Show app and remove auth gate BEFORE chart rendering (Chart.js needs visible canvas to measure)
+  el('auth-gate').classList.remove('show');
+  el('app').style.display = '';
+
+  // Show "generating" banner if this is the first report and it's still being created
+  if (latest && latest._fromCache) {
+    var genBanner = document.createElement('div');
+    genBanner.id = 'gen-banner';
+    genBanner.style.cssText =
+      'background:#0A2540;color:#fff;text-align:center;padding:10px 16px;font-size:.85rem;' +
+      'font-weight:600;position:sticky;top:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:8px';
+    genBanner.innerHTML =
+      '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#00A878;' +
+      'animation:pulse 1.5s ease-in-out infinite"></span>' +
+      'Generating your first report… Your data below is from your free audit. PDF and email will arrive within 60 seconds.';
+    var mainEl = document.querySelector('main');
+    if (mainEl) mainEl.insertBefore(genBanner, mainEl.firstChild);
+  }
+
+  // Rich AI-generated data lives in latest.insights (sourced from audit_cache)
+  var insights = (latest && latest.insights) ? latest.insights : null;
+
+  // Populate all real-data sections
+  populateScore(latest, prev);
+  populateTrend(reports);
+  populateReports(reports);
+  populateSeoHealth(latest);
+
+  // All sections — monitor plan only (non-monitor users are blocked in checkAuth)
+  populateCampaign(specialty);
+  populateExecSummary(insights, latest);
+  populateAiTracker(specialty, city, latest);
+  populateCompetitors(latest, plan, insights);
+  populateAlerts(latest);
+  populateJourney(insights);
+  populateTasks(insights);
+  populateContent(specialty, insights);
+  populateReviews(latest);
+  populateReputation(insights);
+  populateKeywords(insights);
+  populateRoadmap(latest, insights);
+
+  // If the report's AI insights haven't been generated yet (brand-new subscriber,
+  // background job still running), poll a few times so cards fill in without a manual refresh.
+  if (!insights && latest && !latest._fromCache) scheduleInsightsRefresh();
+}
+
+var _insightPolls = 0;
+function scheduleInsightsRefresh() {
+  if (_insightPolls >= 6) return;          // ~3 min max
+  _insightPolls++;
+  setTimeout(async function() {
+    try {
+      var r = await api('/api/user/reports');
+      var reports = Array.isArray(r) ? r : [];
+      if (reports[0] && reports[0].insights) {
+        var prev = reports[1] || null;
+        var insights = reports[0].insights;
+        var specialty = reports[0].specialty || '';
+        populateExecSummary(insights, reports[0]);
+        populateCompetitors(reports[0], 'monitor', insights);
+        populateJourney(insights);
+        populateTasks(insights);
+        populateContent(specialty, insights);
+        populateReputation(insights);
+        populateKeywords(insights);
+        populateRoadmap(reports[0], insights);
+      } else {
+        scheduleInsightsRefresh();
+      }
+    } catch(e) { scheduleInsightsRefresh(); }
+  }, 30000);
+}
+
+// ── SCORE HERO ───────────────────────────────────────────────────────────
+function populateScore(latest, prev) {
+  if (!latest) return;
+  var score = latest.score;
+
+  if (score != null) {
+    el('hero-score').innerHTML = score + '<span class="sh-out">/100</span>';
+    // Delta
+    if (prev && prev.score != null) {
+      var d = score - prev.score;
+      var deltaEl = el('hero-delta');
+      if (d > 0) {
+        deltaEl.textContent = '↑ +' + d + ' from last report';
+        deltaEl.className = 'sh-delta delta-up';
+      } else if (d < 0) {
+        deltaEl.textContent = '↓ ' + d + ' from last report';
+        deltaEl.className = 'sh-delta delta-down';
+      } else {
+        deltaEl.textContent = '— same as last report';
+        deltaEl.className = 'sh-delta delta-same';
+      }
+    } else {
+      el('hero-delta').textContent = 'First report';
+    }
+    el('hero-meta').textContent = latest.specialty && latest.city
+      ? 'Latest: ' + latest.specialty + ' · ' + latest.city
+      : 'Run a new check to track progress';
+  }
+
+  // Reviews KPI
+  if (latest.review_count != null) {
+    el('kpi-reviews').textContent = latest.review_count;
+    el('kpi-reviews-sub').textContent = 'Google reviews';
+    if (prev && prev.review_count != null) {
+      var rd = latest.review_count - prev.review_count;
+      setKpiDelta('kpi-reviews-delta', rd, rd > 0 ? '+' + rd + ' new' : rd < 0 ? rd + ' lost' : '— same');
+    } else {
+      el('kpi-reviews-delta').textContent = 'from latest audit';
+      el('kpi-reviews-delta').className = 'kpi-delta same';
+    }
+  }
+
+  // Rating KPI
+  if (latest.rating != null) {
+    el('kpi-rating').textContent = Number(latest.rating).toFixed(1) + '★';
+    el('kpi-rating-sub').textContent = 'Google average';
+    if (prev && prev.rating != null) {
+      var ratd = Math.round((Number(latest.rating) - Number(prev.rating)) * 10) / 10;
+      setKpiDelta('kpi-rating-delta', ratd, ratd > 0 ? '+' + ratd : ratd < 0 ? String(ratd) : 'no change');
+    } else {
+      el('kpi-rating-delta').textContent = 'from latest audit';
+      el('kpi-rating-delta').className = 'kpi-delta same';
+    }
+  }
+}
+
+function setKpiDelta(id, delta, text) {
+  var e = el(id); if (!e) return;
+  e.textContent = text;
+  e.className = 'kpi-delta ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : 'same');
+}
+
+// ── SCORE TREND ──────────────────────────────────────────────────────────
+function populateTrend(reports) {
+  if (!reports || reports.length < 2) {
+    el('trend-chart-wrap').innerHTML =
+      '<div class="empty-card" style="height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
+      '<div class="empty-icon">📈</div>' +
+      '<div class="empty-title">Need 2+ reports for trend</div>' +
+      '<div class="empty-sub">Score trend will appear after your second report is generated.</div></div>';
+    el('trend-reports-count').textContent = '';
+    return;
+  }
+
+  var sorted = reports.slice(0, 12).reverse();
+  var labels = sorted.map(function(r){
+    return r.created_at
+      ? new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      : '';
+  });
+  var scores = sorted.map(function(r){ return r.score; });
+
+  el('trend-reports-count').textContent = reports.length + ' report' + (reports.length === 1 ? '' : 's');
+
+  var canvas = document.getElementById('trendChart');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var grad = ctx.createLinearGradient(0, 0, 0, 240);
+  grad.addColorStop(0, 'rgba(0,168,120,.18)');
+  grad.addColorStop(1, 'rgba(0,168,120,0)');
+
+  new Chart(canvas, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Visibility Score',
+        data: scores,
+        borderColor: '#00A878',
+        backgroundColor: grad,
+        tension: 0.35,
+        fill: true,
+        pointRadius: 4,
+        pointBackgroundColor: '#00A878',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        borderWidth: 2.5,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#0A2540', titleFont: { family: 'DM Sans' }, bodyFont: { family: 'DM Sans' }, padding: 10, cornerRadius: 8 },
+      },
+      scales: {
+        y: { min: 0, max: 100, grid: { color: '#E2E8F0' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#9aabba' } },
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9aabba', maxTicksLimit: 8 } },
+      }
+    }
+  });
+}
+
+// ── REPORTS LIST ─────────────────────────────────────────────────────────
+function populateReports(reports) {
+  var c = el('reports-list'); if (!c) return;
+  if (!reports || !reports.length) {
+    c.innerHTML = '<div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div>' +
+      '<div class="empty-sub">After your first paid audit, your PDF will appear here.</div>' +
+      '<a href="/" style="display:inline-block;margin-top:12px;background:#0A2540;color:#fff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.85rem">Get your first report →</a></div>';
+    return;
+  }
+  c.innerHTML = reports.map(function(r, i) {
+    var dateStr = r.created_at
+      ? new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+      : '—';
+    var subline = [r.specialty, r.city].filter(Boolean).join(' · ') || (r.doctor_name || '');
+    var prevScore = (i + 1 < reports.length) ? reports[i + 1].score : null;
+    var delta = (r.score != null && prevScore != null) ? (r.score - prevScore) : null;
+    var deltaHtml = delta != null
+      ? '<span class="ri-change ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : '') + '">' + (delta > 0 ? '+' : '') + delta + ' pts</span>'
+      : '';
+    return '<div class="report-item">' +
+      '<div class="ri-left"><h4>Audit Report &mdash; ' + escH(dateStr) + '</h4>' +
+      (subline ? '<p>' + escH(subline) + '</p>' : '') + '</div>' +
+      '<div class="ri-score"><div class="n">' + (r.score != null ? r.score : '&mdash;') + '</div><div class="l">Score</div></div>' +
+      deltaHtml +
+      (r.pdf_url
+        ? '<a class="dl-btn" href="' + escH(r.pdf_url) + '" target="_blank" rel="noopener">PDF &darr;</a>'
+        : '<button class="dl-btn" disabled style="opacity:.4;cursor:not-allowed">Generating&hellip;</button>') +
+      '</div>';
+  }).join('');
+}
+
+// ── TOPICAL CAMPAIGN ─────────────────────────────────────────────────────
+var MONTHLY_CAMPAIGNS = {
+  0:  { title: 'Cervical Cancer Prevention Month', sub: 'January is Cervical Cancer Prevention Month. Patients are searching for screening information. Your content pack is ready to launch.' },
+  1:  { title: 'Heart Health Month', sub: 'February is American Heart Month. Cardiac health searches peak this month. We have a full campaign ready for you.' },
+  2:  { title: 'Colorectal Cancer Awareness Month', sub: 'March focuses on colorectal health. Your specialty-matched content for this awareness month is prepared.' },
+  3:  { title: 'Oral Health Month', sub: 'April is Oral Health Month. Patient searches around dental and oral health are elevated this month.' },
+  4:  { title: 'Mental Health Awareness Month', sub: 'May is Mental Health Awareness Month. Patients are searching for mental wellness and stress management information.' },
+  5:  { title: 'Hypertension &amp; Heart Health Awareness', sub: 'June is World Hypertension Month. Blood pressure and cardiac screening searches are up 2× this month. Your awareness campaign is ready.' },
+  6:  { title: 'UV Safety &amp; Skin Health Month', sub: 'July is UV Safety Month. Patients are searching for sun protection and dermatology advice.' },
+  7:  { title: 'Eye Health Month', sub: 'August prepares for World Sight Day. Vision health searches peak. Your eye health content is ready.' },
+  8:  { title: 'Thyroid &amp; PCOS Awareness Month', sub: 'September is Thyroid Awareness Month. Hormonal health searches are elevated — your campaign is ready.' },
+  9:  { title: 'Breast Cancer Awareness Month', sub: 'October is the highest-traffic month for cancer screening searches. Your campaign is prepared.' },
+  10: { title: 'Lung Cancer Awareness Month', sub: 'November is Lung Cancer Awareness Month. Respiratory health searches are elevated this month.' },
+  11: { title: 'Year-End Wellness Month', sub: 'December: patients are searching for year-end health check-ups. Your wellness campaign is ready to launch.' },
 };
 
-// ── AUTH ───────────────────────────────────────────────────────────────────
-// In production: validate against Supabase session / JWT cookie
-// For demo: check session storage
-function checkAuth(){
-  var authed=sessionStorage.getItem('tdm_authed');
-  if(!authed){document.getElementById('auth-gate').classList.add('show');}
-  else initDash();
+function populateCampaign(specialty) {
+  var month = new Date().getMonth();
+  var cam   = MONTHLY_CAMPAIGNS[month];
+  el('campaign-content').innerHTML =
+    '<div class="campaign-banner">' +
+    '<div class="campaign-eyebrow">This Month &middot; Active Campaign</div>' +
+    '<div class="campaign-title">' + cam.title + '</div>' +
+    '<p class="campaign-sub">' + cam.sub + (specialty ? ' Matched to your specialty: <strong>' + escH(specialty) + '</strong>.' : '') + '</p>' +
+    '<div class="campaign-activating">Your full topical content pack is being prepared below. Click &ldquo;Content Pack&rdquo; in the sidebar to view this week\'s ready-to-publish pieces.</div>' +
+    '</div>';
 }
-function doLogin(){
-  var email=document.getElementById('login-email').value.trim();
-  var pass=document.getElementById('login-pass').value;
-  if(!email||!pass){document.getElementById('auth-err').textContent='Enter your email and password.';document.getElementById('auth-err').classList.add('on');return;}
-  // In production: POST /api/auth/login → validate → set session cookie
-  // Demo: accept any credentials
-  fetch('/api/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:email,password:pass})})
-  .then(function(r){return r.json();})
-  .then(function(d){
-    if(d.success){sessionStorage.setItem('tdm_authed','1');sessionStorage.setItem('tdm_email',email);document.getElementById('auth-gate').classList.remove('show');initDash(email);}
-    else{document.getElementById('auth-err').textContent='Invalid credentials. Check your email and password.';document.getElementById('auth-err').classList.add('on');}
-  })
-  .catch(function(){
-    // Demo fallback — remove in production
-    sessionStorage.setItem('tdm_authed','1');sessionStorage.setItem('tdm_email',email);
-    document.getElementById('auth-gate').classList.remove('show');initDash(email);
+
+function populateCampaignLocked() {
+  el('campaign-content').innerHTML =
+    '<div class="locked-card" style="background:linear-gradient(135deg,#f5f0ff,#fff);border-color:var(--purple-light)">' +
+    '<div class="lock-icon">📣</div>' +
+    '<h3>Topical Campaign Engine</h3>' +
+    '<p>Every month we prepare a full awareness campaign matched to your specialty — content, schedule, and patient messaging, ready to publish.</p>' +
+    '<a href="/pages/checkout-subscription.html" class="locked-btn" style="background:var(--purple)">Unlock Campaign Engine →</a>' +
+    '</div>';
+}
+
+// ── AI RANK TRACKER ──────────────────────────────────────────────────────
+// Real, data-derived standing: ranks the doctor against tracked competitors by
+// visibility score and estimates inclusion likelihood per AI surface from that score.
+function populateAiTracker(specialty, city, latest) {
+  var query = specialty && city ? '"' + specialty + ' in ' + city + '"' : 'your specialty and city';
+  var myScore = latest && typeof latest.score === 'number' ? latest.score : null;
+  var comps   = (latest && Array.isArray(latest.competitors)) ? latest.competitors : [];
+
+  // Build a ranked field: you + competitors, by score (desc)
+  var field = [{ name: 'You', score: myScore, you: true }];
+  comps.forEach(function(c){
+    var s = c.googleScore != null ? c.googleScore : (c.score != null ? c.score : null);
+    field.push({ name: c.name || 'Competitor', score: s });
   });
-}
-function doLogout(){
-  sessionStorage.removeItem('tdm_authed');sessionStorage.removeItem('tdm_email');
-  window.location.reload();
-}
+  field = field.filter(function(f){ return f.score != null; }).sort(function(a,b){ return b.score - a.score; });
+  var pos   = field.findIndex(function(f){ return f.you; }) + 1;
+  var total = field.length;
 
-// ── INIT ────────────────────────────────────────────────────────────────────
-function initDash(email){
-  var d=DEMO;
-  // Populate doctor info
-  document.getElementById('dash-av').textContent=d.doctor.name.split(' ').map(function(w){return w[0];}).filter(function(_,i){return i===1||i===2;}).join('');
-  document.getElementById('dash-name').textContent=d.doctor.name;
-  document.getElementById('dash-spec').textContent=d.doctor.spec+' · '+d.doctor.city;
-  document.getElementById('plan-badge').textContent='Monitor';
-  document.getElementById('settings-email').textContent=email||d.doctor.email;
-  document.getElementById('settings-plan').textContent='Monitor — $49/month · Renews monthly';
+  // Inclusion likelihood per surface, derived from the real score (transparent heuristic)
+  function likelihood(base) {
+    if (myScore == null) return null;
+    var v = Math.max(0, Math.min(99, Math.round(myScore * base)));
+    return v;
+  }
+  var platforms = [
+    { name: 'Google AI Overview', base: 1.00 },
+    { name: 'ChatGPT',            base: 0.92 },
+    { name: 'Gemini',             base: 0.95 },
+    { name: 'Perplexity',         base: 0.88 },
+  ];
 
-  // KPIs
-  document.getElementById('kpi-score').textContent=d.score;
-  setKpiChange('kpi-score-change',d.scoreHistory[d.scoreHistory.length-1]-d.scoreHistory[d.scoreHistory.length-2],'points');
-  document.getElementById('kpi-rank').textContent='#'+d.rank.current;
-  setKpiChange('kpi-rank-change',-d.rank.change,'position','up','down');
-  document.getElementById('kpi-reviews').textContent=d.reviews.count;
-  setKpiChange('kpi-reviews-change',d.reviews.change,'this week');
-  document.getElementById('kpi-rating').textContent=d.rating.value.toFixed(1);
-  setKpiChange('kpi-rating-change',d.rating.change,'');
-
-  // Dates
-  document.getElementById('week-label').textContent=d.reports[0].date;
-  document.getElementById('last-checked').textContent='Monday 9:00 AM EST';
-
-  // Charts
-  drawScoreChart(d.weekLabels,d.scoreHistory);
-  drawRankChart(d.weekLabels,d.rankHistory);
-  drawSentimentChart(d.weekLabels,d.sentimentHistory);
-
-  // Alerts
-  buildAlerts(d.alerts);
-  document.getElementById('alert-count').textContent=d.alerts.filter(function(a){return a.type==='red';}).length;
-
-  // Rank tracker
-  buildRankList(d.rankData);
-
-  // Competitors
-  buildCompTable(d.competitors);
-
-  // Sentiment
-  buildSentiment(d.sentiment);
-
-  // Reports
-  buildReports(d.reports);
+  el('ai-tracker-content').innerHTML =
+    '<div class="ai-tracker-card">' +
+    '<div class="sh-label">Estimated AI answer inclusion for ' + escH(query) + '</div>' +
+    (pos ? '<div style="font-size:1.8rem;font-weight:700;font-family:\'DM Mono\',monospace;color:#fff;margin:4px 0 2px">#' + pos +
+      '<span style="font-size:1rem;color:rgba(255,255,255,.45)"> of ' + total + ' tracked</span></div>' : '') +
+    '<div class="ai-tracker-grid">' +
+    platforms.map(function(p){
+      var l = likelihood(p.base);
+      return '<div class="ai-platform-card">' +
+        '<div class="ai-pc-name">' + escH(p.name) + '</div>' +
+        '<div class="ai-pc-rank"><span class="pos">' + (l != null ? l + '%' : '—') + '</span></div>' +
+        '<div class="ai-pc-trend"><span class="' + (l != null && l >= 60 ? 'up' : 'same') + '">' +
+        (l != null ? (l >= 60 ? 'Likely cited' : 'Building') : 'No data') + '</span></div>' +
+        '</div>';
+    }).join('') +
+    '</div>' +
+    '<div class="ai-tracker-info">Inclusion likelihood is derived from your live visibility score (' +
+    (myScore != null ? myScore + '/100' : 'pending') + ') and competitive standing. ' +
+    'Live per-assistant rank queries run every Monday and refine these figures.</div>' +
+    '</div>';
 }
 
-function setKpiChange(id,val,unit,upWord,downWord){
-  var el=document.getElementById(id);
-  if(!el)return;
-  if(val>0){el.textContent='↑ +'+val+' '+(upWord||unit);el.className='kpi-change kc-up';}
-  else if(val<0){el.textContent='↓ '+val+' '+(downWord||unit);el.className='kpi-change kc-down';}
-  else{el.textContent='— unchanged';el.className='kpi-change kc-same';}
+function populateAiTrackerLocked() {
+  el('ai-tracker-content').innerHTML =
+    '<div class="locked-card">' +
+    '<div class="lock-icon">🤖</div>' +
+    '<h3>AI Search Rank Tracker</h3>' +
+    '<p>Track where you appear when patients ask ChatGPT, Gemini, Perplexity, and Google AI about doctors in your city.</p>' +
+    '<a href="/pages/checkout-subscription.html" class="locked-btn">Upgrade to Monitor →</a>' +
+    '</div>';
 }
 
-// ── CHARTS ──────────────────────────────────────────────────────────────────
-var chartDefaults={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#0A2540',titleColor:'rgba(255,255,255,.7)',bodyColor:'#fff',padding:10,cornerRadius:8}}};
+// ── COMPETITORS ──────────────────────────────────────────────────────────
+function populateCompetitors(latest, plan, insights) {
+  var wrap = el('comp-grid-wrap');
+  if (!wrap) return;
 
-function drawScoreChart(labels,data){
-  new Chart(document.getElementById('score-chart'),{
-    type:'line',
-    data:{labels:labels,datasets:[{label:'Score',data:data,borderColor:'#00A878',backgroundColor:'rgba(0,168,120,.08)',borderWidth:2.5,fill:true,tension:0.3,pointBackgroundColor:'#00A878',pointRadius:3}]},
-    options:{...chartDefaults,scales:{y:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#6B7A8D',font:{size:11}}},x:{grid:{display:false},ticks:{color:'#6B7A8D',font:{size:10},maxTicksLimit:6}}}}
+  if (!latest) {
+    wrap.innerHTML = '<div class="no-comps">Competitor data will appear after your first report is generated. We pull this automatically from Google Places during every audit.</div>';
+    el('comp-date').textContent = '';
+    return;
+  }
+
+  var competitors = Array.isArray(latest.competitors) ? latest.competitors : [];
+  var reportDate  = latest.created_at
+    ? 'Snapshot from ' + new Date(latest.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+    : '';
+  el('comp-date').textContent = reportDate;
+
+  if (!competitors.length) {
+    wrap.innerHTML = '<div class="no-comps">No competitor data in this report. Run a new audit to capture competitor data from Google Places.</div>';
+    return;
+  }
+
+  // Build YOU card
+  var myScore = latest.score != null ? latest.score : '—';
+  var myCard  =
+    '<div class="comp-card-v6 is-you">' +
+    '<div class="comp-rank-pill you">YOU</div>' +
+    '<div class="comp-name">' + escH(latest.doctor_name || 'Your Practice') + '</div>' +
+    '<div class="comp-score">' + myScore + '<span class="of">/100</span></div>' +
+    '<div class="comp-stats">' +
+    statRow('Reviews', latest.review_count != null ? latest.review_count : '—', '') +
+    statRow('Rating',  latest.rating != null ? Number(latest.rating).toFixed(1) + '★' : '—', '') +
+    statRow('Photos',  latest.photo_count != null ? latest.photo_count : '—', '') +
+    statRow('AI rank', '—', '') +
+    '</div></div>';
+
+  var compCards = competitors.slice(0, 3).map(function(c, i) {
+    var cScore = c.googleScore != null ? c.googleScore : (c.score != null ? c.score : '—');
+    var youScore = typeof myScore === 'number' ? myScore : -1;
+    var compScore = typeof cScore === 'number' ? cScore : -1;
+    return '<div class="comp-card-v6">' +
+      '<div class="comp-rank-pill">#' + (i + 1) + ' nearby</div>' +
+      '<div class="comp-name">' + escH(c.name || 'Competitor ' + (i + 1)) + '</div>' +
+      '<div class="comp-score">' + cScore + '<span class="of">/100</span></div>' +
+      '<div class="comp-stats">' +
+      statRow('Reviews', c.reviewCount != null ? c.reviewCount : '—', compScore > youScore && youScore >= 0 ? 'down' : '') +
+      statRow('Rating',  c.rating != null ? Number(c.rating).toFixed(1) + '★' : '—', '') +
+      statRow('Photos',  c.photoCount != null ? c.photoCount : '—', '') +
+      statRow('AI rank', '—', '') +
+      '</div></div>';
+  }).join('');
+
+  // Competitive narrative from AI insights (real, generated from this report's data)
+  var narrative = insights && insights.competitorNarrative ? insights.competitorNarrative : '';
+  var narrativeHtml = narrative
+    ? '<div class="comp-narrative">' + escH(narrative) + '</div>'
+    : '';
+
+  wrap.innerHTML =
+    '<div style="margin-bottom:10px">' + myCard + '</div>' +
+    '<div class="comp-grid">' + compCards + '</div>' +
+    narrativeHtml;
+}
+
+function statRow(label, val, cls) {
+  return '<div class="comp-stat"><span class="comp-stat-label">' + escH(label) + '</span>' +
+    '<span class="comp-stat-val ' + cls + '">' + escH(String(val)) + '</span></div>';
+}
+
+// ── GENERATING STATE (shown while AI insights are still being produced) ────
+function generatingCard(icon, title, sub) {
+  return '<div class="empty-card">' +
+    '<div class="empty-icon">' + icon + '</div>' +
+    '<div class="empty-title">' + escH(title) + '</div>' +
+    '<div class="empty-sub">' + escH(sub) + '</div>' +
+    '<div style="margin-top:12px;display:inline-flex;align-items:center;gap:8px;font-size:11px;color:var(--green-dark);font-weight:600">' +
+    '<span style="width:8px;height:8px;border-radius:50%;background:#00A878;animation:pulse 1.5s ease-in-out infinite"></span>' +
+    'Generating with Claude AI…</div></div>';
+}
+
+// ── CHANGE ALERTS ─────────────────────────────────────────────────────────
+// Real, computed alerts derived from this report's competitor + profile data.
+function populateAlerts(latest) {
+  var c = el('alerts-content');
+  if (!latest) { c.innerHTML = generatingCard('🔔', 'No alerts yet', 'Alerts appear after your first report is generated.'); return; }
+
+  var alerts = [];
+  var myRev   = latest.review_count;
+  var myPh    = latest.photo_count;
+  var comps   = Array.isArray(latest.competitors) ? latest.competitors : [];
+
+  comps.forEach(function(cm){
+    if (cm.reviewCount != null && myRev != null && cm.reviewCount > myRev) {
+      var gap = cm.reviewCount - myRev;
+      alerts.push({ cls:'ai-rev', icon:'★', impact:(gap>100?'High':'Medium'),
+        text:'<strong>' + escH(cm.name||'A competitor') + '</strong> leads you by <strong>' + gap + ' reviews</strong> (' + cm.reviewCount + ' vs ' + myRev + ').' });
+    }
+    if (cm.photoCount != null && myPh != null && cm.photoCount > myPh + 5) {
+      alerts.push({ cls:'ai-post', icon:'📷', impact:'Medium',
+        text:'<strong>' + escH(cm.name||'A competitor') + '</strong> has <strong>' + cm.photoCount + ' photos</strong> vs your ' + myPh + '. Add more clinic photos.' });
+    }
   });
-}
-function drawRankChart(labels,data){
-  new Chart(document.getElementById('rank-chart'),{
-    type:'line',
-    data:{labels:labels,datasets:[{label:'Rank position',data:data,borderColor:'#0A2540',backgroundColor:'rgba(10,37,64,.06)',borderWidth:2.5,fill:true,tension:0.3,pointBackgroundColor:'#0A2540',pointRadius:3}]},
-    options:{...chartDefaults,scales:{y:{reverse:true,min:1,max:10,grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#6B7A8D',font:{size:11},callback:function(v){return '#'+v;}}},x:{grid:{display:false},ticks:{color:'#6B7A8D',font:{size:10},maxTicksLimit:6}}}}
-  });
-}
-function drawSentimentChart(labels,data){
-  new Chart(document.getElementById('sentiment-chart'),{
-    type:'bar',
-    data:{labels:labels,datasets:[
-      {label:'Positive',data:data.pos,backgroundColor:'rgba(0,168,120,.6)',borderRadius:4},
-      {label:'Negative',data:data.neg,backgroundColor:'rgba(220,38,38,.5)',borderRadius:4}
-    ]},
-    options:{...chartDefaults,plugins:{...chartDefaults.plugins,legend:{display:true,labels:{color:'#3D4D5C',font:{size:11}}}},scales:{x:{grid:{display:false},ticks:{color:'#6B7A8D',font:{size:10},maxTicksLimit:6}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{color:'#6B7A8D',font:{size:11}}}}}
-  });
+
+  if (latest.rating != null && Number(latest.rating) < 4.0) {
+    alerts.push({ cls:'ai-rank', icon:'⚠', impact:'High',
+      text:'Your Google rating is <strong>' + Number(latest.rating).toFixed(1) + '★</strong> — below the 4.0 trust threshold patients filter by.' });
+  }
+  if (myRev != null && myRev < 30) {
+    alerts.push({ cls:'ai-rev', icon:'★', impact:'High',
+      text:'You have <strong>' + myRev + ' reviews</strong>. Practices with 50+ reviews win significantly more patient calls.' });
+  }
+
+  if (!alerts.length) {
+    c.innerHTML = '<div class="empty-card" style="border-left:3px solid var(--green)"><div class="empty-icon">✅</div>' +
+      '<div class="empty-title">You\'re ahead of your tracked competitors</div>' +
+      '<div class="empty-sub">No review or photo gaps detected in this report. New competitor movements are tracked every Monday.</div></div>';
+    return;
+  }
+
+  c.innerHTML = '<div class="alert-feed">' + alerts.map(function(a){
+    return '<div class="alert-row"><div class="alert-icon ' + a.cls + '">' + a.icon + '</div>' +
+      '<div class="alert-body"><div class="alert-text">' + a.text + '</div>' +
+      '<div class="alert-time">From your latest report</div></div>' +
+      '<span class="alert-impact">' + a.impact + ' impact</span></div>';
+  }).join('') + '</div>';
 }
 
-// ── BUILDERS ─────────────────────────────────────────────────────────────────
-function buildAlerts(alerts){
-  var containers=['overview-alerts','alerts-list'];
-  containers.forEach(function(cid){
-    var c=document.getElementById(cid);if(!c)return;
-    if(!alerts||!alerts.length){c.innerHTML='<div class="no-alerts"><p>No alerts this week. Your listing is stable.</p></div>';return;}
-    c.innerHTML=alerts.map(function(a){
-      return '<div class="alert-item"><div class="alert-icon ai-'+(a.type==='red'?'red':a.type==='amber'?'amber':'green')+'">'+a.icon+'</div><div class="alert-body"><h4>'+escH(a.title)+'</h4><p>'+escH(a.desc)+'</p></div><span class="alert-time">'+a.time+'</span></div>';
-    }).join('');
-  });
-}
-function buildRankList(ranks){
-  var c=document.getElementById('rank-list');if(!c)return;
-  c.innerHTML=ranks.map(function(r){
-    var cc=r.change>0?'rrc-up':r.change<0?'rrc-dn':'rrc-eq';
-    var ct=r.change>0?'+'+r.change+' up':r.change<0?Math.abs(r.change)+' down':'unchanged';
-    var pc=r.position<=3?'t3':r.position<=5?'t5':'low';
-    return '<div class="rank-row"><span class="rr-query">'+escH(r.query)+'</span><span class="rr-pos '+pc+'">#'+r.position+'</span><span class="rr-change '+cc+'">'+ct+'</span></div>';
+// ── PRIORITY FIXES (from insights.fixes) ───────────────────────────────────
+function populateTasks(insights) {
+  var c = el('tasks-content');
+  var fixes = insights && Array.isArray(insights.fixes) ? insights.fixes : [];
+  if (!fixes.length) {
+    c.innerHTML = generatingCard('✓', 'Priority fixes generating', 'Your personalised, specialty-specific fixes — each with copy-paste text and an impact estimate — appear here.');
+    return;
+  }
+  c.innerHTML = fixes.map(function(f, i){
+    var impact = (f.impact || 'medium').toLowerCase();
+    var copy = f.copyText
+      ? '<div class="task-fix-copy"><div class="task-fix-copy-label">Copy-paste text' +
+        '<button class="copy-btn" type="button" onclick="copyText(this)">Copy</button></div>' +
+        '<div class="task-fix-copy-text">' + escH(f.copyText) + '</div></div>'
+      : '';
+    return '<div class="task-fix-card">' +
+      '<div class="task-fix-header"><div class="task-fix-num">' + (i+1) + '</div>' +
+      '<div><div class="task-fix-title">' + escH(f.title || 'Fix') + '</div>' +
+      '<div class="task-fix-badges">' +
+      '<span class="task-fix-impact ' + impact + '">' + escH(impact) + ' impact</span>' +
+      (f.timeMinutes ? '<span class="task-fix-time">~' + f.timeMinutes + ' min</span>' : '') +
+      (f.pillar ? '<span class="task-fix-pillar">' + escH(f.pillar) + '</span>' : '') +
+      '</div></div></div>' +
+      (f.steps ? '<div class="task-fix-steps">' + escH(f.steps) + '</div>' : '') +
+      copy + '</div>';
   }).join('');
 }
-function buildCompTable(comps){
-  var tbody=document.getElementById('comp-table-body');if(!tbody)return;
-  tbody.innerHTML=comps.map(function(c){
-    var you=c.isYou;
-    var ref=comps.find(function(x){return x.isYou;});
-    var wRat=ref?c.rating>ref.rating:false,wRev=ref?c.reviewCount>ref.reviewCount:false,wPho=ref?c.photoCount>ref.photoCount:false,wRnk=ref?c.rank<ref.rank:false;
-    return '<tr class="'+(you?'you':'')+'">'
-      +'<td>'+escH(c.name)+(you?' <small style="color:#085041;font-size:10px;font-weight:700">YOU</small>':'')+'</td>'
-      +'<td><span class="score-badge '+(you?'sb-you':'sb-them')+'">'+c.score+'</span></td>'
-      +'<td class="'+(you?'':wRat?'lose':'win')+'">'+c.rating.toFixed(1)+'</td>'
-      +'<td class="'+(you?'':wRev?'lose':'win')+'">'+c.reviewCount+'</td>'
-      +'<td class="'+(you?'':wPho?'lose':'win')+'">'+c.photoCount+'</td>'
-      +'<td class="'+(you?'':wRnk?'lose':'win'">#'+c.rank+'</td>'
-      +'</tr>';
+
+function copyText(btn) {
+  var box = btn.closest('.task-fix-copy') || btn.closest('.tmpl-box');
+  var t = box ? box.querySelector('.task-fix-copy-text, .tmpl-text') : null;
+  if (!t) return;
+  navigator.clipboard.writeText(t.textContent).then(function(){
+    btn.textContent = 'Copied'; btn.classList.add('copied');
+    setTimeout(function(){ btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+// ── CONTENT PACK (from insights.contentStrategy + socialContent) ───────────
+function populateContent(specialty, insights) {
+  var c  = el('content-content');
+  var cs = insights && insights.contentStrategy ? insights.contentStrategy : null;
+  if (!cs) {
+    c.innerHTML = generatingCard('🎬', 'Content pack generating', 'Specialty-matched content pillars, Reel hooks, and blog titles — ready to publish — appear here.');
+    return;
+  }
+  var pillars   = Array.isArray(cs.pillars) ? cs.pillars : [];
+  var reels     = Array.isArray(cs.reelIdeas) ? cs.reelIdeas : [];
+  var blogs     = Array.isArray(cs.blogTitles) ? cs.blogTitles : [];
+  var cadence   = cs.postingCadence || '';
+
+  c.innerHTML =
+    '<div class="content-pack-card"><div class="cp-body">' +
+    '<div class="cp-header"><div class="cp-title">This week\'s content <span class="cp-title-tag">ready</span></div></div>' +
+    (pillars.length ? '<div class="cp-section"><div class="cp-section-label">Content Pillars</div>' +
+      '<div class="cp-pillars-grid">' + pillars.map(function(p){ return '<div class="cp-pillar">' + escH(p) + '</div>'; }).join('') + '</div></div>' : '') +
+    (reels.length ? '<div class="cp-section"><div class="cp-section-label">Instagram Reel Ideas</div>' +
+      reels.map(function(r){ return '<div class="cp-reel"><div class="cp-reel-hook">🎬 ' + escH(r.hook || '') + '</div><div class="cp-reel-topic">' + escH(r.topic || '') + '</div></div>'; }).join('') + '</div>' : '') +
+    (blogs.length ? '<div class="cp-section"><div class="cp-section-label">SEO Blog Titles</div>' +
+      blogs.map(function(b){ return '<div class="cp-blog">📝 ' + escH(b) + '</div>'; }).join('') + '</div>' : '') +
+    (cadence ? '<div class="cp-cadence">📅 Suggested cadence: ' + escH(cadence) + '</div>' : '') +
+    '<div class="cp-footer"><span>Generated by Claude AI · Compliant with medical advertising codes</span></div>' +
+    '</div></div>';
+}
+
+// ── REVIEW GROWTH ─────────────────────────────────────────────────────────
+function populateReviews(latest) {
+  if (!latest || latest.review_count == null) {
+    el('reviews-content').innerHTML =
+      '<div class="empty-card"><div class="empty-icon">★</div><div class="empty-title">Run a report first</div>' +
+      '<div class="empty-sub">Review growth tracking will appear after your first audit populates review data.</div></div>';
+    return;
+  }
+
+  var myCount  = latest.review_count;
+  var comps    = Array.isArray(latest.competitors) ? latest.competitors : [];
+  var topComp  = comps[0] || null;
+  var topCount = topComp && topComp.reviewCount != null ? topComp.reviewCount : null;
+
+  // Find closest competitor with more reviews as catch-up target
+  var catchTarget = null;
+  for (var i = comps.length - 1; i >= 0; i--) {
+    if (comps[i].reviewCount != null && comps[i].reviewCount > myCount) {
+      catchTarget = comps[i];
+    }
+  }
+  if (!catchTarget && topComp && topCount != null && topCount > myCount) {
+    catchTarget = topComp;
+  }
+
+  var needed    = catchTarget ? (catchTarget.reviewCount - myCount) : null;
+  var velocity  = 5;
+  var weeksToGo = needed != null ? Math.ceil(needed / velocity) : null;
+  var pct       = topCount && topCount > 0 ? Math.min(99, Math.round(myCount / topCount * 100)) : null;
+
+  el('reviews-content').innerHTML =
+    '<div class="review-card">' +
+    '<div class="review-progress">' +
+    '<div><div class="review-stat-label">Your reviews</div><div class="review-stat-num">' + myCount + '</div><div class="review-stat-sub">Google Reviews</div></div>' +
+    (topComp ? '<div><div class="review-stat-label">Top competitor</div><div class="review-stat-num">' + (topCount != null ? topCount : '—') + '</div><div class="review-stat-sub">' + escH(topComp.name || '') + '</div></div>' : '') +
+    (catchTarget ? '<div><div class="review-stat-label">Catch-up target</div><div class="review-stat-num">' + catchTarget.reviewCount + '</div><div class="review-stat-sub">' + escH(catchTarget.name || '') + '</div></div>' : '') +
+    '<div><div class="review-stat-label">Velocity target</div><div class="review-stat-num">' + velocity + '/wk</div><div class="review-stat-sub">' + (needed != null && weeksToGo ? '~' + weeksToGo + ' weeks to catch' : 'You\'re in the lead') + '</div></div>' +
+    '</div>' +
+    (pct != null && topCount > myCount
+      ? '<div class="review-bar-wrap"><div class="review-bar" style="width:' + pct + '%"></div></div>' +
+        '<div style="font-size:11px;color:var(--slate-light);margin-top:4px">You\'re at ' + pct + '% of catching ' + escH(topComp ? topComp.name : '') + '. Keep the velocity up.</div>'
+      : pct != null
+        ? '<div class="review-bar-wrap"><div class="review-bar" style="width:100%;background:var(--green)"></div></div><div style="font-size:11px;color:var(--green-dark);margin-top:4px">You have more reviews than your closest tracked competitor. Keep growing!</div>'
+        : '') +
+    '<div class="review-cta-row">' +
+    '<button class="review-cta" type="button">💬 WhatsApp template</button>' +
+    '<button class="review-cta" type="button">📨 Email template</button>' +
+    '<button class="review-cta" type="button">📱 SMS template</button>' +
+    '</div></div>';
+}
+
+// ── REVIEW RESPONSES (from insights.responseTemplates) ─────────────────────
+function populateReputation(insights) {
+  var c = el('reputation-content');
+  var rt = insights && insights.responseTemplates ? insights.responseTemplates : null;
+  if (!rt) {
+    c.innerHTML = generatingCard('🛡', 'Review responses generating', 'Claude-drafted, HIPAA-safe response templates for positive, neutral, and critical reviews appear here.');
+    return;
+  }
+  var rows = [
+    { label: '5-star — positive review', key: 'positive', stars: '★★★★★' },
+    { label: '3-star — mixed review',    key: 'neutral',  stars: '★★★☆☆' },
+    { label: '1–2 star — critical review', key: 'critical', stars: '★☆☆☆☆' },
+  ];
+  c.innerHTML = '<div class="reputation-card" style="border-left-color:var(--green)">' +
+    rows.filter(function(r){ return rt[r.key]; }).map(function(r){
+      return '<div class="rep-alert-row"><div class="rep-stars">' + r.stars + '</div>' +
+        '<div class="rep-content"><div class="rep-title">' + escH(r.label) + '</div>' +
+        '<div class="rep-suggested"><strong>Suggested reply</strong>' + escH(rt[r.key]) + '</div></div></div>';
+    }).join('') + '</div>';
+}
+
+// ── EXECUTIVE SUMMARY (from insights.execSummary) ──────────────────────────
+function populateExecSummary(insights, latest) {
+  var c = el('exec-content');
+  var ex = insights && insights.execSummary ? insights.execSummary : null;
+  if (!ex) {
+    c.innerHTML = generatingCard('📋', 'Executive summary generating', 'A revenue-impact summary of where you stand and what to do next appears here.');
+    return;
+  }
+  var prios = Array.isArray(ex.top3Priorities) ? ex.top3Priorities : [];
+  c.innerHTML = '<div class="exec-card">' +
+    (ex.headline ? '<div class="exec-headline">' + escH(ex.headline) + '</div>' : '') +
+    '<div class="exec-paras">' +
+    (ex.paragraph1 ? '<div class="exec-para">' + escH(ex.paragraph1) + '</div>' : '') +
+    (ex.paragraph2 ? '<div class="exec-para">' + escH(ex.paragraph2) + '</div>' : '') +
+    '</div>' +
+    (ex.paragraph3 ? '<div class="exec-para" style="margin-top:10px">' + escH(ex.paragraph3) + '</div>' : '') +
+    (prios.length ? '<div class="exec-priorities">' + prios.map(function(p, i){
+      return '<div class="exec-priority"><div class="exec-priority-num">' + (i+1) + '</div>' + escH(p) + '</div>';
+    }).join('') + '</div>' : '') +
+    '</div>';
+}
+
+// ── PATIENT JOURNEY (from insights.patientJourney) ─────────────────────────
+function populateJourney(insights) {
+  var c = el('journey-content');
+  var pj = insights && insights.patientJourney ? insights.patientJourney : null;
+  var stages = pj && Array.isArray(pj.stages) ? pj.stages : [];
+  if (!stages.length) {
+    c.innerHTML = generatingCard('🧭', 'Patient journey generating', 'A 5-stage audit of how patients find and choose you — with the gaps to fix — appears here.');
+    return;
+  }
+  c.innerHTML = '<div class="journey-card"><div class="journey-stages">' +
+    stages.map(function(s){
+      var st = (s.status || 'neutral').toLowerCase();
+      return '<div class="journey-stage"><div class="journey-stage-num ' + st + '">' + escH(String(s.stage || '•')) + '</div>' +
+        '<div class="journey-stage-body"><div class="journey-stage-name">' + escH(s.name || '') +
+        '<span class="journey-status-badge ' + st + '">' + escH(st) + '</span></div>' +
+        (s.touchpoint ? '<div class="journey-stage-touch">' + escH(s.touchpoint) + '</div>' : '') +
+        (s.currentGap ? '<div class="journey-stage-gap">⚠ ' + escH(s.currentGap) + '</div>' : '') +
+        (s.winAction ? '<div class="journey-stage-win">✓ ' + escH(s.winAction) + '</div>' : '') +
+        '</div></div>';
+    }).join('') + '</div></div>';
+}
+
+// ── SEO KEYWORDS (from insights.seoKeywords) ───────────────────────────────
+function populateKeywords(insights) {
+  var c = el('keywords-content');
+  var kw = insights && insights.seoKeywords ? insights.seoKeywords : null;
+  if (!kw) {
+    c.innerHTML = generatingCard('🔑', 'Keyword strategy generating', 'High-intent primary, secondary, and long-tail keywords for your specialty and city appear here.');
+    return;
+  }
+  function group(label, arr, cls) {
+    if (!Array.isArray(arr) || !arr.length) return '';
+    return '<div class="kw-section-label">' + escH(label) + '</div><div class="kw-tags">' +
+      arr.map(function(k){ return '<span class="kw-tag ' + cls + '">' + escH(k) + '</span>'; }).join('') + '</div>';
+  }
+  c.innerHTML = '<div class="seo-kw-card">' +
+    group('Primary (high-intent)', kw.primary, 'primary') +
+    group('Secondary', kw.secondary, 'secondary') +
+    group('Long-tail', kw.longTail, 'longtail') +
+    '</div>';
+}
+
+// ── LOCAL SEO HEALTH ──────────────────────────────────────────────────────
+function populateSeoHealth(latest) {
+  var items = [];
+  if (latest) {
+    var photos   = latest.photo_count != null ? latest.photo_count : null;
+    var reviews  = latest.review_count != null ? latest.review_count : null;
+    var rating   = latest.rating != null ? Number(latest.rating) : null;
+
+    items.push({ icon: '📍', name: 'GMB Profile',
+      status: photos != null && photos > 3 && reviews != null && reviews > 10 ? 'ok'
+               : photos != null && photos >= 1 ? 'warn' : 'err',
+      label:  photos != null && photos > 3 && reviews != null && reviews > 10 ? 'Looking good'
+               : photos != null && photos >= 1 ? 'Needs work' : 'Incomplete'
+    });
+    items.push({ icon: '⭐', name: 'Reviews',
+      status: reviews != null && reviews >= 50 ? 'ok' : reviews != null && reviews >= 10 ? 'warn' : 'err',
+      label:  reviews != null ? reviews + ' reviews' : 'No data'
+    });
+    items.push({ icon: '📷', name: 'Photos',
+      status: photos != null && photos >= 10 ? 'ok' : photos != null && photos >= 3 ? 'warn' : 'err',
+      label:  photos != null ? photos + ' uploaded' : 'No data'
+    });
+    items.push({ icon: '🌟', name: 'Star Rating',
+      status: rating != null && rating >= 4.0 ? 'ok' : rating != null && rating >= 3.0 ? 'warn' : 'err',
+      label:  rating != null ? rating.toFixed(1) + ' / 5.0' : 'No data'
+    });
+  } else {
+    ['GMB Profile','Reviews','Photos','Star Rating'].forEach(function(name){
+      items.push({ icon: '—', name: name, status: 'na', label: 'Awaiting data' });
+    });
+  }
+  // Static items we can't determine from report data
+  items.push({ icon: '🔗', name: 'Citations',     status: 'na', label: 'Check manually' });
+  items.push({ icon: '📲', name: 'NAP Consistency', status: 'na', label: 'Check manually' });
+  items.push({ icon: '🏷',  name: 'Schema Markup', status: 'na', label: 'Check manually' });
+  items.push({ icon: '🔍', name: 'Local Pack Rank', status: 'na', label: 'Coming soon' });
+
+  el('seo-grid').innerHTML = items.map(function(item){
+    return '<div class="seo-card"><div class="seo-icon">' + item.icon + '</div>' +
+      '<div class="seo-name">' + escH(item.name) + '</div>' +
+      '<span class="seo-status ' + item.status + '">' + escH(item.label) + '</span></div>';
   }).join('');
 }
-function buildSentiment(s){
-  var pc=document.getElementById('dash-pos-words'),nc=document.getElementById('dash-neg-words');
-  if(pc)pc.innerHTML=s.positive.map(function(w){return '<span class="wc-tag wc-pos wc-'+(w.size==='lg'?'lg':'sm')+'">'+escH(w.word)+'</span>';}).join('');
-  if(nc)nc.innerHTML=s.negative.map(function(w){return '<span class="wc-tag wc-neg wc-'+(w.size==='lg'?'lg':'sm')+'">'+escH(w.word)+'</span>';}).join('');
-}
-function buildReports(reports){
-  var c=document.getElementById('reports-list');if(!c)return;
-  c.innerHTML=reports.map(function(r){
-    var chgN=parseInt(r.change);
-    var chgCls=chgN>0?'kc-up':chgN<0?'kc-down':'kc-same';
-    return '<div class="report-item"><div class="ri-left"><h4>Weekly Report &mdash; '+r.date+'</h4><p>Full 5-pillar audit &middot; Competitor analysis &middot; AI fix guide</p></div><div class="ri-score"><div class="n">'+r.score+'</div><div class="l">Score</div></div><span class="ri-change '+chgCls+'">'+r.change+' pts</span><button class="dl-btn" onclick="downloadReport(''+r.auditId+'')" type="button">PDF &darr;</button></div>';
-  }).join('');
+
+// ── GROWTH ROADMAP ────────────────────────────────────────────────────────
+function populateRoadmap(latest, insights) {
+  // Prefer the AI-generated 90-day plan from this report's insights
+  var plan = insights && insights.ninetyDayPlan ? insights.ninetyDayPlan : null;
+  if (plan && (plan.phase1 || plan.phase2 || plan.phase3)) {
+    var ctx = [latest && latest.specialty, latest && latest.city].filter(Boolean).join(', ');
+    function aiRow(phase, days, cls, p) {
+      if (!p) return '';
+      var actions = Array.isArray(p.actions) ? p.actions : [];
+      var kpis    = Array.isArray(p.kpis) ? p.kpis : [];
+      return '<div class="roadmap-row"><div class="roadmap-phase ' + cls + '">' + phase +
+        '<span class="roadmap-phase-days">' + days + '</span></div>' +
+        '<div class="roadmap-content"><h4>' + escH(p.focus || '') + '</h4>' +
+        '<ul>' + actions.map(function(a){ return '<li>' + escH(a) + '</li>'; }).join('') + '</ul>' +
+        (kpis.length ? '<div style="font-size:10px;color:var(--slate-light);margin-top:6px">KPIs: ' + kpis.map(escH).join(' · ') + '</div>' : '') +
+        (p.estimatedScoreGain != null ? '<span class="roadmap-target">Target: +' + escH(String(p.estimatedScoreGain)) + ' pts' + (ctx ? ' · ' + escH(ctx) : '') + '</span>' : '') +
+        '</div></div>';
+    }
+    el('roadmap-content').innerHTML = '<div class="roadmap-card">' +
+      aiRow('Phase 1', 'Days 1–30', '', plan.phase1) +
+      aiRow('Phase 2', 'Days 31–60', 'p2', plan.phase2) +
+      aiRow('Phase 3', 'Days 61–90', 'p3', plan.phase3) +
+      (plan.projectedScoreAt90Days != null
+        ? '<div class="roadmap-projection">Projected score at 90 days: ' + escH(String(plan.projectedScoreAt90Days)) + '/100</div>' : '') +
+      '</div>';
+    return;
+  }
+
+  var score    = latest ? latest.score : null;
+  var specialty = latest ? latest.specialty : null;
+  var city      = latest ? latest.city : null;
+  var context   = [specialty, city].filter(Boolean).join(', ');
+
+  var p1, p2, p3;
+  if (!score || score < 50) {
+    p1 = { title: 'Foundation', goal: '+12 pts', tasks: ['Complete GMB profile — hours, services, description, attributes', 'Upload 10+ clinic photos', 'Claim Practo, JustDial, and Lybrate listings with consistent NAP', 'Set up WhatsApp review request workflow'] };
+    p2 = { title: 'Reviews + content authority', goal: '+8 pts', tasks: ['Reach 30+ Google reviews via WhatsApp request system', 'Publish 6 Google Business Posts on medical topics', 'Create 2 educational Instagram Reels', 'Respond to every review within 24 hours'] };
+    p3 = { title: 'AI authority + competitive positioning', goal: 'Score 70+', tasks: ['Publish 2 long-form blog posts targeting local patient searches', 'Build 5 citations on medical directories', 'Record 2 patient testimonial videos', 'Engage with GBP Q&A to build authoritative answers'] };
+  } else if (score < 70) {
+    p1 = { title: 'Accelerate reviews + photos', goal: '+8 pts', tasks: ['Reach 50+ Google reviews — use WhatsApp review request system', 'Upload 10 more clinic photos', 'Add services section to GMB profile', 'Publish 2 Google Business Posts per week'] };
+    p2 = { title: 'Content + AI signal building', goal: '+6 pts', tasks: ['8 educational posts on your specialty topic this month', '3 Instagram Reels on patient-facing health topics', 'Build 4 citations on medical directories (Practo, Sehat, MediBuddy)', 'Respond to all reviews within 24 hours'] };
+    p3 = { title: 'Competitive positioning + authority', goal: 'Score 82+', tasks: ['Publish 2 long-form blog posts targeting your city + specialty', 'Add 5+ GBP Q&A responses', 'Record 3 patient video testimonials', 'Monitor and respond to all competitor review spikes'] };
+  } else {
+    p1 = { title: 'Maintain + push for top position', goal: '+5 pts', tasks: ['Review velocity: 7+ new Google reviews per week', 'Publish 3 Google Business Posts per week (link to topical campaign)', 'Complete any remaining GMB attributes (insurance, languages, payments)', 'Launch this month\'s awareness campaign from Content Pack'] };
+    p2 = { title: 'AI visibility + directory sweep', goal: '+5 pts', tasks: ['Build 6 citations on remaining medical directories', 'Optimise website with local schema markup for your specialty', '3 long-form content pieces targeting "best ' + (specialty || 'doctor') + ' in ' + (city || 'your city') + '"', 'Submit to Healthgrades, Justdial Premium, and Sulekha'] };
+    p3 = { title: 'Thought leadership + referral network', goal: 'Score 90+', tasks: ['Launch video content series: 1 educational reel per week', 'Build referral links with 2 complementary specialist practices', 'Set up Google Ads for peak awareness month campaigns', 'Reach top-3 position on Perplexity and Gemini for your primary search query'] };
+  }
+
+  el('roadmap-content').innerHTML =
+    '<div class="roadmap-card">' +
+    roadmapRow('Phase 1', 'Days 1–30', '', p1, context) +
+    roadmapRow('Phase 2', 'Days 31–60', 'p2', p2, context) +
+    roadmapRow('Phase 3', 'Days 61–90', 'p3', p3, context) +
+    '</div>';
 }
 
-function downloadReport(id){
-  fetch('/api/report/'+id,{method:'GET',headers:{'Content-Type':'application/json'}})
-  .then(function(r){return r.blob();})
-  .then(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='thedocmirror-report-'+id+'.pdf';a.click();})
-  .catch(function(){alert('Report download will be available once the API is live. Check your email for the PDF.');});
+function roadmapRow(phase, days, cls, data, context) {
+  return '<div class="roadmap-row">' +
+    '<div class="roadmap-phase ' + cls + '">' + phase + '<span class="roadmap-phase-days">' + days + '</span></div>' +
+    '<div class="roadmap-content">' +
+    '<h4>' + escH(data.title) + '</h4>' +
+    '<ul>' + data.tasks.map(function(t){ return '<li>' + escH(t) + '</li>'; }).join('') + '</ul>' +
+    '<span class="roadmap-target">Target: ' + escH(data.goal) + (context ? ' · ' + escH(context) : '') + '</span>' +
+    '</div></div>';
 }
 
-function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-
-// ── NAVIGATION ─────────────────────────────────────────────────────────────
-function showSection(name,btn){
-  document.querySelectorAll('.dash-section').forEach(function(s){s.classList.remove('active');});
-  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
-  var sec=document.getElementById('sec-'+name);if(sec)sec.classList.add('active');
-  if(btn)btn.classList.add('active');
-  if(window.innerWidth<=768)document.getElementById('sidebar').classList.remove('open');
-}
-function toggleSidebar(){
-  document.getElementById('sidebar').classList.toggle('open');
+// ── LOCK SECTION (for audit plan) ─────────────────────────────────────────
+function lockSection(contentId, title, desc) {
+  var el2 = el(contentId); if (!el2) return;
+  el2.innerHTML =
+    '<div class="locked-card">' +
+    '<div class="lock-icon">🔒</div>' +
+    '<h3>' + escH(title) + '</h3>' +
+    '<p>' + escH(desc) + '</p>' +
+    '<a href="/pages/checkout-subscription.html" class="locked-btn">Upgrade to Monitor $49/mo →</a>' +
+    '</div>';
 }
 
-// ── INIT ────────────────────────────────────────────────────────────────────
+// ── HELPERS ───────────────────────────────────────────────────────────────
+function el(id){ return document.getElementById(id); }
+
+function weekOf() {
+  var d = new Date();
+  var day = d.getDay();
+  var mon = new Date(d);
+  mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
+  return mon.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// ── SCROLL-BASED ACTIVE NAV HIGHLIGHT ─────────────────────────────────────
+var navLinks = document.querySelectorAll('.nav-link');
+window.addEventListener('scroll', function(){
+  var scrollY = window.scrollY;
+  document.querySelectorAll('section[id]').forEach(function(sec){
+    if (scrollY >= sec.offsetTop - 120 && scrollY < sec.offsetTop + sec.offsetHeight - 120) {
+      navLinks.forEach(function(l){ l.classList.remove('active'); });
+      var link = document.querySelector('.nav-link[href="#' + sec.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+});
+
 checkAuth();
 </script>
 </body>

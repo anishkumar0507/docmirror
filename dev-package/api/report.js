@@ -6,6 +6,7 @@ require('../lib/env');
 
 const auditCache            = require('../lib/audit-cache');
 const paidReports           = require('../lib/paid-reports');
+const reportsStore          = require('../lib/reports-store');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
 const { runOncePerUser }    = require('../lib/pdf-jobs');
@@ -165,7 +166,10 @@ Provide 12 topics and 4 calendar weeks.`;
   };
 }
 
-/** Build PDF buffer — shared by download-pdf and generateReport */
+/**
+ * Build PDF buffer — shared by download-pdf and generateReport.
+ * Returns { buffer: Buffer, insights: Object } so callers can save the AI data to the DB.
+ */
 async function buildPdfBuffer(auditData) {
   const city    = auditData.city  || (auditData.cityState || '').split(',')[0].trim();
   const state   = auditData.state || (auditData.cityState || '').split(',')[1]?.trim() || '';
@@ -209,7 +213,23 @@ async function buildPdfBuffer(auditData) {
     throw new Error(`Unreplaced placeholders: ${[...new Set(orphans)].join(', ')}`);
   }
 
-  return renderPdf(html);
+  const buffer = await renderPdf(html);
+
+  // Return both buffer AND the Claude-generated insights so callers can persist them
+  const insights = {
+    fixes:               ai.fixes               || [],
+    competitorNarrative: ai.competitorNarrative  || '',
+    execSummary:         ai.execSummary          || null,
+    responseTemplates:   ai.responseTemplates    || null,
+    seoKeywords:         ai.seoKeywords          || null,
+    contentStrategy:     ai.contentStrategy      || null,
+    patientJourney:      ai.patientJourney       || null,
+    ninetyDayPlan:       ai.ninetyDayPlan        || null,
+    socialContent:       ai.socialContent        || null,
+    specialtyDonts:      ai.specialtyDonts       || [],
+  };
+
+  return { buffer, insights };
 }
 
 // ── Render PDF with Puppeteer (ESM-safe via lib/puppeteer-loader) ──────────
@@ -306,7 +326,7 @@ async function verifyReportsBucket(supabase) {
  * @throws  {Error}            when PDF generation itself fails (Puppeteer/pillar/Claude)
  * Note: email failure does NOT throw — it returns emailSent:false in the result.
  */
-async function _generateReportCore({ auditId, email }) {
+async function _generateReportCore({ auditId, email, userId = null }) {
   const canonicalId = auditCache.normalizeAuditId(auditId);
   console.log(
     `[report] ▶ start  auditId=${canonicalId}  email=${email}  ` +
@@ -375,9 +395,12 @@ async function _generateReportCore({ auditId, email }) {
   // 4–8. Claude prompts (sequential queue) + HTML template + Puppeteer → PDF buffer
   // Throws on any non-optional prompt failure or Puppeteer crash.
   let pdfBuffer;
+  let pdfInsights = null;
   try {
     console.log('[pdf] building PDF buffer (Claude prompts + Puppeteer)...');
-    pdfBuffer = await buildPdfBuffer(d);
+    const pdfResult = await buildPdfBuffer(d);
+    pdfBuffer  = pdfResult.buffer;
+    pdfInsights = pdfResult.insights;
     console.log(`[pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
   } catch (pdfErr) {
     console.error('[pdf] PDF generation FAILED:', pdfErr.message);
@@ -414,6 +437,23 @@ async function _generateReportCore({ auditId, email }) {
         const { data: pubData } = supabase.storage.from('reports').getPublicUrl(uploadPath);
         pdfUrl = pubData?.publicUrl || null;
         console.log(`[storage] upload OK  pdfUrl=${pdfUrl}`);
+      }
+
+      // Upsert reports row so the row is always present in the dashboard after PDF generation.
+      // This handles the case where verify-payment ran without a valid user token (userId=null)
+      // and skipped the initial INSERT, leaving the reports table empty.
+      // NOTE: uses a manual select→update|insert (reportsStore) because the live DB is
+      // missing the unique constraint on reports.audit_id, which made onConflict upserts fail.
+      const reportRow = reportsStore.reportFromAuditData(canonicalId, d, { pdf_url: pdfUrl || null });
+      if (userId) reportRow.user_id = userId;
+
+      const upRes = await reportsStore.upsertReport(supabase, reportRow);
+      if (!upRes.ok) console.warn('[storage] reports upsert warn:', upRes.error?.message || upRes.reason);
+      else console.log(`[storage] reports row ${upRes.action}  audit_id=${canonicalId}  score=${reportRow.score}  pdf=${pdfUrl ? 'yes' : 'no'}`);
+
+      // Persist Claude-generated insights into audit_cache.audit_data (no schema change needed).
+      if (pdfInsights) {
+        await auditCache.mergeAuditData(canonicalId, { insights: pdfInsights, score: d.score });
       }
     } catch (storageErr) {
       console.error(
@@ -477,14 +517,17 @@ async function _generateReportCore({ auditId, email }) {
     emailSent,
     pdfUrl,
     doctorNameClean: d.doctorNameClean,
+    score:           d.score       || null,
+    reviewCount:     typeof d.reviewCount === 'number' ? d.reviewCount : null,
+    rating:          typeof d.rating       === 'number' ? d.rating       : null,
   };
 }
 
 /** Public entry — deduplicates concurrent jobs per email/auditId */
-async function generateReport({ auditId, email }) {
+async function generateReport({ auditId, email, userId = null }) {
   const fakeReq = { body: { auditId, email }, headers: {}, socket: {} };
   return runOncePerUser(fakeReq, { auditId, email }, () =>
-    _generateReportCore({ auditId, email })
+    _generateReportCore({ auditId, email, userId })
   );
 }
 

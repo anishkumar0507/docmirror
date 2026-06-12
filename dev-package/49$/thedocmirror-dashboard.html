@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Doc Mirror · Growth Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<!--
+  THE DOC MIRROR — MONITOR DASHBOARD v6
+  ─────────────────────────────────────────────────────────────────────────
+  $49/month subscriber dashboard. Single-page scroll with 12 sections covering
+  all 19 Monitor features from the spec document.
+
+  Data is fetched from GET /api/dashboard on page load. Currently runs on
+  DEMO data; when API_READY=true and a real subscriber loads the page,
+  replace the DEMO object with the fetch response.
+
+  Sections (top → bottom):
+    1.  Topical Campaign Banner (this month's awareness campaign)
+    2.  Score Hero + Week Delta
+    3.  AI Visibility Rank Tracker (ChatGPT, Gemini, Claude, Perplexity)
+    4.  Score Trend Chart (12-week)
+    5.  Competitor Watchlist (3 competitors with deltas)
+    6.  Competitor Change Alerts (this week's movements)
+    7.  Weekly Tasks (checklist with score impact)
+    8.  This Week's Content Pack (ready-to-publish)
+    9.  Review Growth Tracker (velocity + target)
+    10. Reputation Monitor (alerts + suggested responses)
+    11. Local SEO Health Check
+    12. 30/60/90 Growth Roadmap
+-->
+<style>
+:root{
+  --navy:#0A2540;--navy-2:#142E50;--green:#00A878;--green-dark:#007a57;
+  --green-light:#e6f7f2;--warm:#F7F6F3;--warm-2:#FEFCF7;--slate:#3D4D5C;
+  --slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0;
+  --red:#DC2626;--red-light:#FEF2F2;--amber:#D97706;--amber-light:#FFFBEB;
+  --blue:#0C447C;--blue-light:#E6F1FB;--purple:#5b3fb8;--purple-light:#EEEDFE;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);-webkit-font-smoothing:antialiased;line-height:1.55;font-size:14px}
+
+/* ── LAYOUT ───────────────────────────────────────────────────────────── */
+.app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
+aside{background:#fff;border-right:.5px solid var(--border);padding:1.5rem 1rem;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:8px;margin-bottom:2rem;text-decoration:none;color:var(--navy)}
+.brand-mark{width:28px;height:28px}
+.brand-name{font-size:1rem;font-weight:700;letter-spacing:-.02em}
+.brand-name span{color:var(--green)}
+.brand-tier{font-size:10px;color:var(--green-dark);font-weight:700;background:var(--green-light);padding:2px 7px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;margin-left:6px}
+.nav-section-label{font-size:10px;font-weight:600;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.07em;padding:.5rem .5rem .25rem}
+.nav-link{display:flex;align-items:center;gap:8px;padding:.5rem .65rem;border-radius:7px;color:var(--slate);text-decoration:none;font-size:13px;font-weight:500;margin:1px 0;transition:background .12s,color .12s}
+.nav-link:hover{background:var(--warm)}
+.nav-link.active{background:var(--green-light);color:var(--green-dark)}
+.nav-link .icon{width:14px;height:14px;flex-shrink:0;opacity:.7}
+.nav-badge{margin-left:auto;font-size:10px;background:var(--red);color:#fff;border-radius:20px;padding:1px 6px;font-weight:600}
+
+main{padding:1.5rem 2rem 4rem;max-width:1200px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;gap:1rem}
+.topbar-left h1{font-size:1.5rem;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.topbar-left .topbar-sub{font-size:13px;color:var(--slate-light);margin-top:2px}
+.topbar-right{display:flex;align-items:center;gap:8px}
+.week-pill{font-size:12px;font-weight:600;color:var(--slate);background:#fff;border:.5px solid var(--border);border-radius:20px;padding:5px 12px}
+.notif-btn{position:relative;width:36px;height:36px;border-radius:50%;background:#fff;border:.5px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:14px}
+.notif-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;background:var(--red);border-radius:50%;border:2px solid #fff}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600}
+
+/* ── SECTION COMMON ───────────────────────────────────────────────────── */
+.section{margin-bottom:1.5rem;scroll-margin-top:1rem}
+.section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;gap:1rem}
+.section-title{font-size:1.05rem;font-weight:700;color:var(--navy);letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+.section-title .tag{font-size:9px;font-weight:700;background:var(--green-light);color:var(--green-dark);padding:2px 7px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase}
+.section-title .tag.new{background:#FFE9F0;color:#B83260}
+.section-action{font-size:12px;color:var(--slate-light);font-weight:500;text-decoration:none}
+.section-action:hover{color:var(--green-dark)}
+.card{background:#fff;border-radius:14px;padding:1.25rem 1.5rem;border:.5px solid var(--border)}
+.card-dark{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;border:none}
+.card-amber{background:linear-gradient(135deg,#7B5500 0%,#D97706 100%);color:#fff;border:none}
+
+/* ── 1. TOPICAL CAMPAIGN BANNER ───────────────────────────────────────── */
+.campaign-banner{background:linear-gradient(135deg,#3a1c71 0%,#9b5fb8 50%,#d76d77 100%);color:#fff;border-radius:14px;padding:1.5rem 1.75rem;margin-bottom:1.5rem;position:relative;overflow:hidden}
+.campaign-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.06)}
+.campaign-banner::after{content:'';position:absolute;bottom:-80px;left:-30px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04)}
+.campaign-eyebrow{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.65);margin-bottom:6px;position:relative;display:flex;align-items:center;gap:8px}
+.campaign-eyebrow::before{content:'';width:6px;height:6px;background:#fff;border-radius:50%;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.campaign-title{font-size:1.4rem;font-weight:700;letter-spacing:-.02em;line-height:1.2;margin-bottom:6px;position:relative}
+.campaign-sub{font-size:14px;color:rgba(255,255,255,.75);line-height:1.55;max-width:600px;margin-bottom:14px;position:relative}
+.campaign-stats{display:flex;gap:1.5rem;position:relative;margin-bottom:14px}
+.cs-item{font-size:12px}
+.cs-num{font-size:1.6rem;font-weight:700;font-family:'DM Mono',monospace;line-height:1;letter-spacing:-.02em}
+.cs-label{color:rgba(255,255,255,.6);margin-top:2px}
+.campaign-cta{display:inline-flex;align-items:center;gap:6px;background:#fff;color:#7b3380;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:700;text-decoration:none;position:relative;transition:transform .15s}
+.campaign-cta:hover{transform:translateY(-1px)}
+
+/* ── 2. SCORE HERO + WEEK DELTA ───────────────────────────────────────── */
+.hero-grid{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+.score-hero{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;border-radius:14px;padding:1.5rem;position:relative;overflow:hidden}
+.score-hero::before{content:'';position:absolute;top:-50px;right:-50px;width:200px;height:200px;border-radius:50%;background:rgba(0,168,120,.08)}
+.sh-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.5);margin-bottom:8px;position:relative}
+.sh-num{font-size:3.5rem;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.04em;line-height:1;position:relative}
+.sh-out{font-size:1.4rem;color:rgba(255,255,255,.4);font-weight:500}
+.sh-delta{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;display:inline-flex;align-items:center;gap:4px;margin-top:10px;position:relative}
+.delta-up{background:rgba(0,168,120,.2);color:#6EE7C0}
+.delta-down{background:rgba(220,38,38,.2);color:#FCA5A5}
+.sh-meta{font-size:11px;color:rgba(255,255,255,.5);margin-top:8px;position:relative}
+
+.kpi-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-light);margin-bottom:6px}
+.kpi-num{font-size:1.6rem;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;color:var(--navy);line-height:1.1}
+.kpi-sub{font-size:11px;color:var(--slate-light);margin-top:4px}
+.kpi-delta{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;display:inline-flex;align-items:center;gap:3px;margin-top:6px}
+.kpi-delta.up{background:var(--green-light);color:var(--green-dark)}
+.kpi-delta.down{background:var(--red-light);color:#991B1B}
+
+/* ── 3. AI VISIBILITY RANK TRACKER ────────────────────────────────────── */
+.ai-tracker-card{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-2) 100%);color:#fff;border-radius:14px;padding:1.5rem;position:relative;overflow:hidden}
+.ai-tracker-card::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(0,168,120,.06);pointer-events:none}
+.ai-tracker-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px;position:relative}
+.ai-platform-card{background:rgba(255,255,255,.06);border-radius:10px;padding:14px 12px;border:.5px solid rgba(255,255,255,.08)}
+.ai-pc-name{font-size:11px;color:rgba(255,255,255,.6);font-weight:500;margin-bottom:4px}
+.ai-pc-rank{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:8px;font-family:'DM Mono',monospace}
+.ai-pc-rank .pos{font-size:1.8rem}
+.ai-pc-rank .of{font-size:10px;color:rgba(255,255,255,.4)}
+.ai-pc-trend{font-size:10px;color:rgba(255,255,255,.5);display:flex;align-items:center;gap:4px}
+.ai-pc-trend .up{color:#6EE7C0;font-weight:700}
+.ai-pc-trend .down{color:#FCA5A5;font-weight:700}
+.ai-pc-trend .same{color:rgba(255,255,255,.4)}
+.ai-tracker-queries{font-size:11px;color:rgba(255,255,255,.5);margin-top:14px;position:relative;line-height:1.6;border-top:.5px solid rgba(255,255,255,.08);padding-top:10px}
+.ai-tracker-queries strong{color:rgba(255,255,255,.8);font-weight:600}
+
+/* ── 4. TREND CHART ───────────────────────────────────────────────────── */
+.chart-container{position:relative;height:240px;margin-top:8px}
+
+/* ── 5. COMPETITOR WATCHLIST ──────────────────────────────────────────── */
+.comp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.comp-card{background:#fff;border-radius:12px;padding:1rem;border:.5px solid var(--border);position:relative}
+.comp-name{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px;line-height:1.3;padding-right:24px}
+.comp-rank-pill{position:absolute;top:1rem;right:1rem;font-size:10px;font-weight:700;background:var(--blue-light);color:var(--blue);padding:2px 8px;border-radius:20px}
+.comp-score{font-size:1.5rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--navy);letter-spacing:-.02em;margin-bottom:8px}
+.comp-score .of{font-size:10px;color:var(--slate-muted);font-weight:500}
+.comp-stats{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;font-size:11px;color:var(--slate)}
+.comp-stat{display:flex;justify-content:space-between;padding:3px 0;border-bottom:.5px solid var(--border)}
+.comp-stat:last-child,.comp-stat:nth-last-child(2){border-bottom:none}
+.comp-stat-label{color:var(--slate-light)}
+.comp-stat-val{font-weight:600;color:var(--navy);font-family:'DM Mono',monospace}
+.comp-stat-val.up{color:var(--green-dark)}
+.comp-stat-val.down{color:var(--red)}
+
+/* ── 6. COMPETITOR CHANGE ALERTS ──────────────────────────────────────── */
+.alert-feed{background:#fff;border-radius:14px;padding:1rem 1.25rem;border:.5px solid var(--border)}
+.alert-row{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:.5px solid var(--border)}
+.alert-row:last-child{border-bottom:none}
+.alert-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.ai-rev{background:#FFE9F0;color:#B83260}
+.ai-photo{background:var(--blue-light);color:var(--blue)}
+.ai-rank{background:var(--amber-light);color:var(--amber)}
+.ai-post{background:var(--green-light);color:var(--green-dark)}
+.alert-body{flex:1}
+.alert-text{font-size:13px;color:var(--slate);line-height:1.5}
+.alert-text strong{color:var(--navy);font-weight:600}
+.alert-time{font-size:10px;color:var(--slate-muted);margin-top:2px}
+.alert-impact{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:var(--warm);color:var(--slate-light);white-space:nowrap;flex-shrink:0;margin-top:2px}
+.alert-impact.high{background:var(--red-light);color:#991B1B}
+
+/* ── 7. WEEKLY TASKS ──────────────────────────────────────────────────── */
+.tasks-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.tasks-summary{display:flex;align-items:center;justify-content:space-between;padding-bottom:.75rem;margin-bottom:.5rem;border-bottom:.5px solid var(--border)}
+.tasks-completed{font-size:12px;color:var(--slate-light)}
+.tasks-completed strong{color:var(--navy);font-weight:700;font-family:'DM Mono',monospace}
+.tasks-est-gain{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--green-light);color:var(--green-dark)}
+.task-row{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:.5px solid var(--border)}
+.task-row:last-child{border-bottom:none}
+.task-checkbox{width:18px;height:18px;border:1.5px solid var(--slate-muted);border-radius:5px;background:#fff;flex-shrink:0;margin-top:1px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:transparent;transition:all .15s}
+.task-checkbox.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-body{flex:1}
+.task-title{font-size:13px;color:var(--slate);font-weight:500;line-height:1.45}
+.task-title.done{text-decoration:line-through;color:var(--slate-muted)}
+.task-meta{font-size:10px;color:var(--slate-muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.task-meta span{display:flex;align-items:center;gap:3px}
+.task-pts{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--green-light);color:var(--green-dark);white-space:nowrap;flex-shrink:0;margin-top:2px}
+
+/* ── 8. CONTENT PACK ──────────────────────────────────────────────────── */
+.content-pack-card{background:linear-gradient(135deg,#0F2D4D 0%,#1a3d6b 100%);color:#fff;border-radius:14px;padding:1.25rem 1.5rem;position:relative;overflow:hidden}
+.content-pack-card::before{content:'';position:absolute;top:-80px;right:-80px;width:280px;height:280px;border-radius:50%;background:rgba(0,168,120,.04)}
+.cp-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;position:relative}
+.cp-title{font-size:1rem;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.cp-title-tag{font-size:9px;font-weight:700;background:rgba(0,168,120,.2);color:#6EE7C0;padding:2px 8px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase}
+.cp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;position:relative}
+.cp-item{background:rgba(255,255,255,.05);border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.06)}
+.cp-platform{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;display:flex;align-items:center;gap:5px}
+.cp-platform-dot{width:6px;height:6px;border-radius:50%;background:var(--green)}
+.cp-headline{font-size:11px;color:#fff;font-weight:600;margin-bottom:3px;line-height:1.35}
+.cp-preview{font-size:10px;color:rgba(255,255,255,.55);line-height:1.4}
+.cp-footer{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;font-size:11px;color:rgba(255,255,255,.5);position:relative}
+.cp-footer a{color:#6EE7C0;text-decoration:none;font-weight:600}
+
+/* ── 9. REVIEW GROWTH TRACKER ─────────────────────────────────────────── */
+.review-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.review-progress{display:flex;align-items:flex-end;gap:1rem;margin-bottom:1rem}
+.review-stat{flex:1}
+.review-stat-label{font-size:10px;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px}
+.review-stat-num{font-size:1.5rem;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;line-height:1}
+.review-stat-sub{font-size:10px;color:var(--slate-light);margin-top:2px}
+.review-bar-wrap{height:8px;background:var(--warm);border-radius:4px;overflow:hidden;margin:6px 0}
+.review-bar{height:100%;background:linear-gradient(90deg,var(--green) 0%,var(--green-dark) 100%);border-radius:4px;transition:width .8s ease}
+.review-cta-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px}
+.review-cta{background:var(--warm);border-radius:8px;padding:8px 10px;cursor:pointer;transition:background .15s;text-decoration:none;color:var(--slate);font-size:11px;font-weight:600;text-align:center;display:flex;align-items:center;justify-content:center;gap:5px;border:none}
+.review-cta:hover{background:var(--green-light);color:var(--green-dark)}
+
+/* ── 10. REPUTATION MONITOR ───────────────────────────────────────────── */
+.reputation-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border);border-left:3px solid var(--amber)}
+.rep-alert-row{display:flex;align-items:flex-start;gap:10px;padding:.75rem 0;border-bottom:.5px solid var(--border)}
+.rep-alert-row:last-child{border-bottom:none}
+.rep-alert-row:first-child{padding-top:0}
+.rep-stars{font-size:13px;color:var(--amber);letter-spacing:1px;flex-shrink:0;margin-top:1px}
+.rep-content{flex:1}
+.rep-title{font-size:13px;color:var(--navy);font-weight:600;line-height:1.4;margin-bottom:3px}
+.rep-snippet{font-size:11px;color:var(--slate-light);font-style:italic;line-height:1.45;margin-bottom:6px}
+.rep-suggested{background:var(--green-light);border-radius:6px;padding:6px 9px;font-size:11px;color:var(--green-dark);line-height:1.45}
+.rep-suggested strong{font-weight:600;display:block;margin-bottom:2px;text-transform:uppercase;font-size:9px;letter-spacing:.05em}
+
+/* ── 11. SEO HEALTH CHECK ─────────────────────────────────────────────── */
+.seo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.seo-card{background:#fff;border-radius:10px;padding:.75rem 1rem;border:.5px solid var(--border);text-align:center}
+.seo-icon{font-size:18px;margin-bottom:4px}
+.seo-name{font-size:11px;font-weight:600;color:var(--navy);margin-bottom:3px}
+.seo-status{font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;display:inline-block}
+.seo-status.ok{background:var(--green-light);color:var(--green-dark)}
+.seo-status.warn{background:var(--amber-light);color:var(--amber)}
+.seo-status.err{background:var(--red-light);color:#991B1B}
+
+/* ── 12. ROADMAP ──────────────────────────────────────────────────────── */
+.roadmap-card{background:#fff;border-radius:14px;padding:1.25rem;border:.5px solid var(--border)}
+.roadmap-row{display:grid;grid-template-columns:90px 1fr;gap:1rem;padding:.875rem 0;border-bottom:.5px solid var(--border)}
+.roadmap-row:last-child{border-bottom:none}
+.roadmap-phase{font-size:9px;font-weight:700;color:#fff;background:var(--navy);padding:5px;border-radius:8px;text-align:center;letter-spacing:.05em;height:fit-content}
+.roadmap-phase.p2{background:var(--green-dark)}
+.roadmap-phase.p3{background:var(--purple)}
+.roadmap-phase-days{font-size:10px;font-weight:500;display:block;color:rgba(255,255,255,.7);margin-top:2px;letter-spacing:0;text-transform:none}
+.roadmap-content h4{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
+.roadmap-content ul{list-style:none}
+.roadmap-content li{font-size:11px;color:var(--slate);padding:2px 0 2px 14px;position:relative;line-height:1.5}
+.roadmap-content li::before{content:'→';position:absolute;left:0;color:var(--green);font-weight:700}
+.roadmap-target{font-size:10px;font-weight:700;color:var(--green-dark);background:var(--green-light);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:6px}
+
+/* ── RESPONSIVE ───────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .hero-grid{grid-template-columns:1fr 1fr}
+  .comp-grid{grid-template-columns:1fr 1fr}
+  .cp-grid{grid-template-columns:1fr 1fr}
+  .seo-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width: 720px) {
+  .app{grid-template-columns:1fr}
+  aside{position:relative;height:auto;border-right:none;border-bottom:.5px solid var(--border)}
+  main{padding:1rem}
+  .hero-grid,.comp-grid,.cp-grid,.seo-grid,.ai-tracker-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ─── SIDEBAR ────────────────────────────────────────────────────────── -->
+  <aside>
+    <a href="/" class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="14" cy="14" r="11.5" stroke="#00A878" stroke-width="2"/><path d="M9 14C9 11 11 9 14 9S19 11 19 14" stroke="#0A2540" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="19" r="2" fill="#00A878"/></svg></div>
+      <div><span class="brand-name">The Doc <span>Mirror</span></span><span class="brand-tier">Monitor</span></div>
+    </a>
+
+    <div class="nav-section-label">Overview</div>
+    <a class="nav-link active" href="#campaign"><span class="icon">📣</span>Topical Campaign</a>
+    <a class="nav-link" href="#score"><span class="icon">📊</span>Visibility Score</a>
+    <a class="nav-link" href="#ai-tracker"><span class="icon">🤖</span>AI Rank Tracker</a>
+    <a class="nav-link" href="#trend"><span class="icon">📈</span>Score Trend</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Intelligence</div>
+    <a class="nav-link" href="#competitors"><span class="icon">⚡</span>Competitor Watch</a>
+    <a class="nav-link" href="#alerts"><span class="icon">🔔</span>Change Alerts<span class="nav-badge">3</span></a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Action</div>
+    <a class="nav-link" href="#tasks"><span class="icon">✓</span>Weekly Tasks</a>
+    <a class="nav-link" href="#content"><span class="icon">🎬</span>Content Pack</a>
+    <a class="nav-link" href="#reviews"><span class="icon">★</span>Review Growth</a>
+
+    <div class="nav-section-label" style="margin-top:1rem">Health</div>
+    <a class="nav-link" href="#reputation"><span class="icon">🛡</span>Reputation<span class="nav-badge">2</span></a>
+    <a class="nav-link" href="#seo"><span class="icon">🔍</span>Local SEO</a>
+    <a class="nav-link" href="#roadmap"><span class="icon">🗺</span>Growth Roadmap</a>
+  </aside>
+
+  <!-- ─── MAIN ─────────────────────────────────────────────────────────── -->
+  <main>
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1 id="practice-name">Dr. Mandar Shah</h1>
+        <div class="topbar-sub" id="practice-sub">Cardiologist · Jamshedpur · Monitor active since March 2026</div>
+      </div>
+      <div class="topbar-right">
+        <span class="week-pill" id="week-label">Week of Mon, 8 Jun 2026</span>
+        <button class="notif-btn" type="button">🔔<span class="notif-dot"></span></button>
+        <div class="avatar" id="avatar">MS</div>
+      </div>
+    </div>
+
+    <!-- 1. Topical Campaign Banner -->
+    <section id="campaign" class="campaign-banner">
+      <div class="campaign-eyebrow">This Month · Active Campaign</div>
+      <div class="campaign-title" id="campaign-title">Love Your Heart Month</div>
+      <p class="campaign-sub" id="campaign-sub">June is hypertension awareness month in India. Patients are searching for blood pressure and cardiac screening information at 2.3× the normal rate this month. We've prepared a complete content campaign you can launch this week.</p>
+      <div class="campaign-stats">
+        <div class="cs-item"><div class="cs-num">+147%</div><div class="cs-label">Search volume this month</div></div>
+        <div class="cs-item"><div class="cs-num">12</div><div class="cs-label">Pieces of content ready</div></div>
+        <div class="cs-item"><div class="cs-num">4</div><div class="cs-label">Weeks of campaign</div></div>
+      </div>
+      <a href="#content" class="campaign-cta">View campaign content →</a>
+    </section>
+
+    <!-- 2. Score Hero + KPIs -->
+    <section id="score" class="hero-grid">
+      <div class="score-hero">
+        <div class="sh-label">Doctor Visibility Score · This Week</div>
+        <div class="sh-num" id="hero-score">76<span class="sh-out">/100</span></div>
+        <span class="sh-delta delta-up" id="hero-delta">↑ +3 from last week</span>
+        <div class="sh-meta">Up 8 points from 12 weeks ago · On track for projected 82 at day 90</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Google Score</div>
+        <div class="kpi-num" id="kpi-google">72</div>
+        <div class="kpi-sub">Local pack rank · #7</div>
+        <span class="kpi-delta up" id="kpi-google-delta">↑ +1</span>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Best AI Rank</div>
+        <div class="kpi-num" id="kpi-ai">#4</div>
+        <div class="kpi-sub">Perplexity for "cardiologist Jamshedpur"</div>
+        <span class="kpi-delta up" id="kpi-ai-delta">↑ Moved up 2</span>
+      </div>
+    </section>
+
+    <!-- 3. AI Rank Tracker -->
+    <section id="ai-tracker" class="section">
+      <div class="section-head">
+        <div class="section-title">AI Search Rank Tracker <span class="tag">live</span></div>
+        <a class="section-action" href="#">Full AI report →</a>
+      </div>
+      <div class="ai-tracker-card">
+        <div class="sh-label">Your position when patients ask AI "best cardiologist in Jamshedpur"</div>
+        <div class="ai-tracker-grid">
+          <div class="ai-platform-card">
+            <div class="ai-pc-name">Google AI Overview</div>
+            <div class="ai-pc-rank"><span class="pos">#3</span><span class="of"> / top 10</span></div>
+            <div class="ai-pc-trend"><span class="up">▲ 1</span> vs last week</div>
+          </div>
+          <div class="ai-platform-card">
+            <div class="ai-pc-name">ChatGPT</div>
+            <div class="ai-pc-rank"><span class="pos">#6</span><span class="of"> / top 10</span></div>
+            <div class="ai-pc-trend"><span class="same">— same</span> as last week</div>
+          </div>
+          <div class="ai-platform-card">
+            <div class="ai-pc-name">Gemini</div>
+            <div class="ai-pc-rank"><span class="pos">#5</span><span class="of"> / top 10</span></div>
+            <div class="ai-pc-trend"><span class="up">▲ 2</span> vs last week</div>
+          </div>
+          <div class="ai-platform-card">
+            <div class="ai-pc-name">Perplexity</div>
+            <div class="ai-pc-rank"><span class="pos">#4</span><span class="of"> / top 10</span></div>
+            <div class="ai-pc-trend"><span class="up">▲ 2</span> vs last week</div>
+          </div>
+        </div>
+        <div class="ai-tracker-queries">
+          <strong>5 queries run this week:</strong> "best cardiologist in Jamshedpur" · "top heart doctor Ranchi Jamshedpur" · "cardiologist accepting new patients" · "heart specialist Jharkhand" · "cardiac emergency Jamshedpur"
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Score Trend Chart -->
+    <section id="trend" class="section">
+      <div class="section-head">
+        <div class="section-title">12-Week Score Trend</div>
+        <a class="section-action" href="#">Export data →</a>
+      </div>
+      <div class="card">
+        <div class="chart-container"><canvas id="trendChart"></canvas></div>
+      </div>
+    </section>
+
+    <!-- 5. Competitor Watchlist -->
+    <section id="competitors" class="section">
+      <div class="section-head">
+        <div class="section-title">Competitor Watchlist</div>
+        <a class="section-action" href="#">Manage watchlist →</a>
+      </div>
+      <div class="comp-grid" id="comp-grid">
+        <div class="comp-card">
+          <div class="comp-rank-pill">#1 in market</div>
+          <div class="comp-name">Brahmananda Narayana Multispeciality</div>
+          <div class="comp-score">98<span class="of">/100</span></div>
+          <div class="comp-stats">
+            <div class="comp-stat"><span class="comp-stat-label">Reviews</span><span class="comp-stat-val up">1,043 ↑18</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Rating</span><span class="comp-stat-val">4.7★</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Photos</span><span class="comp-stat-val up">102 ↑4</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">AI rank</span><span class="comp-stat-val">#1</span></div>
+          </div>
+        </div>
+        <div class="comp-card">
+          <div class="comp-rank-pill">#2</div>
+          <div class="comp-name">Meditrina Hospital, Jamshedpur</div>
+          <div class="comp-score">95<span class="of">/100</span></div>
+          <div class="comp-stats">
+            <div class="comp-stat"><span class="comp-stat-label">Reviews</span><span class="comp-stat-val up">958 ↑14</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Rating</span><span class="comp-stat-val">4.4★</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Photos</span><span class="comp-stat-val">95</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">AI rank</span><span class="comp-stat-val">#2</span></div>
+          </div>
+        </div>
+        <div class="comp-card">
+          <div class="comp-rank-pill">#3</div>
+          <div class="comp-name">Kantilal Gandhi Memorial Hospital</div>
+          <div class="comp-score">68<span class="of">/100</span></div>
+          <div class="comp-stats">
+            <div class="comp-stat"><span class="comp-stat-label">Reviews</span><span class="comp-stat-val">194</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Rating</span><span class="comp-stat-val down">2.9★</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">Photos</span><span class="comp-stat-val">68</span></div>
+            <div class="comp-stat"><span class="comp-stat-label">AI rank</span><span class="comp-stat-val">—</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Change Alerts -->
+    <section id="alerts" class="section">
+      <div class="section-head">
+        <div class="section-title">This Week's Competitor Movements <span class="tag new">3 new</span></div>
+        <a class="section-action" href="#">View all alerts →</a>
+      </div>
+      <div class="alert-feed">
+        <div class="alert-row">
+          <div class="alert-icon ai-rev">★</div>
+          <div class="alert-body">
+            <div class="alert-text"><strong>Brahmananda Narayana</strong> gained <strong>+18 new reviews</strong> this week (now at 1,043). Their rating held at 4.7. They now lead you by 1,011 reviews.</div>
+            <div class="alert-time">2 days ago</div>
+          </div>
+          <span class="alert-impact high">High impact</span>
+        </div>
+        <div class="alert-row">
+          <div class="alert-icon ai-photo">📷</div>
+          <div class="alert-body">
+            <div class="alert-text"><strong>Meditrina Hospital</strong> uploaded <strong>4 new photos</strong> — interior shots of their cardiac cath lab. Their photo count is now 95 (you have 1).</div>
+            <div class="alert-time">3 days ago</div>
+          </div>
+          <span class="alert-impact">Medium</span>
+        </div>
+        <div class="alert-row">
+          <div class="alert-icon ai-rank">📈</div>
+          <div class="alert-body">
+            <div class="alert-text"><strong>You moved up 2 positions</strong> on Gemini and Perplexity for "best cardiologist Jamshedpur" this week. Your fixes from last week's tasks are working.</div>
+            <div class="alert-time">5 days ago</div>
+          </div>
+          <span class="alert-impact">Win</span>
+        </div>
+        <div class="alert-row">
+          <div class="alert-icon ai-post">📝</div>
+          <div class="alert-body">
+            <div class="alert-text"><strong>Brahmananda Narayana</strong> published <strong>3 Google Business Posts</strong> this week — all on hypertension awareness for June campaign.</div>
+            <div class="alert-time">5 days ago</div>
+          </div>
+          <span class="alert-impact">Medium</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Weekly Tasks -->
+    <section id="tasks" class="section">
+      <div class="section-head">
+        <div class="section-title">This Week's Tasks · Mon 8 Jun – Sun 14 Jun</div>
+        <a class="section-action" href="#">Why these tasks? →</a>
+      </div>
+      <div class="tasks-card">
+        <div class="tasks-summary">
+          <span class="tasks-completed"><strong>2 of 6</strong> tasks completed · Estimated score gain when complete</span>
+          <span class="tasks-est-gain">+5 pts</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox done">✓</div>
+          <div class="task-body">
+            <div class="task-title done">Add complete business hours including weekend hours and emergency contact</div>
+            <div class="task-meta"><span>⏱ 15 min</span><span>📍 Google Business Profile</span></div>
+          </div>
+          <span class="task-pts">+2 pts</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox done">✓</div>
+          <div class="task-body">
+            <div class="task-title done">Upload 6 photos from clinic interior and ECG room</div>
+            <div class="task-meta"><span>⏱ 30 min</span><span>📍 Google Business Profile</span></div>
+          </div>
+          <span class="task-pts">+3 pts</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox">○</div>
+          <div class="task-body">
+            <div class="task-title">Reply to 5 unanswered reviews — Claude-drafted responses ready in Content Pack</div>
+            <div class="task-meta"><span>⏱ 20 min</span><span>📍 Google Business Profile</span></div>
+          </div>
+          <span class="task-pts">+1 pt</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox">○</div>
+          <div class="task-body">
+            <div class="task-title">Launch hypertension awareness campaign — first reel ready in Content Pack</div>
+            <div class="task-meta"><span>⏱ 45 min</span><span>📍 Instagram + GBP</span></div>
+          </div>
+          <span class="task-pts">+2 pts</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox">○</div>
+          <div class="task-body">
+            <div class="task-title">Send review request WhatsApp to 15 patients seen in last 30 days</div>
+            <div class="task-meta"><span>⏱ 25 min</span><span>📍 WhatsApp Business</span></div>
+          </div>
+          <span class="task-pts">+1 pt</span>
+        </div>
+        <div class="task-row">
+          <div class="task-checkbox">○</div>
+          <div class="task-body">
+            <div class="task-title">Claim and complete Practo listing — competitors are listed, you're not</div>
+            <div class="task-meta"><span>⏱ 30 min</span><span>📍 Practo</span></div>
+          </div>
+          <span class="task-pts">+1 pt</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Content Pack -->
+    <section id="content" class="section">
+      <div class="section-head">
+        <div class="section-title">This Week's Content Pack · Hypertension Awareness</div>
+        <a class="section-action" href="#">Download all assets →</a>
+      </div>
+      <div class="content-pack-card">
+        <div class="cp-header">
+          <div class="cp-title">Ready-to-publish content for this campaign <span class="cp-title-tag">9 pieces</span></div>
+        </div>
+        <div class="cp-grid">
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Instagram Reel</div>
+            <div class="cp-headline">5 silent signs your blood pressure is too high</div>
+            <div class="cp-preview">30-sec script · Vertical 9:16 · Voiceover included · Caption with hashtags</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Instagram Reel</div>
+            <div class="cp-headline">Why your BP changes when you stand up</div>
+            <div class="cp-preview">45-sec script · Educational · 3 b-roll suggestions</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Instagram Carousel</div>
+            <div class="cp-headline">7-slide infographic: Blood pressure numbers explained</div>
+            <div class="cp-preview">Canva template link · Hindi + English versions</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Google Business Post</div>
+            <div class="cp-headline">Free BP check this Saturday at our clinic</div>
+            <div class="cp-preview">Caption + image suggestion · Book appointment CTA</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Google Business Post</div>
+            <div class="cp-headline">Hypertension Awareness Week — 4 things every adult should know</div>
+            <div class="cp-preview">Caption + share-worthy infographic prompt</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Facebook Post</div>
+            <div class="cp-headline">Quick BP self-check at home — when to come see us</div>
+            <div class="cp-preview">Caption · Image prompt · Pin to top recommended</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>WhatsApp Status</div>
+            <div class="cp-headline">5 daily habits that lower BP naturally</div>
+            <div class="cp-preview">15-sec status format · Direct patient reach</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>WhatsApp Status</div>
+            <div class="cp-headline">Free BP camp announcement</div>
+            <div class="cp-preview">Static image + caption · Saturday timing</div>
+          </div>
+          <div class="cp-item">
+            <div class="cp-platform"><span class="cp-platform-dot"></span>Blog · SEO</div>
+            <div class="cp-headline">Hypertension in Jharkhand: Why Tier-2 Cities Are at Higher Risk</div>
+            <div class="cp-preview">1,200-word draft · Primary keyword targeted · CTA at end</div>
+          </div>
+        </div>
+        <div class="cp-footer">
+          <span>Generated by Claude AI · All content reviewed against MCI Code, IMC Regulations, Drug &amp; Magic Remedies Act</span>
+          <a href="#">Open content workspace →</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. Review Growth Tracker -->
+    <section id="reviews" class="section">
+      <div class="section-head">
+        <div class="section-title">Review Growth Engine</div>
+        <a class="section-action" href="#">Review settings →</a>
+      </div>
+      <div class="review-card">
+        <div class="review-progress">
+          <div class="review-stat">
+            <div class="review-stat-label">Your reviews</div>
+            <div class="review-stat-num" id="rev-current">38</div>
+            <div class="review-stat-sub">+6 this week</div>
+          </div>
+          <div class="review-stat">
+            <div class="review-stat-label">Top competitor</div>
+            <div class="review-stat-num" id="rev-comp">1,043</div>
+            <div class="review-stat-sub">Brahmananda Narayana</div>
+          </div>
+          <div class="review-stat">
+            <div class="review-stat-label">To catch #3 (Kantilal)</div>
+            <div class="review-stat-num" id="rev-needed">156</div>
+            <div class="review-stat-sub">~7 reviews/week × 22 weeks</div>
+          </div>
+          <div class="review-stat">
+            <div class="review-stat-label">Velocity target</div>
+            <div class="review-stat-num" id="rev-velocity">7/wk</div>
+            <div class="review-stat-sub">Currently at 6/wk · 86%</div>
+          </div>
+        </div>
+        <div class="review-bar-wrap"><div class="review-bar" style="width:24.4%"></div></div>
+        <div style="font-size:11px;color:var(--slate-light);margin-top:4px">You're at 24% of catching Kantilal Gandhi. Stay on velocity target for 22 weeks to overtake.</div>
+        <div class="review-cta-row">
+          <button class="review-cta" type="button">💬 Send WhatsApp template</button>
+          <button class="review-cta" type="button">📨 Send email template</button>
+          <button class="review-cta" type="button">📱 Open SMS template</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Reputation Monitor -->
+    <section id="reputation" class="section">
+      <div class="section-head">
+        <div class="section-title">Reputation Monitor <span class="tag new">2 alerts</span></div>
+        <a class="section-action" href="#">Reputation settings →</a>
+      </div>
+      <div class="reputation-card">
+        <div class="rep-alert-row">
+          <div class="rep-stars">★★☆☆☆</div>
+          <div class="rep-content">
+            <div class="rep-title">New 2-star review from Rajesh K. — 4 days ago</div>
+            <div class="rep-snippet">"Doctor is good but waited 1.5 hours past my appointment time. Front desk was rude when I asked."</div>
+            <div class="rep-suggested">
+              <strong>Suggested response (Claude-drafted)</strong>
+              "Rajesh, thank you for the honest feedback. You're right that wait times have been longer than we'd like — we're reorganising appointment slots starting next month. I'd like to personally call you to make this right. Please share your number with our office at +91-XXX-XXXXXXX."
+            </div>
+          </div>
+        </div>
+        <div class="rep-alert-row">
+          <div class="rep-stars">★★★☆☆</div>
+          <div class="rep-content">
+            <div class="rep-title">New 3-star review from Pooja S. — 6 days ago</div>
+            <div class="rep-snippet">"Treatment was good but it was difficult to reach the clinic on phone. Tried 3 times."</div>
+            <div class="rep-suggested">
+              <strong>Suggested response (Claude-drafted)</strong>
+              "Pooja, I appreciate the feedback. Phone reachability is a known gap we're fixing this month — we've added WhatsApp Business at +91-XXX-XXXXXXX for faster response. Please reach me directly there for your follow-up."
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 11. SEO Health Check -->
+    <section id="seo" class="section">
+      <div class="section-head">
+        <div class="section-title">Local SEO Health</div>
+        <a class="section-action" href="#">View full audit →</a>
+      </div>
+      <div class="seo-grid">
+        <div class="seo-card"><div class="seo-icon">📍</div><div class="seo-name">GMB Profile</div><span class="seo-status warn">85% complete</span></div>
+        <div class="seo-card"><div class="seo-icon">⭐</div><div class="seo-name">Reviews</div><span class="seo-status warn">Needs growth</span></div>
+        <div class="seo-card"><div class="seo-icon">📷</div><div class="seo-name">Photos</div><span class="seo-status ok">7/10 uploaded</span></div>
+        <div class="seo-card"><div class="seo-icon">🔗</div><div class="seo-name">Citations</div><span class="seo-status err">2 of 6 directories</span></div>
+        <div class="seo-card"><div class="seo-icon">📲</div><div class="seo-name">NAP Consistency</div><span class="seo-status ok">100% match</span></div>
+        <div class="seo-card"><div class="seo-icon">🌐</div><div class="seo-name">Website Speed</div><span class="seo-status warn">3.2s · Could be faster</span></div>
+        <div class="seo-card"><div class="seo-icon">🏷</div><div class="seo-name">Schema Markup</div><span class="seo-status err">Not detected</span></div>
+        <div class="seo-card"><div class="seo-icon">🔍</div><div class="seo-name">Local Pack Rank</div><span class="seo-status warn">#7 of 20</span></div>
+      </div>
+    </section>
+
+    <!-- 12. Growth Roadmap -->
+    <section id="roadmap" class="section">
+      <div class="section-head">
+        <div class="section-title">30/60/90 Growth Roadmap</div>
+        <a class="section-action" href="#">Customise plan →</a>
+      </div>
+      <div class="roadmap-card">
+        <div class="roadmap-row">
+          <div class="roadmap-phase">Phase 1<span class="roadmap-phase-days">Days 1–30</span></div>
+          <div class="roadmap-content">
+            <h4>Foundation: complete profile + photos + review system</h4>
+            <ul>
+              <li>Complete GMB profile (hours, services, description, attributes)</li>
+              <li>Upload 10 high-quality clinic + equipment photos</li>
+              <li>Set up WhatsApp review request workflow with templated message</li>
+              <li>Claim Practo, JustDial, and Lybrate listings with consistent NAP</li>
+            </ul>
+            <span class="roadmap-target">Target: +8 points · 76 → 84</span>
+          </div>
+        </div>
+        <div class="roadmap-row">
+          <div class="roadmap-phase p2">Phase 2<span class="roadmap-phase-days">Days 31–60</span></div>
+          <div class="roadmap-content">
+            <h4>Reviews + content authority + AI signal building</h4>
+            <ul>
+              <li>15–20 new reviews via WhatsApp request system (target velocity 5/wk)</li>
+              <li>8 Google Posts on hypertension and cardiac health topics</li>
+              <li>3 educational Reels: BP basics, when to see a cardiologist, festival eating</li>
+              <li>Respond to every review within 24 hours (improves engagement signal)</li>
+            </ul>
+            <span class="roadmap-target">Target: +6 points · 84 → 90</span>
+          </div>
+        </div>
+        <div class="roadmap-row">
+          <div class="roadmap-phase p3">Phase 3<span class="roadmap-phase-days">Days 61–90</span></div>
+          <div class="roadmap-content">
+            <h4>Authority + AI rank improvement + competitive positioning</h4>
+            <ul>
+              <li>Publish 2 long-form blog posts on Jamshedpur-specific cardiac health</li>
+              <li>Build 5 citations on local medical directories (Sehat, MediBuddy, LocalCircles)</li>
+              <li>Record 3 short patient testimonial videos with explicit consent</li>
+              <li>Engage with 10+ GBP Q&amp;A responses to build authoritative answers</li>
+            </ul>
+            <span class="roadmap-target">Target: appear top-3 on at least 2 AI platforms · Score 92+</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────
+// DEMO DATA — to be replaced with GET /api/dashboard on go-live
+// ─────────────────────────────────────────────────────────────────────────
+// When API_READY=true and a real subscriber loads, fetch() /api/dashboard,
+// then call populateDashboard(response).
+//
+// The dashboard reads:
+//   { practice, week, topical_campaign, score_trend, ai_ranks, competitors,
+//     alerts, tasks, content_pack, reviews, reputation_alerts, seo, roadmap }
+// ─────────────────────────────────────────────────────────────────────────
+
+const DEMO = {
+  practice: { name: 'Dr. Mandar Shah', specialty: 'Cardiologist', city: 'Jamshedpur', state: 'Jharkhand', initials: 'MS' },
+  week: 'Week of Mon, 8 Jun 2026',
+  score_trend: {
+    weeks: ['W1','W2','W3','W4','W5','W6','W7','W8','W9','W10','W11','W12'],
+    overall: [68, 70, 71, 70, 72, 73, 74, 73, 74, 75, 73, 76],
+    google:  [62, 64, 65, 64, 67, 68, 70, 69, 70, 71, 70, 72],
+    ai:      [28, 30, 32, 30, 34, 36, 38, 36, 37, 39, 36, 41],
+  },
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Render the 12-week trend chart
+  const ctx = document.getElementById('trendChart')
+  if (!ctx || !window.Chart) return
+
+  const navy = '#0A2540', green = '#00A878', blue = '#0C447C'
+  const greenGrad = ctx.getContext('2d').createLinearGradient(0, 0, 0, 240)
+  greenGrad.addColorStop(0, 'rgba(0,168,120,0.18)')
+  greenGrad.addColorStop(1, 'rgba(0,168,120,0)')
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: DEMO.score_trend.weeks,
+      datasets: [
+        {
+          label: 'Overall',
+          data: DEMO.score_trend.overall,
+          borderColor: green,
+          backgroundColor: greenGrad,
+          tension: 0.35,
+          fill: true,
+          pointRadius: 4,
+          pointBackgroundColor: green,
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          borderWidth: 2.5,
+        },
+        {
+          label: 'Google',
+          data: DEMO.score_trend.google,
+          borderColor: navy,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 3,
+          pointBackgroundColor: navy,
+          borderWidth: 1.5,
+        },
+        {
+          label: 'AI Visibility',
+          data: DEMO.score_trend.ai,
+          borderColor: blue,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 3,
+          pointBackgroundColor: blue,
+          borderWidth: 1.5,
+          borderDash: [5,5],
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top', align: 'end', labels: { font: { family: 'DM Sans', size: 11 }, color: '#3D4D5C', usePointStyle: true, padding: 14 } },
+        tooltip: { backgroundColor: '#0A2540', titleFont: { family: 'DM Sans' }, bodyFont: { family: 'DM Sans' }, padding: 10, cornerRadius: 8 },
+      },
+      scales: {
+        y: { beginAtZero: false, min: 20, max: 100, grid: { color: '#E2E8F0' }, ticks: { font: { family: 'DM Mono', size: 10 }, color: '#9aabba' } },
+        x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 10 }, color: '#9aabba' } },
+      },
+    },
+  })
+})
+
+// Task checkbox interaction (demo)
+document.querySelectorAll('.task-checkbox').forEach(cb => {
+  cb.addEventListener('click', () => {
+    cb.classList.toggle('done')
+    cb.textContent = cb.classList.contains('done') ? '✓' : '○'
+    const title = cb.parentElement.querySelector('.task-title')
+    if (title) title.classList.toggle('done')
+  })
+})
+
+// Active nav link highlight on scroll
+const navLinks = document.querySelectorAll('.nav-link')
+const sections = document.querySelectorAll('section[id]')
+window.addEventListener('scroll', () => {
+  const scrollY = window.scrollY
+  sections.forEach(sec => {
+    if (scrollY >= sec.offsetTop - 100 && scrollY < sec.offsetTop + sec.offsetHeight - 100) {
+      navLinks.forEach(l => l.classList.remove('active'))
+      const link = document.querySelector(`.nav-link[href="#${sec.id}"]`)
+      if (link) link.classList.add('active')
+    }
+  })
+})
+</script>
+</body>
+</html>

@@ -1,0 +1,551 @@
+{
+  "_meta": {
+    "version": "v6.0",
+    "description": "Medical awareness calendar for The Doc Mirror Topical Content Intelligence Engine (Feature 13). Each entry is tagged with specialties that should run a campaign during that observance, plus regions (US, IN, GLOBAL). The weekly cron uses this to surface the right campaign to each subscriber.",
+    "tagging_rules": {
+      "specialty_tags": "Use lowercase, single-word where possible. Multi-word use underscores. Always include 'general_practitioner' if applicable (most public-health observances apply to GPs).",
+      "region_tags": "US, IN, GLOBAL — GLOBAL means relevant for any region",
+      "month": "1-12",
+      "day": "1-31 for fixed dates; null for whole-month observances",
+      "campaign_theme": "Short evocative campaign name doctors can use in social posts"
+    },
+    "source_notes": "Compiled from WHO observances, CDC awareness calendar, Ministry of Health (India) observances, and common specialty-society campaigns."
+  },
+
+  "observances": [
+
+    {
+      "name": "Cervical Health Awareness Month",
+      "month": 1, "day": null,
+      "specialty_tags": ["gynecologist", "obgyn", "general_practitioner", "oncologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Pap Smear in January",
+      "description": "Cervical cancer prevention, HPV vaccination, screening guidelines"
+    },
+    {
+      "name": "Thyroid Awareness Month",
+      "month": 1, "day": null,
+      "specialty_tags": ["endocrinologist", "general_practitioner", "gynecologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Know Your Thyroid",
+      "description": "Hypothyroidism, hyperthyroidism, thyroid nodules, screening"
+    },
+    {
+      "name": "Glaucoma Awareness Month",
+      "month": 1, "day": null,
+      "specialty_tags": ["ophthalmologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "See Glaucoma Coming",
+      "description": "Silent vision-loss condition, screening recommendations after 40"
+    },
+    {
+      "name": "World Cancer Day",
+      "month": 2, "day": 4,
+      "specialty_tags": ["oncologist", "general_practitioner", "gynecologist", "gastroenterologist", "pulmonologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Close the Care Gap",
+      "description": "Universal cancer awareness, screening, early detection"
+    },
+    {
+      "name": "American Heart Month",
+      "month": 2, "day": null,
+      "specialty_tags": ["cardiologist", "general_practitioner", "endocrinologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Love Your Heart Month",
+      "description": "Cardiovascular disease, prevention, BP management, cholesterol awareness"
+    },
+    {
+      "name": "International Childhood Cancer Day",
+      "month": 2, "day": 15,
+      "specialty_tags": ["pediatrician", "oncologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Hope For Every Child",
+      "description": "Childhood cancers awareness, early signs, family support"
+    },
+    {
+      "name": "Rare Disease Day",
+      "month": 2, "day": 28,
+      "specialty_tags": ["general_practitioner", "geneticist", "pediatrician", "neurologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Show Your Stripes",
+      "description": "Rare diseases awareness, diagnostic odyssey, patient stories"
+    },
+
+    {
+      "name": "Endometriosis Awareness Month",
+      "month": 3, "day": null,
+      "specialty_tags": ["gynecologist", "obgyn"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Heal Endometriosis",
+      "description": "Endometriosis symptoms, diagnosis delay (avg 7 years), management"
+    },
+    {
+      "name": "National Nutrition Month",
+      "month": 3, "day": null,
+      "specialty_tags": ["nutritionist", "endocrinologist", "general_practitioner", "cardiologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Beyond the Table",
+      "description": "Nutrition basics, sustainable eating, cultural foods"
+    },
+    {
+      "name": "National Kidney Month",
+      "month": 3, "day": null,
+      "specialty_tags": ["nephrologist", "endocrinologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Healthy Kidneys for All",
+      "description": "CKD awareness, diabetes-kidney link, screening for at-risk groups"
+    },
+    {
+      "name": "International Women's Day",
+      "month": 3, "day": 8,
+      "specialty_tags": ["gynecologist", "obgyn", "general_practitioner", "cardiologist", "psychiatrist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Health For Every Woman",
+      "description": "Women's health across specialties, focusing on women-specific risks"
+    },
+    {
+      "name": "World Tuberculosis Day",
+      "month": 3, "day": 24,
+      "specialty_tags": ["pulmonologist", "general_practitioner", "infectious_disease"],
+      "region_tags": ["IN", "GLOBAL"],
+      "campaign_theme": "End TB",
+      "description": "Particularly relevant in India: TB symptoms, free DOTS treatment, ending stigma"
+    },
+
+    {
+      "name": "Stress Awareness Month",
+      "month": 4, "day": null,
+      "specialty_tags": ["psychiatrist", "psychologist", "general_practitioner", "cardiologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Less Stress, More Living",
+      "description": "Stress and physical health, coping strategies, when to seek help"
+    },
+    {
+      "name": "National Autism Awareness Month",
+      "month": 4, "day": null,
+      "specialty_tags": ["pediatrician", "psychiatrist", "neurologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Celebrate Differences",
+      "description": "Autism spectrum awareness, early signs, support resources"
+    },
+    {
+      "name": "World Health Day",
+      "month": 4, "day": 7,
+      "specialty_tags": ["general_practitioner", "all"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Health For All",
+      "description": "WHO global health day, theme changes annually"
+    },
+    {
+      "name": "Parkinson's Awareness Month",
+      "month": 4, "day": null,
+      "specialty_tags": ["neurologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Beat Parkinson's",
+      "description": "Early signs, treatment advances, caregiver resources"
+    },
+
+    {
+      "name": "National Mental Health Awareness Month",
+      "month": 5, "day": null,
+      "specialty_tags": ["psychiatrist", "psychologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Mental Health Matters",
+      "description": "Reducing stigma, when to seek help, mental health basics. Avoid before/after framing."
+    },
+    {
+      "name": "Skin Cancer Awareness Month",
+      "month": 5, "day": null,
+      "specialty_tags": ["dermatologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Sun Smart",
+      "description": "Skin cancer prevention, ABCDE moles, sunscreen guidance"
+    },
+    {
+      "name": "World Asthma Day",
+      "month": 5, "day": 7,
+      "specialty_tags": ["pulmonologist", "pediatrician", "allergist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Breathe Better",
+      "description": "Asthma triggers, inhaler technique, action plans"
+    },
+    {
+      "name": "World Hand Hygiene Day",
+      "month": 5, "day": 5,
+      "specialty_tags": ["general_practitioner", "infectious_disease", "pediatrician"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Clean Hands Save Lives",
+      "description": "Hand hygiene basics, infection prevention"
+    },
+
+    {
+      "name": "Men's Health Month",
+      "month": 6, "day": null,
+      "specialty_tags": ["urologist", "general_practitioner", "cardiologist", "psychiatrist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Don't Wait, Get Checked",
+      "description": "Men avoid doctors — encourage screening for BP, cholesterol, prostate, mental health"
+    },
+    {
+      "name": "Hypertension Awareness Month (India)",
+      "month": 6, "day": null,
+      "specialty_tags": ["cardiologist", "general_practitioner", "nephrologist"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Know Your Numbers",
+      "description": "BP awareness particularly relevant for South Asian populations"
+    },
+    {
+      "name": "Migraine and Headache Awareness Month",
+      "month": 6, "day": null,
+      "specialty_tags": ["neurologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Move Against Migraine",
+      "description": "Migraine triggers, prevention, when to see a neurologist"
+    },
+    {
+      "name": "World Blood Donor Day",
+      "month": 6, "day": 14,
+      "specialty_tags": ["hematologist", "general_practitioner", "all"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Give Blood, Give Life",
+      "description": "Blood donation drives, eligibility, safety"
+    },
+    {
+      "name": "National Doctors Day (India)",
+      "month": 7, "day": 1,
+      "specialty_tags": ["all"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Healers Day",
+      "description": "Honors Dr. B.C. Roy; relationship-building post for Indian doctors"
+    },
+    {
+      "name": "UV Safety Awareness Month",
+      "month": 7, "day": null,
+      "specialty_tags": ["dermatologist", "ophthalmologist", "pediatrician"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Block The Burn",
+      "description": "Sun protection, sunscreen, kid UV safety"
+    },
+    {
+      "name": "World Hepatitis Day",
+      "month": 7, "day": 28,
+      "specialty_tags": ["gastroenterologist", "hepatologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "One Life, One Liver",
+      "description": "Hepatitis B & C screening, vaccination, liver health"
+    },
+
+    {
+      "name": "National Immunization Awareness Month",
+      "month": 8, "day": null,
+      "specialty_tags": ["pediatrician", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Stay Up To Date",
+      "description": "Vaccine schedule reminders, common misconceptions, adult vaccines"
+    },
+    {
+      "name": "Children's Eye Health Month",
+      "month": 8, "day": null,
+      "specialty_tags": ["ophthalmologist", "pediatrician"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "See For Yourself",
+      "description": "Childhood vision screening before school year"
+    },
+    {
+      "name": "World Breastfeeding Week",
+      "month": 8, "day": 1,
+      "specialty_tags": ["pediatrician", "gynecologist", "obgyn"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Closing the Gap",
+      "description": "Aug 1-7 every year; breastfeeding support, common challenges"
+    },
+
+    {
+      "name": "World Heart Day",
+      "month": 9, "day": 29,
+      "specialty_tags": ["cardiologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Use Heart, Know Heart",
+      "description": "Cardiovascular risk assessment, lifestyle changes, family history"
+    },
+    {
+      "name": "Suicide Prevention Month",
+      "month": 9, "day": null,
+      "specialty_tags": ["psychiatrist", "psychologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Talk Saves Lives",
+      "description": "Reduce stigma, crisis resources. Sensitive topic — never use 'before/after'. Provide helpline numbers."
+    },
+    {
+      "name": "Ovarian Cancer Awareness Month",
+      "month": 9, "day": null,
+      "specialty_tags": ["oncologist", "gynecologist", "obgyn"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Know The Symptoms",
+      "description": "Subtle early symptoms (bloating, satiety), genetic risk"
+    },
+    {
+      "name": "Pediatric Cancer Awareness Month",
+      "month": 9, "day": null,
+      "specialty_tags": ["pediatrician", "oncologist"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Gold Ribbon Month",
+      "description": "Childhood cancer signs every parent should know"
+    },
+    {
+      "name": "World Alzheimer's Month",
+      "month": 9, "day": null,
+      "specialty_tags": ["neurologist", "geriatrician", "psychiatrist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Never Too Early, Never Too Late",
+      "description": "Early signs of dementia, caregiver support, brain health"
+    },
+    {
+      "name": "World Patient Safety Day",
+      "month": 9, "day": 17,
+      "specialty_tags": ["general_practitioner", "all"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Patient Safety First",
+      "description": "Safety in care, asking questions, medication reconciliation"
+    },
+
+    {
+      "name": "Breast Cancer Awareness Month",
+      "month": 10, "day": null,
+      "specialty_tags": ["oncologist", "gynecologist", "obgyn", "radiologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Pink October",
+      "description": "Mammography guidelines, self-exam, genetic counseling"
+    },
+    {
+      "name": "World Mental Health Day",
+      "month": 10, "day": 10,
+      "specialty_tags": ["psychiatrist", "psychologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Mental Health is a Human Right",
+      "description": "Avoid 'cure' language, focus on access and stigma reduction"
+    },
+    {
+      "name": "World Arthritis Day",
+      "month": 10, "day": 12,
+      "specialty_tags": ["orthopedic", "rheumatologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Move Better",
+      "description": "Arthritis types, early signs, joint preservation"
+    },
+    {
+      "name": "World Spine Day",
+      "month": 10, "day": 16,
+      "specialty_tags": ["orthopedic", "neurologist", "physiotherapist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Back On Track",
+      "description": "Back pain, posture, when imaging is/isn't needed"
+    },
+    {
+      "name": "World Sight Day",
+      "month": 10, "day": 9,
+      "specialty_tags": ["ophthalmologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Love Your Eyes",
+      "description": "Vision care, screen time, regular eye exams"
+    },
+    {
+      "name": "World Osteoporosis Day",
+      "month": 10, "day": 20,
+      "specialty_tags": ["orthopedic", "endocrinologist", "gynecologist", "geriatrician"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Build Better Bones",
+      "description": "Post-menopausal screening, calcium/vitamin D, fall prevention"
+    },
+
+    {
+      "name": "Diabetes Awareness Month",
+      "month": 11, "day": null,
+      "specialty_tags": ["endocrinologist", "general_practitioner", "cardiologist", "nephrologist", "ophthalmologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Know Your Risk",
+      "description": "Type 2 prevention, prediabetes screening, particularly relevant for South Asian populations"
+    },
+    {
+      "name": "Lung Cancer Awareness Month",
+      "month": 11, "day": null,
+      "specialty_tags": ["pulmonologist", "oncologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Take A Breath",
+      "description": "LDCT screening for high-risk, symptoms beyond smokers"
+    },
+    {
+      "name": "Movember",
+      "month": 11, "day": null,
+      "specialty_tags": ["urologist", "psychiatrist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Movember",
+      "description": "Men's health: prostate cancer, testicular cancer, mental health, suicide prevention"
+    },
+    {
+      "name": "National Cancer Awareness Day (India)",
+      "month": 11, "day": 7,
+      "specialty_tags": ["oncologist", "general_practitioner"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Cancer is Curable",
+      "description": "India: cancer screening, especially oral cancer common in tobacco users"
+    },
+    {
+      "name": "World COPD Day",
+      "month": 11, "day": null,
+      "specialty_tags": ["pulmonologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Breathing is Life",
+      "description": "Third Wednesday of November; smoking cessation, COPD diagnosis"
+    },
+    {
+      "name": "World Diabetes Day",
+      "month": 11, "day": 14,
+      "specialty_tags": ["endocrinologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Access to Care",
+      "description": "Diabetes management, complication prevention"
+    },
+    {
+      "name": "World Antibiotic Awareness Week",
+      "month": 11, "day": 18,
+      "specialty_tags": ["general_practitioner", "pediatrician", "infectious_disease"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Antibiotics: Handle With Care",
+      "description": "Nov 18-24; antibiotic resistance, appropriate use"
+    },
+
+    {
+      "name": "World AIDS Day",
+      "month": 12, "day": 1,
+      "specialty_tags": ["infectious_disease", "general_practitioner", "gynecologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Equalize",
+      "description": "HIV testing, prevention, ending stigma"
+    },
+    {
+      "name": "International Day of Persons with Disabilities",
+      "month": 12, "day": 3,
+      "specialty_tags": ["physiotherapist", "neurologist", "psychiatrist", "orthopedic"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Inclusion Matters",
+      "description": "Accessible healthcare, communication, dignity"
+    },
+    {
+      "name": "Universal Health Coverage Day",
+      "month": 12, "day": 12,
+      "specialty_tags": ["general_practitioner", "all"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Health For All",
+      "description": "Equitable access, insurance literacy"
+    },
+
+    {
+      "name": "Heart Failure Awareness Week",
+      "month": 5, "day": 5,
+      "specialty_tags": ["cardiologist", "general_practitioner"],
+      "region_tags": ["US", "GLOBAL"],
+      "campaign_theme": "Know Heart Failure",
+      "description": "First week of May; HF symptoms, self-monitoring"
+    },
+    {
+      "name": "World No Tobacco Day",
+      "month": 5, "day": 31,
+      "specialty_tags": ["pulmonologist", "oncologist", "cardiologist", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Quit For Good",
+      "description": "Tobacco cessation, particularly relevant in India for oral cancer awareness"
+    },
+    {
+      "name": "World Brain Day",
+      "month": 7, "day": 22,
+      "specialty_tags": ["neurologist"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Brain Health For All",
+      "description": "Stroke recognition (FAST), epilepsy, dementia"
+    },
+    {
+      "name": "World Polio Day",
+      "month": 10, "day": 24,
+      "specialty_tags": ["pediatrician", "general_practitioner"],
+      "region_tags": ["IN", "GLOBAL"],
+      "campaign_theme": "End Polio Now",
+      "description": "Polio eradication progress, vaccination importance"
+    },
+    {
+      "name": "World Pneumonia Day",
+      "month": 11, "day": 12,
+      "specialty_tags": ["pulmonologist", "pediatrician", "general_practitioner"],
+      "region_tags": ["US", "IN", "GLOBAL"],
+      "campaign_theme": "Stop Pneumonia",
+      "description": "Vaccine awareness, pediatric and elderly risk"
+    },
+
+    {
+      "name": "Indian Festival: Chhath Puja (cardiac caution)",
+      "month": 11, "day": null,
+      "specialty_tags": ["cardiologist", "general_practitioner", "endocrinologist"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Safe Chhath",
+      "description": "Particularly Bihar/Jharkhand: long fasts increase cardiac risk; hydration, medication timing guidance"
+    },
+    {
+      "name": "Indian Festival: Diwali (cardiac/respiratory)",
+      "month": 10, "day": null,
+      "specialty_tags": ["cardiologist", "pulmonologist", "ophthalmologist", "pediatrician"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Safe Diwali",
+      "description": "Air quality alerts, eye safety with crackers, festival eating BP risks"
+    },
+    {
+      "name": "Indian Festival: Holi (skin/eye safety)",
+      "month": 3, "day": null,
+      "specialty_tags": ["dermatologist", "ophthalmologist"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Safe Holi",
+      "description": "Chemical color safety, eye protection, skin allergies"
+    },
+    {
+      "name": "Monsoon Health Awareness (India)",
+      "month": 7, "day": null,
+      "specialty_tags": ["general_practitioner", "pediatrician", "infectious_disease"],
+      "region_tags": ["IN"],
+      "campaign_theme": "Monsoon Ready",
+      "description": "Dengue, chikungunya, gastroenteritis, fungal infections during monsoon"
+    },
+    {
+      "name": "Summer Heat Stroke Awareness",
+      "month": 5, "day": null,
+      "specialty_tags": ["general_practitioner", "pediatrician", "cardiologist", "geriatrician"],
+      "region_tags": ["IN", "US"],
+      "campaign_theme": "Beat The Heat",
+      "description": "Hydration, heat exhaustion vs heat stroke, vulnerable populations"
+    },
+    {
+      "name": "Winter Cardiac Risk (India/cold regions)",
+      "month": 12, "day": null,
+      "specialty_tags": ["cardiologist", "geriatrician"],
+      "region_tags": ["IN", "US"],
+      "campaign_theme": "Warm Hearts",
+      "description": "BP elevation in winter, heart attack risk peaks, exercise caution"
+    },
+
+    {
+      "name": "Back to School Health Check",
+      "month": 6, "day": null,
+      "specialty_tags": ["pediatrician", "ophthalmologist", "dentist"],
+      "region_tags": ["IN"],
+      "campaign_theme": "School-Ready Health",
+      "description": "India school year starts June; vaccinations, eye check, dental"
+    },
+    {
+      "name": "Back to School Health Check (US)",
+      "month": 8, "day": null,
+      "specialty_tags": ["pediatrician", "ophthalmologist", "dentist"],
+      "region_tags": ["US"],
+      "campaign_theme": "School-Ready Health",
+      "description": "US school year starts August; physicals, vaccines, vision"
+    }
+
+  ]
+}

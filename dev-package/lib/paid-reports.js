@@ -16,18 +16,17 @@ function isMissingTableError(err) {
 /**
  * Insert pending order row at checkout. Non-fatal if table missing — audit_cache is source of truth.
  */
-async function insertPending({ auditId, email }) {
+async function insertPending({ auditId, email, userId = null }) {
   const supabase = getSupabaseClient();
   if (!supabase) {
     console.warn('[paid_reports] skip insert — Supabase not configured');
     return { ok: false, skipped: true };
   }
 
-  const { error } = await supabase.from('paid_reports').insert({
-    audit_id: auditId,
-    email,
-    status:   'pending',
-  });
+  const row = { audit_id: auditId, email, status: 'pending' };
+  if (userId) row.user_id = userId;
+
+  const { error } = await supabase.from('paid_reports').insert(row);
 
   if (error) {
     if (isMissingTableError(error)) {

@@ -5,7 +5,16 @@ require('../lib/env');
 const Razorpay   = require('razorpay');
 const auditCache = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
-const { verifyAuditCacheTable } = require('../lib/supabase-client');
+const { verifyAuditCacheTable, getSupabaseClient } = require('../lib/supabase-client');
+const { optionalAuth } = require('../lib/auth-middleware');
+
+// Extract user from Bearer token if present (never blocks the request)
+async function getOptionalUser(req) {
+  return new Promise(resolve => {
+    req._optResolve = resolve;
+    optionalAuth(req, {}, () => resolve(req.user || null));
+  });
+}
 
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -14,6 +23,10 @@ async function handler(req, res) {
   const { email, auditData } = req.body || {};
   if (!email)     return res.status(400).json({ error: 'email is required' });
   if (!auditData) return res.status(400).json({ error: 'auditData is required' });
+
+  // Resolve logged-in user (optional — backward compatible with anonymous flow)
+  const user   = await getOptionalUser(req);
+  const userId = user?.id || null;
 
   const keyId     = process.env.RAZORPAY_KEY_ID;
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
@@ -40,7 +53,7 @@ async function handler(req, res) {
       `[checkout] audit_cache persisted cache_key=${cached.cache_key} doctor=${cached.doctorName || '(unknown)'}`
     );
 
-    await paidReports.insertPending({ auditId, email });
+    await paidReports.insertPending({ auditId, email, userId });
 
     const amountUnits = parseInt(process.env.RAZORPAY_AMOUNT_UNITS || '1900', 10);
     const receipt = `rpt_${Date.now()}`.slice(0, 40);

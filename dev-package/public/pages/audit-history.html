@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Audit History — The Doc Mirror</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--slate-muted:#9aabba;--border:#E2E8F0;--red:#DC2626}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+.auth-gate{display:none;position:fixed;inset:0;background:var(--navy);z-index:1000;align-items:center;justify-content:center;flex-direction:column;gap:1rem;padding:2rem;text-align:center}
+.auth-gate.show{display:flex}
+.auth-gate .logo{font-size:22px;font-weight:700;color:#fff}.auth-gate .logo span{color:var(--green)}
+.auth-gate h2{color:#fff;font-size:1.2rem}.auth-gate p{color:rgba(255,255,255,.6);font-size:13px;max-width:340px;line-height:1.6}
+nav{background:#fff;border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2rem);height:60px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy)}.logo-word span{color:var(--green)}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.nav-link{font-size:.85rem;color:var(--slate-light);text-decoration:none;font-weight:500;cursor:pointer}
+.nav-link:hover{color:var(--navy)}
+main{flex:1;width:100%;max-width:860px;margin:0 auto;padding:2.5rem clamp(1rem,4vw,2rem) 4rem}
+.head h1{font-size:1.6rem;font-weight:800;color:var(--navy);letter-spacing:-.02em}
+.head p{font-size:.9rem;color:var(--slate-light);margin-top:4px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.5rem 0}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.25rem}
+.kpi-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-light);margin-bottom:6px}
+.kpi-num{font-size:1.7rem;font-weight:700;font-family:'DM Mono',monospace;color:var(--navy)}
+.kpi-sub{font-size:11px;color:var(--slate-light);margin-top:4px}
+.section-title{font-size:1.05rem;font-weight:700;color:var(--navy);margin:1.5rem 0 .75rem}
+.report-item{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:8px}
+.ri-left h4{font-size:14px;font-weight:600;color:var(--navy);margin-bottom:3px}
+.ri-left p{font-size:12px;color:var(--slate-light)}
+.ri-score{text-align:center}.ri-score .n{font-size:22px;font-weight:700;color:var(--navy);font-family:'DM Mono',monospace;line-height:1}.ri-score .l{font-size:10px;color:var(--slate-muted)}
+.dl-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block}
+.dl-btn:hover{background:var(--green)}.dl-btn[disabled]{opacity:.4;cursor:not-allowed}
+.empty{background:#fff;border:1px dashed var(--border);border-radius:14px;padding:3rem 2rem;text-align:center}
+.empty .i{font-size:2rem;margin-bottom:.5rem}.empty h3{color:var(--navy);font-size:1rem;margin-bottom:.4rem}.empty p{font-size:.85rem;color:var(--slate-light);max-width:360px;margin:0 auto 1rem;line-height:1.6}
+.btn-primary{display:inline-block;background:var(--navy);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.88rem}
+.btn-primary:hover{background:var(--green)}
+.upsell{background:var(--navy);color:#fff;border-radius:16px;padding:1.75rem;margin-top:2rem;position:relative;overflow:hidden}
+.upsell h3{font-size:1.15rem;font-weight:700;margin-bottom:.4rem}
+.upsell p{font-size:.88rem;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:1.1rem;max-width:520px}
+.upsell .cta{display:inline-block;background:var(--green);color:#fff;padding:11px 24px;border-radius:10px;text-decoration:none;font-weight:700;font-size:.9rem}
+.upsell ul{list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:.4rem .9rem;margin-bottom:1.1rem;max-width:520px}
+.upsell li{font-size:.82rem;color:rgba(255,255,255,.85)}.upsell li::before{content:'✓ ';color:var(--green);font-weight:700}
+@media(max-width:620px){.kpis{grid-template-columns:1fr}.upsell ul{grid-template-columns:1fr}nav{padding:0 1rem}main{padding:1.5rem 1rem 3rem}.report-item{gap:.6rem}}
+</style>
+</head>
+<body>
+
+<div class="auth-gate" id="auth-gate">
+  <div class="logo">The Doc <span>Mirror</span></div>
+  <h2>Checking your session…</h2>
+  <p>Redirecting to sign-in.</p>
+</div>
+
+<div id="app" style="display:none">
+<nav>
+  <a href="/" class="logo">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="9" rx="1.5" fill="#fff" opacity=".9"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="#fff" opacity=".6"/><rect x="10" y="10" width="6" height="4" rx="1.5" fill="#fff" opacity=".4"/></svg></div>
+    <span class="logo-word">The Doc <span>Mirror</span></span>
+  </a>
+  <div class="nav-right">
+    <a href="/" class="nav-link">Run a new check</a>
+    <a class="nav-link" id="logout-link">Sign out</a>
+  </div>
+</nav>
+
+<main>
+  <div class="head">
+    <h1 id="hello">Your Audit History</h1>
+    <p id="sub">All your purchased visibility reports in one place.</p>
+  </div>
+
+  <div class="kpis" id="kpis" style="display:none">
+    <div class="kpi"><div class="kpi-label">Latest Score</div><div class="kpi-num" id="k-score">—</div><div class="kpi-sub">out of 100</div></div>
+    <div class="kpi"><div class="kpi-label">Google Reviews</div><div class="kpi-num" id="k-reviews">—</div><div class="kpi-sub">latest audit</div></div>
+    <div class="kpi"><div class="kpi-label">Star Rating</div><div class="kpi-num" id="k-rating">—</div><div class="kpi-sub">Google average</div></div>
+  </div>
+
+  <div class="section-title">Reports &amp; PDFs</div>
+  <div id="reports-list">
+    <div class="empty"><div class="i">📄</div><h3>Loading…</h3></div>
+  </div>
+
+  <div class="upsell">
+    <h3>Want continuous monitoring?</h3>
+    <p>Upgrade to the Doctor Visibility Monitor™ for a live dashboard, weekly audits, competitor intelligence, and an AI growth engine.</p>
+    <ul>
+      <li>Full live dashboard</li><li>Competitor watchlist &amp; alerts</li>
+      <li>Weekly action tasks</li><li>Content pack &amp; SEO keywords</li>
+      <li>Review growth engine</li><li>90-day growth plan</li>
+    </ul>
+    <a class="cta" href="/pages/checkout-subscription.html">Upgrade to Monitor — $49/month →</a>
+  </div>
+</main>
+</div>
+
+<script>
+var _supabase=null,_session=null,_token=null;
+
+async function api(url){ return fetch(url,{headers:{'Authorization':'Bearer '+_token}}).then(function(r){return r.json();}); }
+function el(id){return document.getElementById(id);}
+function escH(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+async function init(){
+  try{
+    var cfg=await fetch('/api/client-config').then(function(r){return r.json();});
+    if(cfg.supabaseUrl&&cfg.supabaseAnonKey){
+      _supabase=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey);
+      var at=localStorage.getItem('tdm_access_token'),rt=localStorage.getItem('tdm_refresh_token');
+      if(at&&rt){var s=await _supabase.auth.setSession({access_token:at,refresh_token:rt});_session=s.data.session;
+        if(_session){localStorage.setItem('tdm_access_token',_session.access_token);localStorage.setItem('tdm_refresh_token',_session.refresh_token);}}
+      if(!_session){var c=await _supabase.auth.getSession();_session=c.data.session;}
+    }
+  }catch(e){console.error(e);}
+
+  if(!_session){ el('auth-gate').classList.add('show'); window.location.replace('/pages/auth.html?tab=login'); return; }
+  _token=_session.access_token;
+
+  var profile={};
+  try{ profile=await api('/api/user/me'); }catch(e){ profile={plan:'free',email:_session.user.email}; }
+  var plan=profile&&profile.plan?profile.plan:'free';
+
+  // Monitor users get the full dashboard; free users must pick a plan.
+  if(plan==='monitor'){ window.location.replace('/dashboard.html'); return; }
+  if(plan!=='audit'){ window.location.replace('/pages/pricing.html'); return; }
+
+  el('auth-gate').classList.remove('show');
+  el('app').style.display='';
+  el('logout-link').onclick=doLogout;
+
+  var name=(profile.name||'').trim()||(profile.email||'').split('@')[0];
+  el('hello').textContent='Welcome back, '+name;
+
+  var reports=[];
+  try{ var r=await api('/api/user/reports'); reports=Array.isArray(r)?r:[]; }catch(e){ reports=[]; }
+  render(reports);
+}
+
+function render(reports){
+  if(reports.length){
+    var latest=reports[0];
+    el('kpis').style.display='';
+    el('k-score').textContent   = latest.score!=null?latest.score:'—';
+    el('k-reviews').textContent = latest.review_count!=null?latest.review_count:'—';
+    el('k-rating').textContent  = latest.rating!=null?Number(latest.rating).toFixed(1)+'★':'—';
+  }
+
+  var list=el('reports-list');
+  if(!reports.length){
+    list.innerHTML='<div class="empty"><div class="i">📄</div><h3>No reports yet</h3>'+
+      '<p>Run a free visibility check, then unlock your full $19 audit report — it will appear here and be emailed to you.</p>'+
+      '<a class="btn-primary" href="/">Run a free check →</a></div>';
+    return;
+  }
+  list.innerHTML=reports.map(function(r){
+    var date=r.created_at?new Date(r.created_at).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    var sub=[r.specialty,r.city].filter(Boolean).join(' · ')||(r.doctor_name||'');
+    return '<div class="report-item"><div class="ri-left"><h4>Audit Report — '+escH(date)+'</h4>'+
+      (sub?'<p>'+escH(sub)+'</p>':'')+'</div>'+
+      '<div class="ri-score"><div class="n">'+(r.score!=null?r.score:'—')+'</div><div class="l">Score</div></div>'+
+      (r.pdf_url?'<a class="dl-btn" href="'+escH(r.pdf_url)+'" target="_blank" rel="noopener">PDF ↓</a>'
+                :'<button class="dl-btn" disabled>Generating…</button>')+
+      '</div>';
+  }).join('');
+}
+
+async function doLogout(){
+  if(_supabase) await _supabase.auth.signOut();
+  ['tdm_access_token','tdm_refresh_token','tdm_user_id','tdm_user_email'].forEach(function(k){localStorage.removeItem(k);});
+  window.location.href='/';
+}
+
+init();
+</script>
+</body>
+</html>

@@ -186,6 +186,48 @@ async function get(auditId) {
   return result.data;
 }
 
+/**
+ * Merge a partial object into an existing audit_cache row's audit_data and persist.
+ * Used to store Claude-generated `insights` alongside the original audit payload so the
+ * dashboard can read rich data WITHOUT requiring a separate reports.insights column.
+ * Non-fatal: returns { ok:false } on any problem instead of throwing.
+ */
+async function mergeAuditData(auditId, partial) {
+  const key = normalizeAuditId(auditId);
+  if (!isValidAuditId(key) || !partial || typeof partial !== 'object') {
+    return { ok: false, reason: 'invalid_args' };
+  }
+
+  // Update in-memory copy immediately
+  const mem = memoryStore.get(key);
+  if (mem) memoryStore.set(key, { ...mem, ...partial });
+
+  const supabase = db();
+  if (!supabase) return { ok: false, reason: 'no_supabase' };
+
+  try {
+    const { data: row, error: readErr } = await readAuditCacheRow(supabase, key);
+    if (readErr || !row) {
+      console.warn(`[audit-cache] mergeAuditData read miss cache_key=${key}: ${readErr?.message || 'no row'}`);
+      return { ok: false, reason: 'not_found' };
+    }
+    const current = extractPayload(row) || {};
+    const merged  = { ...current, ...partial, auditId: key };
+    const newRow  = buildUpsertRow(key, merged);
+    const write   = await upsertAuditCache(supabase, key, newRow);
+    if (!write.ok) {
+      console.warn(`[audit-cache] mergeAuditData write failed cache_key=${key}`);
+      return { ok: false, reason: 'write_failed' };
+    }
+    memoryStore.set(key, merged);
+    console.log(`[audit-cache] mergeAuditData OK cache_key=${key} keys=[${Object.keys(partial).join(',')}]`);
+    return { ok: true };
+  } catch (err) {
+    console.warn(`[audit-cache] mergeAuditData exception cache_key=${key}:`, err.message);
+    return { ok: false, reason: 'exception' };
+  }
+}
+
 async function getDetailed(auditId) {
   const key = normalizeAuditId(auditId);
   const valid = isValidAuditId(key);
@@ -349,6 +391,7 @@ module.exports = {
   get,
   getDetailed,
   getRequired,
+  mergeAuditData,
   formatDiagnostic,
   resolveAuditIdFromOrder,
   isValidAuditId,

@@ -7,6 +7,8 @@ const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const { formatFetchError } = require('../lib/supabase-client');
 
+// $19 Visibility Audit — anonymous, no account, no session, no dashboard
+// Flow: payment verified → generate PDF → email PDF → thank-you page
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -35,7 +37,7 @@ async function handler(req, res) {
 
   console.log(`[verify] using auditId=${auditId} (client sent ${clientAuditId})`);
 
-  // ── 2. Verify Razorpay HMAC-SHA256 signature ───────────────────────────────
+  // ── 2. Verify Razorpay HMAC-SHA256 signature ──────────────────────────────
   const keySecret = process.env.RAZORPAY_KEY_SECRET;
   if (!keySecret) return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
 
@@ -79,18 +81,22 @@ async function handler(req, res) {
     `doctor=${cacheResult.data.doctorName || '(unknown)'}`
   );
 
+  // Mark as generating (non-fatal — paid_reports is a secondary record)
   await paidReports.updateStatus(auditId, {
     status:            'generating',
     stripe_session_id: orderId,
   });
 
-  // ── 4. Generate PDF + email (can take 60–180 s; maxDuration must be ≥ 300 s) ─
+  // ── 4. Generate PDF + email (synchronous for $19: user needs download link) ─
+  // $19 is NOT a SaaS product — no account, no session, no dashboard.
+  // We keep PDF generation synchronous here so the response includes pdfUrl
+  // for the immediate "Download PDF Now" button on the thank-you page.
   const { generateReport, RateLimitError } = require('./report');
   const { isRateLimitError }               = require('../lib/claude-client');
 
   let result;
   try {
-    result = await generateReport({ auditId, email });
+    result = await generateReport({ auditId, email, userId: null });
   } catch (err) {
     console.error('[verify] generateReport threw:', formatFetchError(err));
 
@@ -115,7 +121,6 @@ async function handler(req, res) {
       });
     }
 
-    // PDF generation itself failed (Puppeteer crash, pillar mismatch, Claude error)
     console.error('[verify] PDF generation FAILED:', err.message);
     return res.status(500).json({
       ok:           false,
@@ -127,7 +132,7 @@ async function handler(req, res) {
     });
   }
 
-  // ── 5. PDF generated — check whether email was delivered ─────────────────
+  // ── 5. Respond ─────────────────────────────────────────────────────────────
   if (result.emailSent) {
     return res.json({
       ok:           true,
@@ -138,7 +143,7 @@ async function handler(req, res) {
     });
   }
 
-  // PDF exists in storage (pdfUrl) but SMTP delivery failed
+  // PDF in storage but SMTP delivery failed
   console.warn(
     `[verify] PDF generated but email NOT sent  auditId=${auditId}  email=${email}  ` +
     `pdfUrl=${result.pdfUrl || '(not stored)'}`
