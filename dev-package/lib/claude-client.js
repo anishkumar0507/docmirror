@@ -115,12 +115,52 @@ function getClient() {
   return new Anthropic({ apiKey });
 }
 
+/**
+ * Escape raw control characters (U+0000–U+001F) that appear INSIDE JSON string
+ * literals. LLMs frequently emit unescaped newlines/tabs inside string values
+ * (e.g. multi-line "steps"/"copyText"), which is invalid JSON and makes
+ * JSON.parse throw "Bad control character in string literal". Control characters
+ * OUTSIDE strings are structural whitespace and left untouched.
+ */
+function escapeControlCharsInStrings(s) {
+  let out = '';
+  let inStr = false;
+  let escaped = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    const code = s.charCodeAt(i);
+    if (inStr) {
+      if (escaped) { out += ch; escaped = false; continue; }
+      if (ch === '\\') { out += ch; escaped = true; continue; }
+      if (ch === '"') { out += ch; inStr = false; continue; }
+      if (code < 0x20) {
+        if (ch === '\n') out += '\\n';
+        else if (ch === '\r') out += '\\r';
+        else if (ch === '\t') out += '\\t';
+        else out += '\\u' + code.toString(16).padStart(4, '0');
+        continue;
+      }
+      out += ch;
+    } else {
+      if (ch === '"') inStr = true;
+      out += ch;
+    }
+  }
+  return out;
+}
+
 function parseJsonResponse(text) {
   const raw = text.trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/i, '')
     .trim();
-  return JSON.parse(raw);
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    // Most common cause: unescaped control characters inside string values.
+    // Sanitize and retry before giving up.
+    return JSON.parse(escapeControlCharsInStrings(raw));
+  }
 }
 
 /**
