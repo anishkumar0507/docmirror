@@ -6,33 +6,31 @@ require('./lib/env');
 const { verifyAuditCacheTable } = require('./lib/supabase-client');
 const { discoverAuditCacheSchema } = require('./lib/audit-cache-schema');
 const { verifyGmailConnection } = require('./lib/gmail');
-const { verifyReportsBucket } = require('./api/report');
+const { verifyReportsBucket } = require('./routes/report');
 
 const express = require('express');
 const cors    = require('cors');
 
-const auditModule             = require('./api/audit');
+const auditModule             = require('./routes/audit');
 const auditHandler            = auditModule;
-const debugCompetitorsHandler = auditModule.debugCompetitorsHandler;
-const checkoutHandler         = require('./api/checkout');
-const verifyPaymentHandler    = require('./api/verify-payment');
-const reportHandler           = require('./api/report');
-const downloadPdfHandler      = require('./api/download-pdf');
-const emailCaptureHandler     = require('./api/email-capture');
-const waitlistHandler         = require('./api/waitlist');
-const weeklyCheckHandler      = require('./api/weekly-check');
-const authLoginHandler        = require('./api/auth/login');
-const stripeWebhookHandler    = require('./api/webhook');
+const checkoutHandler         = require('./routes/checkout');
+const verifyPaymentHandler    = require('./routes/verify-payment');
+const reportHandler           = require('./routes/report');
+const downloadPdfHandler      = require('./routes/download-pdf');
+const emailCaptureHandler     = require('./routes/email-capture');
+const waitlistHandler         = require('./routes/waitlist');
+const weeklyCheckHandler      = require('./routes/weekly-check');
+const authLoginHandler        = require('./routes/auth/login');
+const stripeWebhookHandler    = require('./routes/webhook');
 
 // ── Multi-tier SaaS additions ──────────────────────────────────────────────
-const clientConfigHandler      = require('./api/config');
-const authSignupHandler        = require('./api/auth/signup');
-const userMeHandler            = require('./api/user/me');
-const userReportsHandler       = require('./api/user/reports');
-const userAlertsHandler        = require('./api/user/alerts');
-const checkoutSubHandler          = require('./api/checkout-subscription');
-const verifySubPaymentHandler     = require('./api/verify-subscription-payment');
-const webhookRazorpayHandler      = require('./api/webhook-razorpay');
+const clientConfigHandler      = require('./routes/config');
+const userMeHandler            = require('./routes/user/me');
+const userReportsHandler       = require('./routes/user/reports');
+const userAlertsHandler        = require('./routes/user/alerts');
+const checkoutSubHandler          = require('./routes/checkout-subscription');
+const verifySubPaymentHandler     = require('./routes/verify-subscription-payment');
+const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -51,7 +49,6 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API routes ─────────────────────────────────────────────────────────────
-app.get('/api/debug-competitors',         debugCompetitorsHandler);
 app.post('/api/audit',                    auditHandler);
 app.post('/api/checkout',                 checkoutHandler);
 app.post('/api/verify-payment',           verifyPaymentHandler);
@@ -65,7 +62,6 @@ app.post('/api/auth/login',               authLoginHandler);
 
 // ── Multi-tier SaaS routes ─────────────────────────────────────────────────
 app.get('/api/client-config',             clientConfigHandler);
-app.post('/api/auth/signup',              authSignupHandler);
 app.get('/api/user/me',                   userMeHandler);
 app.get('/api/user/reports',              userReportsHandler);
 app.get('/api/user/alerts',               userAlertsHandler);
