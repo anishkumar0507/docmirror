@@ -32,25 +32,30 @@ function getProjectRef(url = getSupabaseUrl()) {
  * Equivalent to information_schema visibility from the app's perspective.
  */
 async function probeColumns(supabase) {
-  const present = [];
-  const absent = [];
+  const present = [];   // column definitely exists
+  const absent  = [];   // human-readable list for logging (missing + errored)
+  const missing = [];   // column definitely does NOT exist (real schema error)
+  const errored = [];   // probe hit a transient/non-schema error — existence indeterminate
 
   for (const col of PROBE_COLUMNS) {
     const { error } = await supabase.from('audit_cache').select(col).limit(0);
-    if (error) {
-      const code = error.code || '';
-      const msg = error.message || '';
-      if (code === 'PGRST204' || msg.includes('column') || msg.includes('schema cache')) {
-        absent.push(col);
-      } else {
-        absent.push(`${col}(${code || 'error'})`);
-      }
+    if (!error) { present.push(col); continue; }
+
+    const code = error.code || '';
+    const msg  = error.message || '';
+    const isSchemaError = code === 'PGRST204' || msg.includes('column') || msg.includes('schema cache');
+    if (isSchemaError) {
+      missing.push(col);
+      absent.push(col);
     } else {
-      present.push(col);
+      // Network / rate / transient error — tells us nothing about whether the column exists.
+      // Do NOT treat as missing, or a blip would look like a permanent schema mismatch.
+      errored.push(col);
+      absent.push(`${col}(${code || 'error'})`);
     }
   }
 
-  return { present, absent };
+  return { present, absent, missing, errored };
 }
 
 /**
@@ -87,7 +92,7 @@ async function discoverAuditCacheSchema({ force = false } = {}) {
       return result;
     }
 
-    const { present, absent } = await probeColumns(supabase);
+    const { present, absent, missing, errored } = await probeColumns(supabase);
 
     console.log(
       `[audit-cache-schema] columns present (PostgREST): [${present.join(', ')}]`
@@ -95,8 +100,15 @@ async function discoverAuditCacheSchema({ force = false } = {}) {
     console.log(
       `[audit-cache-schema] columns absent (PostgREST): [${absent.join(', ')}]`
     );
+    if (errored.length) {
+      console.warn(
+        `[audit-cache-schema] ${errored.length} column probe(s) hit a transient (non-schema) error: ` +
+        `[${errored.join(', ')}] — treated as indeterminate, NOT missing. ` +
+        'Reachability is validated separately by verifyAuditCacheTable().'
+      );
+    }
 
-    const hasAuditData = present.includes('audit_data');
+    const hasAuditData  = present.includes('audit_data');
     const hasLegacyData = present.includes('data');
 
     if (hasAuditData && hasLegacyData) {
@@ -104,18 +116,23 @@ async function discoverAuditCacheSchema({ force = false } = {}) {
         '[audit-cache-schema] BOTH audit_data and data exist — run migration 002 to drop data'
       );
     }
-
-    if (!hasAuditData && hasLegacyData) {
+    if (missing.includes('audit_data') && hasLegacyData) {
       console.error(
         '[audit-cache-schema] PGRST204 root cause: table has "data" but app requires "audit_data". ' +
         'Run database/migrations/002_audit_cache_audit_data.sql'
       );
     }
 
-    const payloadOk = hasAuditData;
+    // `ok` reflects ONLY genuine schema problems. A column that merely errored
+    // transiently is indeterminate, never a failure — otherwise a network blip on
+    // a single probe would (incorrectly, and permanently due to caching) flag the
+    // whole table as "not ready" and 503 every checkout on this instance.
+    const requiredMissing = ['cache_key', PAYLOAD_COLUMN].filter(c => missing.includes(c));
+    const ok = requiredMissing.length === 0;
+
     const result = {
-      ok: payloadOk && present.includes('cache_key'),
-      code: payloadOk ? 'OK' : 'SCHEMA_MISMATCH',
+      ok,
+      code: ok ? 'OK' : 'SCHEMA_MISMATCH',
       projectRef,
       url,
       table: 'public.audit_cache',
@@ -123,9 +140,9 @@ async function discoverAuditCacheSchema({ force = false } = {}) {
       absent,
       payloadColumn: hasAuditData ? 'audit_data' : hasLegacyData ? 'data' : null,
       expectedPayloadColumn: PAYLOAD_COLUMN,
-      message: payloadOk
+      message: ok
         ? 'audit_cache schema OK'
-        : `Missing column ${PAYLOAD_COLUMN} — run migration 002_audit_cache_audit_data.sql`,
+        : `Missing required column(s): ${requiredMissing.join(', ')} — run migration 002_audit_cache_audit_data.sql`,
     };
 
     if (!result.ok) {
@@ -134,7 +151,10 @@ async function discoverAuditCacheSchema({ force = false } = {}) {
       console.log(`[audit-cache-schema] CHECK OK payload_column=${PAYLOAD_COLUMN}`);
     }
 
-    _cachedSchema = result;
+    // Only cache a definitive result. If columns were merely indeterminate (transient
+    // errors) and nothing is genuinely missing, we still return ok — but don't pin a
+    // possibly-stale "present" snapshot for the whole process if probes were flaky.
+    if (ok && errored.length === 0) _cachedSchema = result;
     return result;
   })();
 
