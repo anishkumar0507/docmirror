@@ -5,10 +5,12 @@ require('../lib/env');
 
 const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
-const { formatFetchError } = require('../lib/supabase-client');
+const { triggerReportGeneration } = require('../lib/report-trigger');
 
 // $19 Visibility Audit — anonymous, no account, no session, no dashboard
-// Flow: payment verified → generate PDF → email PDF → thank-you page
+// Flow: payment verified → mark generating → trigger background worker → respond.
+// Report (Claude prompts + PDF + email) runs in /api/generate-report, NOT here,
+// so this request returns in a couple of seconds and never hits the Vercel 60s cap.
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
@@ -87,76 +89,17 @@ async function handler(req, res) {
     stripe_session_id: orderId,
   });
 
-  // ── 4. Generate PDF + email (synchronous for $19: user needs download link) ─
-  // $19 is NOT a SaaS product — no account, no session, no dashboard.
-  // We keep PDF generation synchronous here so the response includes pdfUrl
-  // for the immediate "Download PDF Now" button on the thank-you page.
-  const { generateReport, RateLimitError } = require('./report');
-  const { isRateLimitError }               = require('../lib/claude-client');
+  // ── 4. Trigger background report generation (does NOT block this response) ──
+  // The worker (/api/generate-report) runs the Claude prompts + PDF + email in its
+  // own invocation. This avoids the Vercel 60s timeout on the payment request.
+  await triggerReportGeneration(req, { auditId, email, userId: null });
 
-  let result;
-  try {
-    result = await generateReport({ auditId, email, userId: null });
-  } catch (err) {
-    console.error('[verify] generateReport threw:', formatFetchError(err));
-
-    if (err.name === 'AuditCacheError') {
-      return res.status(503).json({
-        ok:           false,
-        code:         err.code,
-        pdfGenerated: false,
-        error:        err.message,
-        diagnostic:   auditCache.formatDiagnostic(err.details),
-      });
-    }
-
-    if (err instanceof RateLimitError || isRateLimitError(err)) {
-      return res.status(429).json({
-        ok:           false,
-        code:         'RATE_LIMIT',
-        pdfGenerated: false,
-        error:
-          'Payment received, but our AI is busy. Your report will be emailed within a few minutes — or tap Download PDF to retry.',
-        retryAfter: err.retryAfter || 60,
-      });
-    }
-
-    console.error('[verify] PDF generation FAILED:', err.message);
-    return res.status(500).json({
-      ok:           false,
-      code:         'PDF_GENERATION_FAILED',
-      pdfGenerated: false,
-      error:
-        'Payment verified but PDF generation failed. Please contact support or use the Download PDF button to retry.',
-      detail: err.message,
-    });
-  }
-
-  // ── 5. Respond ─────────────────────────────────────────────────────────────
-  if (result.emailSent) {
-    return res.json({
-      ok:           true,
-      emailSent:    true,
-      pdfGenerated: true,
-      pdfUrl:       result.pdfUrl || null,
-      message:      'Payment verified. Your report PDF has been emailed.',
-    });
-  }
-
-  // PDF in storage but SMTP delivery failed
-  console.warn(
-    `[verify] PDF generated but email NOT sent  auditId=${auditId}  email=${email}  ` +
-    `pdfUrl=${result.pdfUrl || '(not stored)'}`
-  );
-  return res.status(200).json({
-    ok:           false,
-    code:         'EMAIL_FAILED',
-    emailSent:    false,
-    pdfGenerated: true,
-    pdfUrl:       result.pdfUrl || null,
-    message:
-      'Payment verified. Your PDF was generated but the email could not be delivered. ' +
-      'Please use the Download PDF button on this page.',
+  // ── 5. Respond immediately ─────────────────────────────────────────────────
+  return res.json({
+    ok:         true,
+    generating: true,
+    emailSent:  false,
+    message:    'Payment verified! Your full report is being generated and will be emailed within a couple of minutes.',
   });
 }
 

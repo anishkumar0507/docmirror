@@ -5,7 +5,8 @@ require('../lib/env');
 
 const auditCache   = require('../lib/audit-cache');
 const reportsStore = require('../lib/reports-store');
-const { getSupabaseClient, formatFetchError } = require('../lib/supabase-client');
+const { triggerReportGeneration } = require('../lib/report-trigger');
+const { getSupabaseClient } = require('../lib/supabase-client');
 
 // $49 Monitor — payment first, THEN account.
 // The account (auth user + profile + subscription) is created here, only after the
@@ -121,8 +122,15 @@ async function handler(req, res) {
     }
   }
 
-  // ── 6. Respond immediately (session lets the dashboard load right away) ────
-  res.json({
+  // ── 6. Trigger background report generation (worker = its own invocation) ──
+  // Must run before the response so the dispatch flushes within this request's
+  // lifecycle. The worker (/api/generate-report) does the prompts + PDF + email.
+  if (auditId && auditData) {
+    await triggerReportGeneration(req, { auditId, email: cleanEmail, userId });
+  }
+
+  // ── 7. Respond immediately (session lets the dashboard load right away) ────
+  return res.json({
     ok:           true,
     accountCreated: !accountExisted,
     needsLogin:   !session,           // existing account whose password didn't match
@@ -130,26 +138,11 @@ async function handler(req, res) {
     refreshToken: session?.refresh_token || null,
     userId,
     email:        cleanEmail,
+    generating:   true,
     message:      session
-      ? 'Subscription activated. Your dashboard is ready — your first report PDF is generating.'
+      ? 'Subscription activated. Your dashboard is ready — your report is generating now.'
       : 'Subscription activated. This email already has an account — please log in to open your dashboard.',
   });
-
-  // ── 7. Background: generate PDF + email (fire-and-forget) ─────────────────
-  if (auditId && auditData) {
-    setImmediate(async () => {
-      try {
-        const { generateReport } = require('./report');
-        const result = await generateReport({ auditId, email: cleanEmail, userId });
-        if (result.pdfUrl) {
-          await supabase.from('reports').update({ pdf_url: result.pdfUrl }).eq('audit_id', auditId);
-        }
-        console.log(`[verify-sub bg] report generated auditId=${auditId} emailSent=${result.emailSent}`);
-      } catch (bgErr) {
-        console.error('[verify-sub bg] PDF generation error (non-fatal):', formatFetchError(bgErr));
-      }
-    });
-  }
 }
 
 module.exports = handler;

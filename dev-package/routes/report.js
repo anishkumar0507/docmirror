@@ -121,20 +121,14 @@ Provide 12 topics and 4 calendar weeks.`;
   ];
 
   const results  = {};
-  let stepNum    = 0;
   const totalSteps = promptSteps.filter(s => s.prompt).length;
 
-  console.log(`[pdf] Claude queue stats before prompts:`, getQueueStats());
+  console.log(`[pdf] dispatching ${totalSteps} prompts (concurrency-limited):`, getQueueStats());
 
-  for (const step of promptSteps) {
-    if (!step.prompt) {
-      results[step.key] = step.fallback || {};
-      continue;
-    }
-
-    stepNum++;
-    console.log(`[pdf] prompt ${stepNum}/${totalSteps}: ${step.label}`);
-
+  // Fire all prompts at once — the claude-client queue throttles to MAX_CONCURRENCY
+  // and retries 429s. This replaces the old strictly-serial loop (~55s → ~15-20s).
+  await Promise.all(promptSteps.map(async (step) => {
+    if (!step.prompt) { results[step.key] = step.fallback || {}; return; }
     try {
       results[step.key] = await runClaudePrompt(step.prompt, {
         label:     step.label,
@@ -148,7 +142,7 @@ Provide 12 topics and 4 calendar weeks.`;
         throw err;
       }
     }
-  }
+  }));
 
   const socialCompliance = results.socialCompliance || {};
 
@@ -166,11 +160,8 @@ Provide 12 topics and 4 calendar weeks.`;
   };
 }
 
-/**
- * Build PDF buffer — shared by download-pdf and generateReport.
- * Returns { buffer: Buffer, insights: Object } so callers can save the AI data to the DB.
- */
-async function buildPdfBuffer(auditData) {
+/** Enrich raw audit payload with V5 pillars/score and validate the total. */
+function enrichAuditData(auditData) {
   const city    = auditData.city  || (auditData.cityState || '').split(',')[0].trim();
   const state   = auditData.state || (auditData.cityState || '').split(',')[1]?.trim() || '';
   const region  = auditData.region || detectRegion(city, state);
@@ -191,12 +182,31 @@ async function buildPdfBuffer(auditData) {
 
   const v = validatePillarTotal(d);
   if (!v.valid) throw new Error(`Pillar calculation error: ${v.actual} ≠ ${v.expected}`);
+  return d;
+}
 
-  const ai   = await runAllPrompts(d);
+/** Normalise raw Claude results into the persisted `insights` shape. */
+function extractInsights(ai) {
+  return {
+    fixes:               ai.fixes               || [],
+    competitorNarrative: ai.competitorNarrative  || '',
+    execSummary:         ai.execSummary          || null,
+    responseTemplates:   ai.responseTemplates    || null,
+    seoKeywords:         ai.seoKeywords          || null,
+    contentStrategy:     ai.contentStrategy      || null,
+    patientJourney:      ai.patientJourney       || null,
+    ninetyDayPlan:       ai.ninetyDayPlan        || null,
+    socialContent:       ai.socialContent        || null,
+    specialtyDonts:      ai.specialtyDonts       || [],
+  };
+}
+
+/** Render the PDF from already-enriched data + already-generated AI content. */
+async function renderPdfFromAi(d, ai) {
   const full = {
     ...d,
     ...ai,
-    complianceFramework: region === 'IN'
+    complianceFramework: d.region === 'IN'
       ? 'MCI Code of Ethics, IMC Regulations 2002, and the Drugs & Magic Remedies Act 1954'
       : 'FTC Guidelines, FDA Social Media Guidance, and HIPAA Privacy Rules',
   };
@@ -213,23 +223,18 @@ async function buildPdfBuffer(auditData) {
     throw new Error(`Unreplaced placeholders: ${[...new Set(orphans)].join(', ')}`);
   }
 
-  const buffer = await renderPdf(html);
+  return renderPdf(html);
+}
 
-  // Return both buffer AND the Claude-generated insights so callers can persist them
-  const insights = {
-    fixes:               ai.fixes               || [],
-    competitorNarrative: ai.competitorNarrative  || '',
-    execSummary:         ai.execSummary          || null,
-    responseTemplates:   ai.responseTemplates    || null,
-    seoKeywords:         ai.seoKeywords          || null,
-    contentStrategy:     ai.contentStrategy      || null,
-    patientJourney:      ai.patientJourney       || null,
-    ninetyDayPlan:       ai.ninetyDayPlan        || null,
-    socialContent:       ai.socialContent        || null,
-    specialtyDonts:      ai.specialtyDonts       || [],
-  };
-
-  return { buffer, insights };
+/**
+ * Build PDF buffer — shared by download-pdf and generateReport.
+ * Returns { buffer: Buffer, insights: Object } so callers can save the AI data to the DB.
+ */
+async function buildPdfBuffer(auditData) {
+  const d   = enrichAuditData(auditData);
+  const ai  = await runAllPrompts(d);
+  const buffer = await renderPdfFromAi(d, ai);
+  return { buffer, insights: extractInsights(ai) };
 }
 
 // ── Render PDF with Puppeteer (ESM-safe via lib/puppeteer-loader) ──────────
@@ -352,67 +357,49 @@ async function _generateReportCore({ auditId, email, userId = null }) {
     );
   }
 
-  let d = cacheResult.data;
+  // 2–3. Enrich with V5 fields + validate pillar total
+  const d = enrichAuditData(cacheResult.data);
   console.log(
-    `[report] audit data loaded  source=${cacheResult.source}  cache_key=${canonicalId}  ` +
-    `doctor=${d.doctorName}  auditId=${d.auditId || canonicalId}`
+    `[report] audit data loaded + enriched  source=${cacheResult.source}  cache_key=${canonicalId}  ` +
+    `doctor=${d.doctorName}  total=${d.score}/100`
   );
 
-  // 2. Enrich with V5 fields
-  const city   = d.city  || (d.cityState || '').split(',')[0].trim();
-  const state  = d.state || (d.cityState || '').split(',')[1]?.trim() || '';
-  const region = d.region || detectRegion(city, state);
-  const pillars = computePillarsV5(d);
-  const score   = pillars.total;
-
-  d = {
-    ...d,
-    city, state, region,
-    score,
-    pillars: {
-      gmb:          pillars.gmb,
-      rating:       pillars.rating,
-      reviews:      pillars.reviews,
-      photos:       pillars.photos,
-      rank:         pillars.rank,
-      aiVisibility: pillars.aiVisibility,
-      directories:  pillars.directories,
-    },
-    doctorNameClean: cleanDoctorName(d.doctorName || ''),
-    generatedAt:     d.generatedAt || new Date().toISOString(),
-  };
-
-  // 3. Validate pillar total matches score
-  const v = validatePillarTotal(d);
-  if (!v.valid) {
-    console.error(
-      `[report] ✗ pillar mismatch — expected ${v.expected}, got ${v.actual} — aborting`
-    );
-    throw new Error(`Pillar total mismatch: ${v.actual} ≠ ${v.expected}`);
-  }
-  console.log(`[report] pillars valid — total ${v.actual}/100`);
-
-  // 4–8. Claude prompts (sequential queue) + HTML template + Puppeteer → PDF buffer
-  // Throws on any non-optional prompt failure or Puppeteer crash.
-  let pdfBuffer;
-  let pdfInsights = null;
+  // 4. Claude prompts FIRST (parallel, ~15-20s). Persist insights + the report row
+  //    IMMEDIATELY so the dashboard can render every section before the (slower) PDF
+  //    render + email finish. The PDF must never block insight availability.
+  let ai;
   try {
-    console.log('[pdf] building PDF buffer (Claude prompts + Puppeteer)...');
-    const pdfResult = await buildPdfBuffer(d);
-    pdfBuffer  = pdfResult.buffer;
-    pdfInsights = pdfResult.insights;
+    ai = await runAllPrompts(d);
+  } catch (promptErr) {
+    console.error('[report] Claude prompts FAILED:', promptErr.message);
+    await paidReports.updateStatus(canonicalId, { status: 'failed', delivered_at: new Date().toISOString() });
+    throw promptErr;
+  }
+  const pdfInsights = extractInsights(ai);
+
+  if (supabase) {
+    // Insights → audit_cache.audit_data (source of truth the dashboard reads)
+    await auditCache.mergeAuditData(canonicalId, { insights: pdfInsights, score: d.score });
+    // Report row (score/competitors) so the dashboard has data even before the PDF exists
+    const earlyRow = reportsStore.reportFromAuditData(canonicalId, d, {});
+    if (userId) earlyRow.user_id = userId;
+    const earlyRes = await reportsStore.upsertReport(supabase, earlyRow);
+    console.log(`[report] insights + report row persisted (pre-PDF)  audit_id=${canonicalId}  row=${earlyRes.action || earlyRes.reason}`);
+  }
+
+  // 5. Render PDF (Puppeteer) — slower; runs AFTER insights are already saved.
+  let pdfBuffer;
+  try {
+    console.log('[pdf] rendering PDF (Puppeteer)...');
+    pdfBuffer = await renderPdfFromAi(d, ai);
     console.log(`[pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
   } catch (pdfErr) {
     console.error('[pdf] PDF generation FAILED:', pdfErr.message);
-    console.error('[pdf] stack:', pdfErr.stack || '(no stack)');
-    await paidReports.updateStatus(canonicalId, {
-      status:       'failed',
-      delivered_at: new Date().toISOString(),
-    });
-    throw pdfErr;   // propagate to verify-payment → code: PDF_GENERATION_FAILED
+    await paidReports.updateStatus(canonicalId, { status: 'failed', delivered_at: new Date().toISOString() });
+    throw pdfErr;
   }
 
-  // 9. Upload to Supabase Storage bucket "reports" (non-fatal if bucket missing)
+  // 6. Upload to Supabase Storage bucket "reports" (non-fatal if bucket missing)
   let pdfUrl = null;
   if (supabase) {
     const uploadPath = `${canonicalId}.pdf`;
@@ -439,21 +426,10 @@ async function _generateReportCore({ auditId, email, userId = null }) {
         console.log(`[storage] upload OK  pdfUrl=${pdfUrl}`);
       }
 
-      // Upsert reports row so the row is always present in the dashboard after PDF generation.
-      // This handles the case where verify-payment ran without a valid user token (userId=null)
-      // and skipped the initial INSERT, leaving the reports table empty.
-      // NOTE: uses a manual select→update|insert (reportsStore) because the live DB is
-      // missing the unique constraint on reports.audit_id, which made onConflict upserts fail.
-      const reportRow = reportsStore.reportFromAuditData(canonicalId, d, { pdf_url: pdfUrl || null });
-      if (userId) reportRow.user_id = userId;
-
-      const upRes = await reportsStore.upsertReport(supabase, reportRow);
-      if (!upRes.ok) console.warn('[storage] reports upsert warn:', upRes.error?.message || upRes.reason);
-      else console.log(`[storage] reports row ${upRes.action}  audit_id=${canonicalId}  score=${reportRow.score}  pdf=${pdfUrl ? 'yes' : 'no'}`);
-
-      // Persist Claude-generated insights into audit_cache.audit_data (no schema change needed).
-      if (pdfInsights) {
-        await auditCache.mergeAuditData(canonicalId, { insights: pdfInsights, score: d.score });
+      // Update the report row with the pdf_url now that it exists.
+      if (pdfUrl) {
+        const upRes = await reportsStore.upsertReport(supabase, { audit_id: canonicalId, pdf_url: pdfUrl });
+        if (!upRes.ok) console.warn('[storage] reports pdf_url update warn:', upRes.error?.message || upRes.reason);
       }
     } catch (storageErr) {
       console.error(

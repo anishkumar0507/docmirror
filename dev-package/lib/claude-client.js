@@ -13,9 +13,12 @@ const MAX_RETRIES = 5;
 const BASE_DELAY_MS = 2000;
 const CACHE_TTL_MS = 30 * 60 * 1000; // 30 min — avoids duplicate calls for same doctor
 
+// Bounded-concurrency queue. Previously strictly serial (1 at a time), which made
+// the 9-prompt report take ~55s and time out on Vercel. Running a few in parallel
+// cuts that to ~15-20s. 429s are still handled by withRetry's exponential backoff.
+const MAX_CONCURRENCY = Math.max(1, parseInt(process.env.CLAUDE_CONCURRENCY || '3', 10));
 let queue = [];
-let draining = false;
-let activeRequest = false;
+let active = 0;
 let totalQueued = 0;
 
 /** In-memory prompt cache: sha256(prompt) → { result, ts } */
@@ -50,32 +53,23 @@ class RateLimitError extends Error {
 
 function logState(label, extra = '') {
   console.log(
-    `[claude] ${label} | active=${activeRequest ? 1 : 0} | queued=${queue.length} | total_queued=${totalQueued}${extra ? ' | ' + extra : ''}`
+    `[claude] ${label} | active=${active} | queued=${queue.length} | total_queued=${totalQueued}${extra ? ' | ' + extra : ''}`
   );
 }
 
-/** Drain the FIFO queue — one request at a time */
-async function drainQueue() {
-  if (draining) return;
-  draining = true;
-
-  while (queue.length > 0) {
+/** Start as many queued jobs as concurrency allows. */
+function pump() {
+  while (active < MAX_CONCURRENCY && queue.length > 0) {
     const { fn, resolve, reject, label } = queue.shift();
-    activeRequest = true;
+    active++;
     logState(`▶ start ${label}`);
-
-    try {
-      const result = await fn();
-      resolve(result);
-    } catch (err) {
-      reject(err);
-    } finally {
-      activeRequest = false;
-      logState(`✓ done ${label}`);
-    }
+    Promise.resolve()
+      .then(fn)
+      .then(
+        (result) => { active--; logState(`✓ done ${label}`); resolve(result); pump(); },
+        (err)    => { active--; logState(`✗ fail ${label}`); reject(err);  pump(); }
+      );
   }
-
-  draining = false;
 }
 
 function enqueue(fn, label) {
@@ -83,7 +77,7 @@ function enqueue(fn, label) {
   return new Promise((resolve, reject) => {
     queue.push({ fn, resolve, reject, label });
     logState(`queued ${label}`);
-    drainQueue();
+    pump();
   });
 }
 
@@ -208,7 +202,8 @@ async function runClaudePrompt(prompt, options = {}) {
 /** Stats for debugging / logging */
 function getQueueStats() {
   return {
-    active: activeRequest ? 1 : 0,
+    active,
+    maxConcurrency: MAX_CONCURRENCY,
     queued: queue.length,
     cacheSize: promptCache.size,
     totalQueued,
