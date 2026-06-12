@@ -351,15 +351,16 @@ function showSuccess(email) {
     '<div class="success-state">' +
     '<div class="tick">✅</div>' +
     '<h2>Payment Confirmed!</h2>' +
-    '<p>Your full 15-page visibility report is being generated.<br>' +
-    'PDF will be sent to <strong>' + escH(email) + '</strong><br>within 60 seconds.</p>' +
-    '<button class="view-btn" id="dl-btn" onclick="downloadPdf(\'' + escH(email) + '\')">⬇️ Download PDF Now</button>' +
-    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:1rem">' +
-    'Check your inbox in ~60 seconds. Didn\'t arrive? Use the button above.</p>' +
-    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:.5rem">' +
-    'Want weekly monitoring? <a href="/pages/checkout-subscription.html" style="color:#00A878;font-weight:600">Upgrade to Monitor $49/mo →</a></p>' +
+    '<p>Opening your full report&hellip;<br>' +
+    'A PDF copy is also being emailed to <strong>' + escH(email) + '</strong>.</p>' +
+    '<a class="view-btn" href="/pages/preview-report.html?paid=1">View Full Report →</a>' +
     '</div>';
-  // No redirect — $19 is one-time, no dashboard, no account
+
+  // Redirect to the full unlocked report page (renders from the saved audit data).
+  // replace() so the back button doesn't return to the payment screen.
+  setTimeout(function () {
+    window.location.replace('/pages/preview-report.html?paid=1');
+  }, 1200);
 }
 
 // ── Download PDF directly (deduped server-side + button lock) ─────────────

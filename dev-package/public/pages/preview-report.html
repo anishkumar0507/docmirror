@@ -1087,19 +1087,23 @@ function doActualCheckout() {
   });
 }
 
-// ── DEMO MODE — ?demo=1 unlocks all paid sections with REAL audit data ───────
+// ── FULL REPORT DATA — ?demo=1 (preview) or ?paid=1 (after payment) ──────────
+// Injects REAL computed audit data into every paid section. Runs for both demo
+// and paid so the post-payment report page shows the genuine full report.
 (function () {
-  if (!/[?&]demo=1/.test(window.location.search)) return;
+  if (!/[?&](demo|paid)=1/.test(window.location.search)) return;
 
-  // ── Demo banner ────────────────────────────────────────────────────────────
-  var banner = document.createElement('div');
-  banner.innerHTML =
-    '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#D97706;' +
-    'color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600;">' +
-    '🔓 DEMO MODE — Full paid report preview · Real audit data shown' +
-    '<button onclick="this.parentElement.remove()" style="background:none;border:none;' +
-    'color:#fff;cursor:pointer;margin-left:12px;font-size:1rem">✕</button></div>';
-  document.body.insertBefore(banner.firstChild, document.body.firstChild);
+  // ── Demo banner (preview only — paid mode shows its own confirmation banner) ─
+  if (/[?&]demo=1/.test(window.location.search)) {
+    var banner = document.createElement('div');
+    banner.innerHTML =
+      '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#D97706;' +
+      'color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600;">' +
+      '🔓 DEMO MODE — Full paid report preview · Real audit data shown' +
+      '<button onclick="this.parentElement.remove()" style="background:none;border:none;' +
+      'color:#fff;cursor:pointer;margin-left:12px;font-size:1rem">✕</button></div>';
+    document.body.insertBefore(banner.firstChild, document.body.firstChild);
+  }
 
   // ── Pull real audit data from the page ────────────────────────────────────
   var d            = window._tdmAuditData || {};
