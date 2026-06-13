@@ -865,7 +865,53 @@ function doCheckout() {
 }
 
 function doMonitorCheckout() {
-  window.location.href = 'checkout-subscription.html';
+  // Carry the audit context + email into the Monitor checkout so the SAME account
+  // is reused (verify-subscription-payment dedupes by email — no duplicate users)
+  // and the first Monitor report is generated from this audit.
+  try {
+    var ad = window._tdmAuditData;
+    if (ad) {
+      var s = JSON.stringify(ad);
+      if (!localStorage.getItem('docmirrorPreviewReport')) localStorage.setItem('docmirrorPreviewReport', s);
+      localStorage.setItem('tdm_audit_result', s);
+    }
+    var em = (window._tdmPaidEmail || (ad && ad.email) || '').trim();
+    if (em) localStorage.setItem('tdm_checkout_email', em);
+  } catch (_) {}
+  window.location.href = 'checkout-subscription.html?upgrade=1';
+}
+
+// ── Premium upgrade section (shown to $19 Audit buyers on the report) ────────
+// Lists the Monitor-only features that stay locked on the Audit plan and drives
+// the $49 upgrade. Inline-styled so it renders identically wherever it's injected.
+var MONITOR_LOCKED_FEATURES = [
+  'Weekly Visibility Tracking', 'Competitor Intelligence', 'Review Sentiment Analysis',
+  'Weekly Reports Dashboard', 'Alerts & Notifications', 'AI Content Strategy',
+  'SEO Keyword Tracking', 'Review Growth Engine', '90-Day Roadmap',
+  'Competitor Ranking Trends'
+];
+function upgradeSectionHtml() {
+  var items = MONITOR_LOCKED_FEATURES.map(function(f) {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:rgba(255,255,255,.06);' +
+      'border:1px solid rgba(255,255,255,.1);border-radius:8px;font-size:.82rem;color:rgba(255,255,255,.9)">' +
+      '<span style="flex-shrink:0">🔒</span><span>' + f + '</span></div>';
+  }).join('');
+  return '<div id="upgrade-pro" style="margin-top:1.5rem;background:linear-gradient(135deg,#0A2540,#123a5e);' +
+    'border:1px solid rgba(0,168,120,.4);border-radius:14px;padding:1.75rem 1.5rem;text-align:center">' +
+    '<div style="display:inline-block;background:rgba(0,168,120,.18);color:#34d39e;font-size:.7rem;font-weight:700;' +
+    'letter-spacing:.05em;text-transform:uppercase;padding:4px 12px;border-radius:20px;margin-bottom:12px">Unlock more</div>' +
+    '<h2 style="color:#fff;margin:0 0 6px;font-size:1.35rem">Upgrade to Doctor Visibility Monitor™</h2>' +
+    '<p style="color:rgba(255,255,255,.7);margin:0 0 18px;font-size:.9rem">' +
+    'Your Audit report is a one-time snapshot. Monitor keeps you ahead every week:</p>' +
+    '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-width:520px;margin:0 auto 20px;text-align:left">' +
+    items + '</div>' +
+    '<button type="button" onclick="doMonitorCheckout()" ' +
+    'style="display:inline-flex;align-items:center;gap:8px;background:#00A878;color:#fff;border:none;' +
+    'border-radius:10px;padding:14px 28px;font-size:1rem;font-weight:700;cursor:pointer;' +
+    'font-family:\'DM Sans\',sans-serif;box-shadow:0 4px 14px rgba(0,168,120,.35)">' +
+    'Upgrade to Monitor — $49/month →</button>' +
+    '<p style="color:rgba(255,255,255,.45);font-size:.75rem;margin:12px 0 0">Cancel anytime · Keeps your existing report &amp; account</p>' +
+    '</div>';
 }
 
 // ── Download PDF (one job at a time — prevents duplicate Claude calls) ─────
@@ -1037,7 +1083,11 @@ function doActualCheckout() {
               var lbf = document.getElementById('leaderboard-footer');
               if (lbf) lbf.style.display = 'none';
 
-              // Show payment success + download button in CTA
+              // Remember the buyer's email so an upgrade reuses the same account.
+              window._tdmPaidEmail = email;
+              try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
+
+              // Show payment success + download button + Monitor upgrade upsell.
               var ctaSection = document.getElementById('cta-section');
               if (ctaSection) ctaSection.innerHTML =
                 '<div style="text-align:center;padding:2rem 1rem">' +
@@ -1049,6 +1099,7 @@ function doActualCheckout() {
                     : 'Full report is being generated and sent to<br><strong>' + escH(email) + '</strong> — PDF arrives in ~60 seconds.') + '</p>' +
                 '<p style="color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:16px">Or download it directly right now:</p>' +
                 downloadBtnHtml() +
+                upgradeSectionHtml() +
                 '</div>';
 
               // Show success banner at top
@@ -1370,7 +1421,7 @@ function doActualCheckout() {
   var lbf = document.getElementById('leaderboard-footer');
   if (lbf) lbf.style.display = 'none';
 
-  // Replace CTA with download
+  // Replace CTA with download + Monitor upgrade upsell
   var cta = document.getElementById('cta-section');
   if (cta) cta.innerHTML =
     '<div style="text-align:center;padding:2.5rem 1rem">' +
@@ -1380,6 +1431,7 @@ function doActualCheckout() {
       'Your PDF report is being generated and sent to your email.<br>' +
       'You can also download it directly right now:</p>' +
     downloadBtnHtml() +
+    upgradeSectionHtml() +
     '</div>';
 
 })();

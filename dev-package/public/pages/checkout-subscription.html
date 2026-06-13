@@ -187,6 +187,13 @@ async function initPage() {
   try { savedEmail = localStorage.getItem('tdm_checkout_email') || ''; } catch(_) {}
   var emailVal = savedEmail || (_session && _session.user && _session.user.email) || '';
   if (emailVal) document.getElementById('email-input').value = emailVal;
+
+  // ── Upgrade context (arriving from a $19 Audit report) ────────────────────
+  if (/[?&]upgrade=1/.test(window.location.search)) {
+    var sub = document.querySelector('.subtitle');
+    if (sub) sub.innerHTML = 'You\'re upgrading to <strong>Doctor Visibility Monitor™</strong>. ' +
+      'We\'ll reuse your existing email — no duplicate account. Set a password to access your dashboard.';
+  }
 }
 
 initPage();

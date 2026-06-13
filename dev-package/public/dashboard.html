@@ -700,22 +700,29 @@ async function checkAuth() {
   if (!_profile) _profile = { plan: 'free', email: _session.user.email };
 
   // Gate: only monitor plan users can access the dashboard.
-  // Audit plan → their own audit history page. No plan → pricing.
+  // Only Monitor ($49) users get the dashboard. Audit ($19) and free users are
+  // shown an upgrade gate (not silently bounced) with a plan-specific message and
+  // a CTA into the Monitor checkout, which reuses their account.
   var plan = _profile ? (_profile.plan || 'free') : 'free';
-  if (plan === 'audit') {
-    window.location.replace('/pages/audit-history.html');
-    return;
-  }
   if (plan !== 'monitor') {
+    var isAudit = (plan === 'audit');
+    var headline = isAudit ? 'Upgrade to Unlock Your Dashboard' : 'Dashboard Requires Monitor Plan';
+    var message = isAudit
+      ? 'Your current plan is <strong>Audit ($19)</strong>. Upgrade to <strong>Monitor ($49/month)</strong> to unlock weekly visibility tracking, competitor intelligence, review sentiment, alerts, and this live dashboard.'
+      : 'The dashboard is included in the Doctor Visibility Monitor ($49/month). Subscribe to unlock weekly monitoring, rank tracking, competitor alerts, and more.';
+    var em = _profile && _profile.email ? _profile.email : '';
+    if (em) { try { localStorage.setItem('tdm_checkout_email', em); } catch(_) {} }
+    var secondary = isAudit
+      ? '<p style="margin-top:1rem;font-size:.78rem;color:rgba(255,255,255,.35)">' +
+        'Looking for your past reports? <a href="/pages/audit-history.html" style="color:rgba(255,255,255,.5)">View Audit History →</a></p>'
+      : '<p style="margin-top:1rem;font-size:.78rem;color:rgba(255,255,255,.35)">' +
+        'Want the one-time audit PDF instead? <a href="/" style="color:rgba(255,255,255,.5)">Run a free check →</a></p>';
     document.getElementById('auth-gate').innerHTML =
       '<div class="logo">The Doc <span>Mirror</span></div>' +
-      '<h2 style="color:#fff;margin-bottom:.5rem">Dashboard Requires Monitor Plan</h2>' +
-      '<p style="color:rgba(255,255,255,.6);max-width:340px;line-height:1.6;margin-bottom:1.5rem">' +
-      'The dashboard is included in the Doctor Visibility Monitor ($49/month). ' +
-      'Subscribe to unlock weekly monitoring, rank tracking, competitor alerts, and more.</p>' +
-      '<a href="/pages/checkout-subscription.html" style="background:#00A878;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem">Start Monitor — $49/month →</a>' +
-      '<p style="margin-top:1rem;font-size:.78rem;color:rgba(255,255,255,.35)">' +
-      'Want the one-time audit PDF instead? <a href="/" style="color:rgba(255,255,255,.5)">Run a free check →</a></p>';
+      '<h2 style="color:#fff;margin-bottom:.5rem">' + headline + '</h2>' +
+      '<p style="color:rgba(255,255,255,.7);max-width:380px;line-height:1.6;margin-bottom:1.5rem">' + message + '</p>' +
+      '<a href="/pages/checkout-subscription.html?upgrade=1" style="background:#00A878;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem">Upgrade to Monitor — $49/month →</a>' +
+      secondary;
     document.getElementById('auth-gate').classList.add('show');
     return;
   }
