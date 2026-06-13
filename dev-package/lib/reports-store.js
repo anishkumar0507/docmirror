@@ -13,10 +13,15 @@
 // stored inside audit_cache.audit_data (existing JSONB) instead of a reports column.
 // ─────────────────────────────────────────────────────────────────────────────
 
+const { withSupabaseRetry } = require('./supabase-client');
+
 // Columns that are known to exist on `reports` in the live schema.
+// `insights` was added by migration 010/011 and is now present in production
+// (verified 2026-06-13), so it is written directly to the row as well as to
+// audit_cache.audit_data.insights (the dashboard's source of truth).
 const SAFE_FIELDS = [
   'audit_id', 'user_id', 'doctor_name', 'score', 'review_count', 'rating',
-  'photo_count', 'specialty', 'city', 'competitors', 'pdf_url',
+  'photo_count', 'specialty', 'city', 'competitors', 'pdf_url', 'insights',
 ];
 const SELECT_FIELDS = ['id', ...SAFE_FIELDS, 'created_at'].join(', ');
 
@@ -63,12 +68,13 @@ async function upsertReport(supabase, rawRow) {
   if (!row.audit_id) return { ok: false, reason: 'no_audit_id' };
 
   try {
-    const { data: existing, error: selErr } = await supabase
-      .from('reports')
-      .select('id')
-      .eq('audit_id', row.audit_id)
-      .limit(1)
-      .maybeSingle();
+    // All three round-trips go through withSupabaseRetry so a single stale-socket
+    // stall (see supabase-client) is retried on a fresh connection instead of
+    // burning the whole serverless budget on one 8s hang.
+    const { data: existing, error: selErr } = await withSupabaseRetry(
+      () => supabase.from('reports').select('id').eq('audit_id', row.audit_id).limit(1).maybeSingle(),
+      { label: 'reports-select', attempts: 3 }
+    );
 
     if (selErr) {
       console.warn(`[reports-store] select warn audit_id=${row.audit_id}:`, selErr.message);
@@ -82,8 +88,10 @@ async function upsertReport(supabase, rawRow) {
         if (v !== null && v !== undefined) patch[k] = v;
       }
       if (Object.keys(patch).length === 0) return { ok: true, action: 'skip' };
-      const { error: updErr } = await supabase
-        .from('reports').update(patch).eq('audit_id', row.audit_id);
+      const { error: updErr } = await withSupabaseRetry(
+        () => supabase.from('reports').update(patch).eq('audit_id', row.audit_id),
+        { label: 'reports-update', attempts: 3 }
+      );
       if (updErr) {
         console.warn(`[reports-store] update FAILED audit_id=${row.audit_id}:`, updErr.message);
         return { ok: false, action: 'update', error: updErr };
@@ -91,7 +99,10 @@ async function upsertReport(supabase, rawRow) {
       return { ok: true, action: 'update' };
     }
 
-    const { error: insErr } = await supabase.from('reports').insert(row);
+    const { error: insErr } = await withSupabaseRetry(
+      () => supabase.from('reports').insert(row),
+      { label: 'reports-insert', attempts: 3 }
+    );
     if (insErr) {
       console.warn(`[reports-store] insert FAILED audit_id=${row.audit_id}:`, insErr.message);
       return { ok: false, action: 'insert', error: insErr };

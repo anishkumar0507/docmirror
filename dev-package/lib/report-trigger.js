@@ -28,28 +28,43 @@ function baseUrlFromReq(req) {
   return `${proto}://${host}`;
 }
 
+// Pipeline stages, in order. Each is its OWN serverless invocation with its own
+// 60s budget, so no single stage can exceed the Vercel limit. Each stage triggers
+// the next on success; /api/reconcile re-drives any stage whose trigger was dropped.
+const STAGE_ROUTES = {
+  insights: '/api/generate-report',   // 9 Claude prompts → persist insights
+  pdf:      '/api/render-pdf',         // Puppeteer render → upload → pdf_url
+  email:    '/api/send-report-email',  // email the PDF
+};
+
 /**
- * Fire-and-forget trigger of the report worker. Returns quickly (≤ ~600ms) — never
- * waits for generation to complete. Safe to await from the payment handler.
+ * Fire-and-forget trigger of a pipeline stage worker. Returns quickly (≤ ~800ms) —
+ * never waits for the stage to finish. The brief await only ensures the outbound
+ * request is flushed before the caller's lambda can freeze.
  */
-async function triggerReportGeneration(req, { auditId, email, userId = null }) {
+async function triggerStage(req, stage, { auditId, email, userId = null }) {
+  const route = STAGE_ROUTES[stage];
+  if (!route) throw new Error(`Unknown pipeline stage: ${stage}`);
   const base = baseUrlFromReq(req);
-  const url  = `${base}/api/generate-report`;
+  const url  = `${base}${route}`;
   const body = JSON.stringify({ auditId, email, userId, token: jobToken(auditId, email) });
 
   let dispatched = false;
   try {
     const p = fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
       .then(() => { dispatched = true; })
-      .catch((e) => { console.warn('[trigger] worker dispatch warn:', e.message); });
-    // Give the request up to 600ms to flush, then return regardless — the worker
-    // continues server-side as an independent invocation.
-    await Promise.race([p, new Promise((r) => setTimeout(r, 600))]);
+      .catch((e) => { console.warn(`[trigger] ${stage} dispatch warn:`, e.message); });
+    await Promise.race([p, new Promise((r) => setTimeout(r, 800))]);
   } catch (e) {
-    console.warn('[trigger] error:', e.message);
+    console.warn(`[trigger] ${stage} error:`, e.message);
   }
-  console.log(`[trigger] report worker dispatched=${dispatched} auditId=${auditId} url=${url}`);
+  console.log(`[trigger] stage=${stage} dispatched=${dispatched} auditId=${auditId} url=${url}`);
   return { url, dispatched };
 }
 
-module.exports = { triggerReportGeneration, jobToken, baseUrlFromReq };
+/** Back-compat: kick off the pipeline at the first (insights) stage. */
+async function triggerReportGeneration(req, payload) {
+  return triggerStage(req, 'insights', payload);
+}
+
+module.exports = { triggerStage, triggerReportGeneration, jobToken, baseUrlFromReq, STAGE_ROUTES };

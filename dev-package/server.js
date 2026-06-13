@@ -32,6 +32,9 @@ const checkoutSubHandler          = require('./routes/checkout-subscription');
 const verifySubPaymentHandler     = require('./routes/verify-subscription-payment');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
+const renderPdfHandler            = require('./routes/render-pdf');
+const sendReportEmailHandler      = require('./routes/send-report-email');
+const reconcileHandler            = require('./routes/reconcile');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -68,7 +71,11 @@ app.get('/api/user/reports',              userReportsHandler);
 app.get('/api/user/alerts',               userAlertsHandler);
 app.post('/api/checkout-subscription',        checkoutSubHandler);
 app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
-app.post('/api/generate-report',              generateReportHandler);
+app.post('/api/generate-report',              generateReportHandler);  // pipeline stage 1: insights
+app.post('/api/render-pdf',                   renderPdfHandler);        // pipeline stage 2: pdf
+app.post('/api/send-report-email',            sendReportEmailHandler);  // pipeline stage 3: email
+app.get('/api/reconcile',                     reconcileHandler);        // safety-net (Vercel cron)
+app.post('/api/reconcile',                    reconcileHandler);
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

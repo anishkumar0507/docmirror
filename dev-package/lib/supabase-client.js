@@ -89,15 +89,43 @@ function backoffMs(attempt, baseMs = 500) {
   return baseMs * Math.pow(2, attempt - 1);
 }
 
-function createFetchWithTimeout(timeoutMs = 12_000) {
+// ── Anti-stale-socket dispatcher ─────────────────────────────────────────────
+// On Vercel the lambda is frozen after responding and thawed for the next request.
+// The undici keepalive pool then tries to reuse TCP sockets that the platform has
+// already killed → the next Supabase request hangs until the abort timeout (the
+// observed "fetch failed after 30463ms"). A short keepalive (1s) means a thawed
+// lambda always opens a fresh socket instead of stalling on a dead one.
+let _dispatcher = null;
+let _dispatcherTried = false;
+function getDispatcher() {
+  if (_dispatcherTried) return _dispatcher;
+  _dispatcherTried = true;
+  try {
+    const { Agent } = require('undici');
+    _dispatcher = new Agent({
+      keepAliveTimeout: 1_000,
+      keepAliveMaxTimeout: 1_000,
+      connections: 64,
+      connect: { timeout: 8_000 },
+    });
+  } catch (_) {
+    _dispatcher = null; // undici not available — fall back to plain fetch
+  }
+  return _dispatcher;
+}
+
+function createFetchWithTimeout(timeoutMs = 8_000) {
   return async (url, options = {}) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const started = Date.now();
+    const dispatcher = getDispatcher();
 
     try {
       return await fetch(url, {
         ...options,
+        keepalive: false,
+        ...(dispatcher ? { dispatcher } : {}),
         signal: options.signal || controller.signal,
       });
     } catch (err) {
@@ -136,7 +164,7 @@ function getSupabaseClient() {
     },
     global: {
       fetch: createFetchWithTimeout(
-        parseInt(process.env.SUPABASE_FETCH_TIMEOUT_MS || '12000', 10)
+        parseInt(process.env.SUPABASE_FETCH_TIMEOUT_MS || '8000', 10)
       ),
     },
   });

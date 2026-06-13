@@ -5,7 +5,9 @@ require('../lib/env');
 
 const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
-const { triggerReportGeneration } = require('../lib/report-trigger');
+const reportsStore = require('../lib/reports-store');
+const { getSupabaseClient } = require('../lib/supabase-client');
+const { triggerStage } = require('../lib/report-trigger');
 
 // $19 Visibility Audit — anonymous, no account, no session, no dashboard
 // Flow: payment verified → mark generating → trigger background worker → respond.
@@ -83,23 +85,41 @@ async function handler(req, res) {
     `doctor=${cacheResult.data.doctorName || '(unknown)'}`
   );
 
-  // Mark as generating (non-fatal — paid_reports is a secondary record)
+  // ── 4. Save a report PLACEHOLDER row immediately ───────────────────────────
+  // Score/reviews/competitors come straight from the audit data, so the dashboard
+  // has real numbers on its very first poll — before any Claude/PDF work finishes.
+  // (Non-fatal: the pipeline also writes this row in the insights stage.)
+  const supabase = getSupabaseClient();
+  if (supabase) {
+    try {
+      const placeholder = reportsStore.reportFromAuditData(auditId, cacheResult.data, {});
+      const r = await reportsStore.upsertReport(supabase, placeholder);
+      console.log(`[verify] report placeholder ${r.action || r.reason} audit_id=${auditId}`);
+    } catch (e) {
+      console.warn('[verify] placeholder write warn:', e.message);
+    }
+  }
+
+  // Mark as in-pipeline (non-fatal — paid_reports is a secondary record).
+  // Uses 'generating' (an allowed status) — the pipeline keeps this value through
+  // the insights + pdf stages; reconcile keys off produced artifacts, not status.
   await paidReports.updateStatus(auditId, {
     status:            'generating',
     stripe_session_id: orderId,
   });
 
-  // ── 4. Trigger background report generation (does NOT block this response) ──
-  // The worker (/api/generate-report) runs the Claude prompts + PDF + email in its
-  // own invocation. This avoids the Vercel 60s timeout on the payment request.
-  await triggerReportGeneration(req, { auditId, email, userId: null });
+  // ── 5. Kick off the staged background pipeline (does NOT block this response) ─
+  // Stage 1 (insights) → Stage 2 (pdf) → Stage 3 (email), each its own invocation
+  // with its own 60s budget. /api/reconcile re-drives any stage that gets dropped.
+  await triggerStage(req, 'insights', { auditId, email, userId: null });
 
-  // ── 5. Respond immediately ─────────────────────────────────────────────────
+  // ── 6. Respond immediately so the browser can redirect to the dashboard ─────
   return res.json({
     ok:         true,
     generating: true,
     emailSent:  false,
-    message:    'Payment verified! Your full report is being generated and will be emailed within a couple of minutes.',
+    auditId,
+    message:    'Payment verified! Your report is being generated — your dashboard will fill in within a minute and the PDF will be emailed shortly.',
   });
 }
 

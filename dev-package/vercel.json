@@ -5,6 +5,9 @@
       "includeFiles": "public/**"
     }
   },
+  "crons": [
+    { "path": "/api/reconcile", "schedule": "* * * * *" }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/api/index" }
   ]

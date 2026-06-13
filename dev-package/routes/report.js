@@ -324,31 +324,25 @@ async function verifyReportsBucket(supabase) {
   }
 }
 
-// ── generateReport — main pipeline ────────────────────────────────────────
-/**
- * @returns {{ success: true, pdfGenerated: boolean, emailSent: boolean, pdfUrl: string|null }}
- * @throws  {AuditCacheError}  when audit payload cannot be loaded
- * @throws  {Error}            when PDF generation itself fails (Puppeteer/pillar/Claude)
- * Note: email failure does NOT throw — it returns emailSent:false in the result.
- */
-async function _generateReportCore({ auditId, email, userId = null }) {
-  const canonicalId = auditCache.normalizeAuditId(auditId);
-  console.log(
-    `[report] ▶ start  auditId=${canonicalId}  email=${email}  ` +
-    `valid=${auditCache.isValidAuditId(canonicalId)}`
-  );
-  const supabase = db();
+// ── Staged pipeline ───────────────────────────────────────────────────────
+// The report pipeline is split into THREE independent serverless invocations so
+// no single one can exceed the Vercel 60s cap:
+//
+//   Stage 1 (insights)  runInsightsStage  — 9 Claude prompts → persist insights
+//   Stage 2 (pdf)       runPdfStage       — Puppeteer render → upload → pdf_url
+//   Stage 3 (email)     runEmailStage     — email the PDF
+//
+// Each stage is idempotent (re-running a completed stage is a cheap no-op) and
+// updates paid_reports.status so /api/reconcile can re-drive any stage whose
+// fire-and-forget trigger was dropped by a frozen lambda. Insights are persisted
+// FIRST so the dashboard fills its AI sections long before the PDF/email finish.
 
-  await paidReports.updateStatus(canonicalId, { status: 'generating' });
-
-  // 1. Fetch audit data — memory first, then Supabase audit_cache
+/** Load + enrich the audit payload, or throw AuditCacheError if it's missing. */
+async function loadEnrichedAudit(canonicalId) {
   const cacheResult = await auditCache.getDetailed(canonicalId);
   if (!cacheResult.hit || !cacheResult.data) {
     const diagnostic = auditCache.formatDiagnostic(cacheResult);
-    console.error(
-      `[report] audit_cache MISS  cache_key=${canonicalId}`,
-      JSON.stringify(diagnostic)
-    );
+    console.error(`[report] audit_cache MISS  cache_key=${canonicalId}`, JSON.stringify(diagnostic));
     const { AuditCacheError } = auditCache;
     throw new AuditCacheError(
       cacheResult.code || 'CACHE_MISS',
@@ -356,155 +350,186 @@ async function _generateReportCore({ auditId, email, userId = null }) {
       cacheResult
     );
   }
+  return { d: enrichAuditData(cacheResult.data), raw: cacheResult.data, source: cacheResult.source };
+}
 
-  // 2–3. Enrich with V5 fields + validate pillar total
-  const d = enrichAuditData(cacheResult.data);
-  console.log(
-    `[report] audit data loaded + enriched  source=${cacheResult.source}  cache_key=${canonicalId}  ` +
-    `doctor=${d.doctorName}  total=${d.score}/100`
-  );
+/** True once the AI insights have actually been generated for this audit. */
+function hasInsights(raw) {
+  const ins = raw && raw.insights;
+  return !!(ins && (Array.isArray(ins.fixes) && ins.fixes.length || ins.execSummary || ins.patientJourney));
+}
 
-  // 4. Claude prompts FIRST (parallel, ~15-20s). Persist insights + the report row
-  //    IMMEDIATELY so the dashboard can render every section before the (slower) PDF
-  //    render + email finish. The PDF must never block insight availability.
-  let ai;
+const STORAGE_PATH = (id) => `${id}.pdf`;
+
+async function publicPdfUrl(supabase, canonicalId) {
   try {
-    ai = await runAllPrompts(d);
-  } catch (promptErr) {
-    console.error('[report] Claude prompts FAILED:', promptErr.message);
-    await paidReports.updateStatus(canonicalId, { status: 'failed', delivered_at: new Date().toISOString() });
-    throw promptErr;
-  }
-  const pdfInsights = extractInsights(ai);
+    const { data } = supabase.storage.from('reports').getPublicUrl(STORAGE_PATH(canonicalId));
+    return data?.publicUrl || null;
+  } catch { return null; }
+}
 
-  if (supabase) {
-    // Insights → audit_cache.audit_data (source of truth the dashboard reads)
-    await auditCache.mergeAuditData(canonicalId, { insights: pdfInsights, score: d.score });
-    // Report row (score/competitors) so the dashboard has data even before the PDF exists
-    const earlyRow = reportsStore.reportFromAuditData(canonicalId, d, {});
-    if (userId) earlyRow.user_id = userId;
-    const earlyRes = await reportsStore.upsertReport(supabase, earlyRow);
-    console.log(`[report] insights + report row persisted (pre-PDF)  audit_id=${canonicalId}  row=${earlyRes.action || earlyRes.reason}`);
-  }
-
-  // 5. Render PDF (Puppeteer) — slower; runs AFTER insights are already saved.
-  let pdfBuffer;
+/** Download a previously-uploaded PDF from storage as a Buffer (null if absent). */
+async function downloadPdfBuffer(supabase, canonicalId) {
   try {
-    console.log('[pdf] rendering PDF (Puppeteer)...');
-    pdfBuffer = await renderPdfFromAi(d, ai);
-    console.log(`[pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
-  } catch (pdfErr) {
-    console.error('[pdf] PDF generation FAILED:', pdfErr.message);
-    await paidReports.updateStatus(canonicalId, { status: 'failed', delivered_at: new Date().toISOString() });
-    throw pdfErr;
-  }
+    const { data, error } = await supabase.storage.from('reports').download(STORAGE_PATH(canonicalId));
+    if (error || !data) return null;
+    const arrBuf = await data.arrayBuffer();
+    return Buffer.from(arrBuf);
+  } catch { return null; }
+}
 
-  // 6. Upload to Supabase Storage bucket "reports" (non-fatal if bucket missing)
+/** Upload a rendered PDF and return its public URL (null on failure). */
+async function uploadPdfBuffer(supabase, canonicalId, pdfBuffer) {
+  const uploadPath = STORAGE_PATH(canonicalId);
+  const { error: upErr } = await supabase.storage
+    .from('reports')
+    .upload(uploadPath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
+  if (upErr) {
+    console.error(`[storage] upload FAILED  path=${uploadPath}  statusCode=${upErr.statusCode}  message=${upErr.message}`);
+    if (upErr.statusCode === 404 || upErr.message?.includes('not found')) {
+      console.error('[storage] Bucket "reports" missing. Fix: Supabase → Storage → New bucket → name=reports, Public=true');
+    }
+    return null;
+  }
+  const url = await publicPdfUrl(supabase, canonicalId);
+  console.log(`[storage] upload OK  pdfUrl=${url}`);
+  return url;
+}
+
+// ── Stage 1: Claude prompts → persist insights ────────────────────────────
+// Heaviest non-PDF stage (~15-40s). Persists insights to audit_cache (dashboard
+// source of truth) AND reports.insights, then writes the report row with score/
+// competitors so the dashboard has full data before any PDF exists.
+async function runInsightsStage({ auditId, email, userId = null }) {
+  const canonicalId = auditCache.normalizeAuditId(auditId);
+  console.log(`[stage:insights] ▶ auditId=${canonicalId} email=${email}`);
+  const supabase = db();
+  const { d, raw, source } = await loadEnrichedAudit(canonicalId);
+  console.log(`[stage:insights] audit loaded source=${source} doctor=${d.doctorName} score=${d.score}/100`);
+
+  let insights = raw.insights;
+  if (hasInsights(raw)) {
+    console.log(`[stage:insights] insights already present — skipping Claude prompts`);
+  } else {
+    // status stays 'generating' (an allowed value) through this stage. On failure
+    // we DON'T mark 'failed' (which is terminal) — leaving 'generating' lets
+    // /api/reconcile retry the stage. Insights/PDF presence is the real signal.
+    await paidReports.updateStatus(canonicalId, { status: 'generating' });
+    const ai = await runAllPrompts(d);
+    insights = extractInsights(ai);
+    if (supabase) {
+      await auditCache.mergeAuditData(canonicalId, { insights, score: d.score });
+      const row = reportsStore.reportFromAuditData(canonicalId, d, { insights });
+      if (userId) row.user_id = userId;
+      const res = await reportsStore.upsertReport(supabase, row);
+      console.log(`[stage:insights] persisted insights + report row  row=${res.action || res.reason}`);
+    }
+  }
+  return { auditId: canonicalId, d, insights };
+}
+
+// ── Stage 2: render PDF → upload ──────────────────────────────────────────
+async function runPdfStage({ auditId, email }) {
+  const canonicalId = auditCache.normalizeAuditId(auditId);
+  console.log(`[stage:pdf] ▶ auditId=${canonicalId}`);
+  const supabase = db();
+  const { d, raw } = await loadEnrichedAudit(canonicalId);
+  const insights = raw.insights || extractInsights({});
+
+  let pdfBuffer = supabase ? await downloadPdfBuffer(supabase, canonicalId) : null;
   let pdfUrl = null;
-  if (supabase) {
-    const uploadPath = `${canonicalId}.pdf`;
-    console.log(`[storage] uploading ${uploadPath} to bucket "reports"...`);
-    try {
-      const { error: upErr } = await supabase.storage
-        .from('reports')
-        .upload(uploadPath, pdfBuffer, { contentType: 'application/pdf', upsert: true });
-
-      if (upErr) {
-        console.error(
-          `[storage] upload FAILED  path=${uploadPath}  ` +
-          `statusCode=${upErr.statusCode}  message=${upErr.message}`
-        );
-        if (upErr.statusCode === 404 || upErr.message?.includes('not found')) {
-          console.error(
-            '[storage] Bucket "reports" does not exist. ' +
-            'Fix: Supabase dashboard → Storage → New bucket → name=reports, Public=true'
-          );
-        }
-      } else {
-        const { data: pubData } = supabase.storage.from('reports').getPublicUrl(uploadPath);
-        pdfUrl = pubData?.publicUrl || null;
-        console.log(`[storage] upload OK  pdfUrl=${pdfUrl}`);
-      }
-
-      // Update the report row with the pdf_url now that it exists.
+  if (pdfBuffer) {
+    pdfUrl = await publicPdfUrl(supabase, canonicalId);
+    console.log(`[stage:pdf] PDF already in storage — skipping render (${Math.round(pdfBuffer.length / 1024)} KB)`);
+  } else {
+    // On render failure, leave status 'generating' (not terminal) so reconcile retries.
+    console.log('[stage:pdf] rendering PDF (Puppeteer)...');
+    pdfBuffer = await renderPdfFromAi(d, insights);
+    console.log(`[stage:pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
+    if (supabase) {
+      pdfUrl = await uploadPdfBuffer(supabase, canonicalId, pdfBuffer);
       if (pdfUrl) {
         const upRes = await reportsStore.upsertReport(supabase, { audit_id: canonicalId, pdf_url: pdfUrl });
-        if (!upRes.ok) console.warn('[storage] reports pdf_url update warn:', upRes.error?.message || upRes.reason);
+        if (!upRes.ok) console.warn('[stage:pdf] reports pdf_url update warn:', upRes.error?.message || upRes.reason);
       }
-    } catch (storageErr) {
-      console.error(
-        `[storage] upload exception  path=${uploadPath}:`,
-        storageErr.message
-      );
+    } else {
+      console.warn('[stage:pdf] Supabase not configured — PDF not stored');
     }
-  } else {
-    console.warn('[storage] Supabase not configured — skipping PDF upload');
+  }
+  // Record pdf_url on paid_reports without changing status (stays 'generating').
+  if (pdfUrl) await paidReports.updateStatus(canonicalId, { pdf_url: pdfUrl });
+  return { auditId: canonicalId, d, pdfUrl, pdfBuffer };
+}
+
+// ── Stage 3: email the PDF ────────────────────────────────────────────────
+async function runEmailStage({ auditId, email }) {
+  const canonicalId = auditCache.normalizeAuditId(auditId);
+  console.log(`[stage:email] ▶ auditId=${canonicalId} email=${email}`);
+  const supabase = db();
+
+  // Idempotency guard — never re-email an order that was already delivered. This
+  // makes the email stage safe to re-trigger from /api/reconcile.
+  const existing = await paidReports.get(canonicalId);
+  if (existing && (existing.delivered_at || existing.status === 'delivered')) {
+    console.log(`[stage:email] already delivered — skipping send  auditId=${canonicalId}`);
+    return { success: true, emailSent: true, alreadyDelivered: true, pdfUrl: existing.pdf_url || null };
   }
 
-  // 10. Send email with PDF attachment
+  const { d, raw } = await loadEnrichedAudit(canonicalId);
+
+  // Prefer the already-rendered PDF in storage; re-render only as a last resort.
+  let pdfBuffer = supabase ? await downloadPdfBuffer(supabase, canonicalId) : null;
+  if (!pdfBuffer) {
+    console.warn('[stage:email] no stored PDF — re-rendering before send');
+    pdfBuffer = await renderPdfFromAi(d, raw.insights || extractInsights({}));
+  }
+
   let emailSent = false;
-  let emailError = null;
-  console.log(`[email] sending to ${email}  doctor=${d.doctorNameClean}...`);
+  console.log(`[stage:email] sending to ${email}  doctor=${d.doctorNameClean}...`);
   try {
     await sendEmail(email, d.doctorName || 'Doctor', pdfBuffer);
     emailSent = true;
-    console.log(`[email] sent ✓  to=${email}`);
+    console.log(`[stage:email] sent ✓  to=${email}`);
   } catch (mailErr) {
-    emailError = mailErr;
-    console.error(`[email] FAILED  to=${email}  error=${mailErr.message}`);
-    if (mailErr.responseCode) {
-      console.error(`[email] SMTP response code: ${mailErr.responseCode}`);
-    }
-    if (mailErr.response) {
-      console.error(`[email] SMTP server response: ${mailErr.response}`);
-    }
-    console.error(`[email] stack: ${mailErr.stack || '(no stack)'}`);
+    console.error(`[stage:email] FAILED  to=${email}  error=${mailErr.message}`);
+    if (mailErr.responseCode) console.error(`[stage:email] SMTP response code: ${mailErr.responseCode}`);
+    if (mailErr.response)     console.error(`[stage:email] SMTP server response: ${mailErr.response}`);
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-      console.error('[email] GMAIL_USER or GMAIL_APP_PASSWORD env var is missing');
+      console.error('[stage:email] GMAIL_USER or GMAIL_APP_PASSWORD env var is missing');
     }
   }
 
-  // 11. Update paid_reports status:
-  //   'delivered' — PDF generated AND emailed
-  //   'generated' — PDF generated, email failed (user can still download)
-  //   'failed'    — PDF generation itself failed (set in the PDF catch block above)
-  const finalStatus = emailSent ? 'delivered' : 'generated';
+  const pdfUrl = supabase ? await publicPdfUrl(supabase, canonicalId) : null;
   await paidReports.updateStatus(canonicalId, {
-    status:       finalStatus,
+    status:       emailSent ? 'delivered' : 'generated',
     pdf_url:      pdfUrl,
     delivered_at: new Date().toISOString(),
   });
-
-  if (emailSent) {
-    console.log(
-      `[report] ✓ complete  doctor=${d.doctorNameClean}  email=${email}  ` +
-      `status=delivered  pdfUrl=${pdfUrl || '(not stored)'}`
-    );
-  } else {
-    console.warn(
-      `[report] PDF generated but email FAILED  auditId=${canonicalId}  email=${email}  ` +
-      `status=generated  pdfUrl=${pdfUrl || '(not stored)'}`
-    );
-  }
-
-  return {
-    success:         true,
-    pdfGenerated:    true,
-    emailSent,
-    pdfUrl,
-    doctorNameClean: d.doctorNameClean,
-    score:           d.score       || null,
-    reviewCount:     typeof d.reviewCount === 'number' ? d.reviewCount : null,
-    rating:          typeof d.rating       === 'number' ? d.rating       : null,
-  };
+  console.log(`[stage:email] ${emailSent ? '✓ delivered' : 'email failed — status=generated (downloadable)'}  auditId=${canonicalId}`);
+  return { success: true, emailSent, pdfUrl };
 }
 
-/** Public entry — deduplicates concurrent jobs per email/auditId */
+/**
+ * Public entry — runs all three stages in sequence in ONE process. Used by the
+ * local dev server and the manual /api/report trigger. In production the stages
+ * run as separate chained invocations (see routes/generate-report, render-pdf,
+ * send-report-email) so each gets its own 60s budget. Deduplicated per audit/email.
+ */
 async function generateReport({ auditId, email, userId = null }) {
   const fakeReq = { body: { auditId, email }, headers: {}, socket: {} };
-  return runOncePerUser(fakeReq, { auditId, email }, () =>
-    _generateReportCore({ auditId, email, userId })
-  );
+  return runOncePerUser(fakeReq, { auditId, email }, async () => {
+    const ins = await runInsightsStage({ auditId, email, userId });
+    await runPdfStage({ auditId, email });
+    const mail = await runEmailStage({ auditId, email });
+    return {
+      success: true,
+      pdfGenerated: true,
+      emailSent: mail.emailSent,
+      pdfUrl: mail.pdfUrl,
+      doctorNameClean: ins.d.doctorNameClean,
+      score: ins.d.score || null,
+    };
+  });
 }
 
 // ── HTTP handler (manual trigger / test) ──────────────────────────────────
@@ -523,6 +548,10 @@ async function handler(req, res) {
 
 module.exports = handler;
 module.exports.generateReport    = generateReport;
+module.exports.runInsightsStage  = runInsightsStage;
+module.exports.runPdfStage       = runPdfStage;
+module.exports.runEmailStage     = runEmailStage;
+module.exports.loadEnrichedAudit = loadEnrichedAudit;
 module.exports.buildPdfBuffer    = buildPdfBuffer;
 module.exports.renderPdf         = renderPdf;
 module.exports.runAllPrompts     = runAllPrompts;
