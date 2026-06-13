@@ -510,26 +510,72 @@ async function runEmailStage({ auditId, email }) {
 }
 
 /**
- * Public entry — runs all three stages in sequence in ONE process. Used by the
- * local dev server and the manual /api/report trigger. In production the stages
- * run as separate chained invocations (see routes/generate-report, render-pdf,
- * send-report-email) so each gets its own 60s budget. Deduplicated per audit/email.
+ * Run the WHOLE pipeline (insights → pdf → storage → email) in ONE process,
+ * sequentially and idempotently. This is the reliable production path: callers
+ * invoke it under waitUntil (see lib/after-response) so it finishes in the
+ * background of the payment response without the fragile HTTP self-call chain.
+ *
+ * Never throws — each stage is logged and a partial failure is reported in the
+ * return value so /api/reconcile (or the next call) can resume. Deduplicated per
+ * audit/email so concurrent triggers join one run instead of doubling work.
  */
-async function generateReport({ auditId, email, userId = null }) {
+async function runReportPipeline({ auditId, email, userId = null }) {
   const fakeReq = { body: { auditId, email }, headers: {}, socket: {} };
   return runOncePerUser(fakeReq, { auditId, email }, async () => {
-    const ins = await runInsightsStage({ auditId, email, userId });
-    await runPdfStage({ auditId, email });
-    const mail = await runEmailStage({ auditId, email });
-    return {
-      success: true,
-      pdfGenerated: true,
-      emailSent: mail.emailSent,
-      pdfUrl: mail.pdfUrl,
-      doctorNameClean: ins.d.doctorNameClean,
-      score: ins.d.score || null,
-    };
+    const t0 = Date.now();
+    const result = { auditId, insights: false, pdf: false, emailSent: false, pdfUrl: null, error: null };
+    console.log(`[pipeline] ▶ start auditId=${auditId} email=${email}`);
+
+    try {
+      const ins = await runInsightsStage({ auditId, email, userId });
+      result.insights = true;
+      console.log(`[pipeline] ✓ insights done (${Date.now() - t0}ms) auditId=${auditId}`);
+
+      try {
+        const pdf = await runPdfStage({ auditId, email });
+        result.pdf = !!pdf.pdfUrl || !!pdf.pdfBuffer;
+        result.pdfUrl = pdf.pdfUrl || null;
+        console.log(`[pipeline] ✓ pdf done (${Date.now() - t0}ms) auditId=${auditId} pdf=${result.pdf ? 'stored' : 'rendered'}`);
+
+        const mail = await runEmailStage({ auditId, email });
+        result.emailSent = mail.emailSent;
+        result.pdfUrl = mail.pdfUrl || result.pdfUrl;
+        if (mail.emailSent) {
+          console.log(`[report] ✓ complete auditId=${auditId} email=${email} pdfUrl=${result.pdfUrl || '(none)'} totalMs=${Date.now() - t0}`);
+        } else {
+          console.warn(`[pipeline] email NOT sent auditId=${auditId} — status=generated (PDF downloadable). reconcile/login will not retry; check Gmail logs.`);
+        }
+      } catch (pdfOrMailErr) {
+        result.error = pdfOrMailErr.message;
+        console.error(`[pipeline] ✗ pdf/email stage failed auditId=${auditId}: ${formatPipelineErr(pdfOrMailErr)} — reconcile will resume`);
+      }
+    } catch (insErr) {
+      result.error = insErr.message;
+      console.error(`[pipeline] ✗ insights stage failed auditId=${auditId}: ${formatPipelineErr(insErr)} — reconcile will resume`);
+    }
+
+    console.log(`[pipeline] ◀ end auditId=${auditId} insights=${result.insights} pdf=${result.pdf} emailSent=${result.emailSent} totalMs=${Date.now() - t0}`);
+    return result;
   });
+}
+
+function formatPipelineErr(err) {
+  try { return require('../lib/supabase-client').formatFetchError(err); }
+  catch { return err.message; }
+}
+
+/**
+ * Back-compat alias. Some callers/tests expect generateReport to return the
+ * old shape; map the pipeline result onto it.
+ */
+async function generateReport({ auditId, email, userId = null }) {
+  const r = await runReportPipeline({ auditId, email, userId });
+  return {
+    success: true,
+    pdfGenerated: r.pdf,
+    emailSent: r.emailSent,
+    pdfUrl: r.pdfUrl,
+  };
 }
 
 // ── HTTP handler (manual trigger / test) ──────────────────────────────────
@@ -548,6 +594,7 @@ async function handler(req, res) {
 
 module.exports = handler;
 module.exports.generateReport    = generateReport;
+module.exports.runReportPipeline = runReportPipeline;
 module.exports.runInsightsStage  = runInsightsStage;
 module.exports.runPdfStage       = runPdfStage;
 module.exports.runEmailStage     = runEmailStage;

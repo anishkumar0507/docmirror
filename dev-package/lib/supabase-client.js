@@ -3,6 +3,7 @@
 const { createClient } = require('@supabase/supabase-js');
 
 let _client = null;
+let _authClient = null;
 let _tableCheckPromise = null;
 
 /** Normalize project URL — trailing slashes break some fetch stacks on Vercel. */
@@ -114,26 +115,50 @@ function getDispatcher() {
   return _dispatcher;
 }
 
+// Short, readable label for a PostgREST/Storage/Auth URL → "reports?select=..." etc.
+function shortUrl(url) {
+  try {
+    const u = new URL(url);
+    const seg = u.pathname.replace(/^\/rest\/v1\//, '').replace(/^\/storage\/v1\//, 'storage/').replace(/^\/auth\/v1\//, 'auth/');
+    const q = u.searchParams.toString();
+    return seg + (q ? `?${q.slice(0, 80)}` : '');
+  } catch { return String(url).slice(0, 80); }
+}
+
+const SLOW_MS = parseInt(process.env.SUPABASE_SLOW_LOG_MS || '1500', 10);
+
 function createFetchWithTimeout(timeoutMs = 8_000) {
   return async (url, options = {}) => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const started = Date.now();
     const dispatcher = getDispatcher();
+    const label = shortUrl(url);
+    const method = (options.method || 'GET').toUpperCase();
 
     try {
-      return await fetch(url, {
+      const resp = await fetch(url, {
         ...options,
         keepalive: false,
         ...(dispatcher ? { dispatcher } : {}),
         signal: options.signal || controller.signal,
       });
+      const elapsed = Date.now() - started;
+      // Timing log for EVERY Supabase call; slow ones are flagged so the slowest
+      // queries surface in the Vercel logs (Issue 4 instrumentation).
+      if (elapsed >= SLOW_MS) {
+        console.warn(`[supabase-timing] SLOW ${elapsed}ms ${method} ${label} (status ${resp.status})`);
+      } else {
+        console.log(`[supabase-timing] ${elapsed}ms ${method} ${label}`);
+      }
+      return resp;
     } catch (err) {
       const elapsed = Date.now() - started;
       const wrapped = new Error(
-        `Supabase HTTP fetch failed after ${elapsed}ms → ${url}`
+        `Supabase HTTP fetch failed after ${elapsed}ms (timeout ${timeoutMs}ms) → ${method} ${label}`
       );
       wrapped.cause = err;
+      console.error(`[supabase-timing] FAIL ${elapsed}ms ${method} ${label}: ${err.name === 'AbortError' ? 'aborted (timeout)' : err.message}`);
       throw wrapped;
     } finally {
       clearTimeout(timer);
@@ -163,8 +188,11 @@ function getSupabaseClient() {
       autoRefreshToken: false,
     },
     global: {
+      // Cap at 15s even if SUPABASE_FETCH_TIMEOUT_MS is set higher in the Vercel
+      // env — a prod value of 30000 was making a single stalled socket eat the
+      // entire request budget. withSupabaseRetry handles transient stalls instead.
       fetch: createFetchWithTimeout(
-        parseInt(process.env.SUPABASE_FETCH_TIMEOUT_MS || '8000', 10)
+        Math.min(parseInt(process.env.SUPABASE_FETCH_TIMEOUT_MS || '8000', 10) || 8000, 15000)
       ),
     },
   });
@@ -172,6 +200,30 @@ function getSupabaseClient() {
   const projectRef = url.match(/https:\/\/([^.]+)\.supabase\.co/)?.[1] || 'unknown';
   console.log(`[supabase] singleton client ready project_ref=${projectRef} url=${url}`);
   return _client;
+}
+
+/**
+ * Separate client keyed with the ANON key, used ONLY for auth/session operations
+ * (signInWithPassword, setSession). Keeping it separate from the service-role data
+ * client is important: calling signInWithPassword on the shared service client
+ * swaps its Authorization header to the just-signed-in user, so any later data
+ * write in the same request silently runs under that user's RLS context (and can
+ * hang/timeout). It also lowers the timeout — a stuck auth call must fail fast so
+ * the login route can return a clear error instead of a 30s hang.
+ */
+function getSupabaseAuthClient() {
+  if (_authClient) return _authClient;
+  const url = getSupabaseUrl();
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
+  if (!url || !anon) {
+    console.warn('[supabase] auth client unavailable — NEXT_PUBLIC_SUPABASE_ANON_KEY missing');
+    return null;
+  }
+  _authClient = createClient(url, anon, {
+    auth: { persistSession: false, autoRefreshToken: false },
+    global: { fetch: createFetchWithTimeout(10_000) },
+  });
+  return _authClient;
 }
 
 /**
@@ -258,6 +310,7 @@ async function verifyAuditCacheTable() {
 
 module.exports = {
   getSupabaseClient,
+  getSupabaseAuthClient,
   getSupabaseUrl,
   formatFetchError,
   logSupabaseError,

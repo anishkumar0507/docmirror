@@ -690,9 +690,14 @@ async function checkAuth() {
 
   try {
     _profile = await api('/api/user/me');
-  } catch(e) {
-    _profile = { plan: 'free', email: _session.user.email };
+  } catch(e) { _profile = null; }
+  // Retry once before gating — a transient Supabase stall must not wall a paying
+  // monitor user behind the "Requires Monitor Plan" screen.
+  if (!_profile || !_profile.plan) {
+    await new Promise(function(r){ setTimeout(r, 1500); });
+    try { _profile = await api('/api/user/me'); } catch(e) {}
   }
+  if (!_profile) _profile = { plan: 'free', email: _session.user.email };
 
   // Gate: only monitor plan users can access the dashboard.
   // Audit plan → their own audit history page. No plan → pricing.

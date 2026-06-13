@@ -16,6 +16,17 @@ const reportsStore = require('../../lib/reports-store');
 // are healed in the background so the table converges to correct state.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// In-memory throttle so repeated polls on a warm instance don't each spawn a
+// pipeline. Best-effort (per-instance); the pipeline is idempotent regardless.
+const _backstopAt = new Map();
+function shouldBackstop(auditId) {
+  const now = Date.now();
+  const last = _backstopAt.get(auditId) || 0;
+  if (now - last < 120_000) return false;
+  _backstopAt.set(auditId, now);
+  return true;
+}
+
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
@@ -113,6 +124,27 @@ async function handler(req, res) {
 
     // ── 4. Self-heal + link (fire-and-forget — never block the response) ──────
     healAndLink(supabase, userId, userEmail, reports, rowByAudit);
+
+    // ── 4b. Hobby-plan backstop (no cron): if the newest paid report still has
+    // no AI insights AND it's old enough that the original pipeline should have
+    // finished, resume it in the background of this poll. Gated by an age check
+    // (don't race the in-flight run) and an in-memory throttle (each poll is a
+    // fresh Vercel invocation, so runOncePerUser can't dedupe across them).
+    const newest = reports[0];
+    if (newest && newest.audit_id && !newest.insights) {
+      const ageMs = Date.now() - new Date(newest.created_at || 0).getTime();
+      if (ageMs > 90_000 && shouldBackstop(newest.audit_id)) {
+        try {
+          const { afterResponse } = require('../../lib/after-response');
+          const { runReportPipeline } = require('../report');
+          console.log(`[user/reports] backstop resuming stuck order auditId=${newest.audit_id} ageMs=${ageMs}`);
+          afterResponse(
+            () => runReportPipeline({ auditId: newest.audit_id, email: userEmail || newest.email, userId }),
+            `poll-resume:${newest.audit_id}`
+          );
+        } catch (e) { console.warn('[user/reports] backstop trigger warn:', e.message); }
+      }
+    }
 
     return res.json(reports.slice(0, 50));
   } catch (err) {

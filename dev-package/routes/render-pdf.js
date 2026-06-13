@@ -2,7 +2,7 @@
 
 require('../lib/env');
 
-const { jobToken, triggerStage } = require('../lib/report-trigger');
+const { jobToken } = require('../lib/report-trigger');
 const { formatFetchError } = require('../lib/supabase-client');
 const { runOncePerUser } = require('../lib/pdf-jobs');
 
@@ -33,11 +33,9 @@ async function handler(req, res) {
       { auditId, email: `pdf:${email}` },
       () => runPdfStage({ auditId, email })
     );
-    console.log(`[render-pdf] ✓ pdf ready auditId=${auditId} pdf=${result?.pdfUrl ? 'yes' : 'no'} — triggering email stage`);
+    console.log(`[render-pdf] ✓ pdf ready auditId=${auditId} pdf=${result?.pdfUrl ? 'yes' : 'no'}`);
 
-    await triggerStage(req, 'email', { auditId, email, userId: userId || null });
-
-    return res.json({ ok: true, stage: 'pdf', nextStage: 'email', pdfUrl: result?.pdfUrl || null });
+    return res.json({ ok: true, stage: 'pdf', pdfUrl: result?.pdfUrl || null });
   } catch (err) {
     console.error('[render-pdf] pdf stage FAILED:', formatFetchError(err));
     return res.status(500).json({ ok: false, stage: 'pdf', error: err.message, code: err.code || 'PDF_FAILED' });

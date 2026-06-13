@@ -7,7 +7,7 @@ const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const reportsStore = require('../lib/reports-store');
 const { getSupabaseClient } = require('../lib/supabase-client');
-const { triggerStage } = require('../lib/report-trigger');
+const { afterResponse } = require('../lib/after-response');
 
 // $19 Visibility Audit — anonymous, no account, no session, no dashboard
 // Flow: payment verified → mark generating → trigger background worker → respond.
@@ -108,10 +108,12 @@ async function handler(req, res) {
     stripe_session_id: orderId,
   });
 
-  // ── 5. Kick off the staged background pipeline (does NOT block this response) ─
-  // Stage 1 (insights) → Stage 2 (pdf) → Stage 3 (email), each its own invocation
-  // with its own 60s budget. /api/reconcile re-drives any stage that gets dropped.
-  await triggerStage(req, 'insights', { auditId, email, userId: null });
+  // ── 5. Run the full pipeline in the background of THIS response ─────────────
+  // waitUntil keeps the Vercel invocation alive until insights → pdf → storage →
+  // email all complete (≈37s, well under the 60s cap) — no fragile HTTP self-call
+  // chain to drop. /api/reconcile is the backstop if this invocation is killed.
+  const { runReportPipeline } = require('./report');
+  afterResponse(() => runReportPipeline({ auditId, email, userId: null }), `audit-report:${auditId}`);
 
   // ── 6. Respond immediately so the browser can redirect to the dashboard ─────
   return res.json({

@@ -1,7 +1,7 @@
 'use strict';
 
 require('../../lib/env');
-const { getSupabaseClient } = require('../../lib/supabase-client');
+const { getSupabaseClient, withSupabaseRetry } = require('../../lib/supabase-client');
 const { requireAuth } = require('../../lib/auth-middleware');
 
 async function handler(req, res) {
@@ -15,11 +15,12 @@ async function handler(req, res) {
   if (res.headersSent) return;
 
   const supabase = getSupabaseClient();
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('id, email, name, plan, created_at')
-    .eq('id', req.user.id)
-    .single();
+  const t0 = Date.now();
+  const { data: profile, error } = await withSupabaseRetry(
+    () => supabase.from('profiles').select('id, email, name, plan, created_at').eq('id', req.user.id).single(),
+    { label: 'user-me-profile', attempts: 3 }
+  );
+  console.log(`[user/me] profile fetch ${Date.now() - t0}ms userId=${req.user.id} plan=${profile?.plan || '(none)'}${error ? ' err=' + error.message : ''}`);
 
   if (error || !profile) {
     // Profile row may not exist yet (created during signup but could fail)

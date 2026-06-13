@@ -3,7 +3,6 @@
 require('../lib/env');
 
 const { getSupabaseClient } = require('../lib/supabase-client');
-const { triggerStage } = require('../lib/report-trigger');
 const auditCache = require('../lib/audit-cache');
 
 // ── Pipeline reconciler (safety net) ──────────────────────────────────────
@@ -20,6 +19,7 @@ const auditCache = require('../lib/audit-cache');
 const TERMINAL = new Set(['delivered', 'generated', 'failed']);
 const MAX_AGE_HOURS = 24;
 const MAX_CANDIDATES = 25;
+const TIME_BUDGET_MS = 45_000; // stay under the 60s function cap; leftovers wait for the next run
 
 function authorized(req) {
   const secret = process.env.RECONCILE_SECRET;
@@ -75,24 +75,33 @@ async function handler(req, res) {
 
   console.log(`[reconcile] scanning ${rows?.length || 0} recent orders — ${candidates.length} non-terminal`);
 
+  // Run the pipeline IN-PROCESS for each stuck order (idempotent — it resumes from
+  // whatever artifact already exists). No fire-and-forget self-calls. Time-budgeted
+  // so reconcile itself never exceeds the function cap; leftovers wait for next run.
+  const { runReportPipeline } = require('./report');
+  const started = Date.now();
   const actions = [];
   for (const r of candidates) {
+    if (Date.now() - started > TIME_BUDGET_MS) {
+      console.log(`[reconcile] time budget reached — ${actions.length} processed, remainder deferred`);
+      break;
+    }
+    const stage = await nextStageFor(supabase, r.audit_id);
+    if (!stage) {
+      actions.push({ auditId: r.audit_id, status: r.status, action: 'skip_no_audit_data' });
+      continue;
+    }
     try {
-      const stage = await nextStageFor(supabase, r.audit_id);
-      if (!stage) {
-        actions.push({ auditId: r.audit_id, status: r.status, action: 'skip_no_audit_data' });
-        continue;
-      }
-      await triggerStage(req, stage, { auditId: r.audit_id, email: r.email });
-      actions.push({ auditId: r.audit_id, status: r.status, retriggered: stage });
-      console.log(`[reconcile] re-triggered stage=${stage} auditId=${r.audit_id} status=${r.status}`);
+      const result = await runReportPipeline({ auditId: r.audit_id, email: r.email });
+      actions.push({ auditId: r.audit_id, from: r.status, resumedAt: stage, insights: result.insights, pdf: result.pdf, emailSent: result.emailSent });
+      console.log(`[reconcile] resumed auditId=${r.audit_id} emailSent=${result.emailSent}`);
     } catch (e) {
       actions.push({ auditId: r.audit_id, status: r.status, error: e.message });
       console.warn(`[reconcile] error auditId=${r.audit_id}:`, e.message);
     }
   }
 
-  return res.json({ ok: true, scanned: rows?.length || 0, retriggered: actions.length, actions });
+  return res.json({ ok: true, scanned: rows?.length || 0, processed: actions.length, actions });
 }
 
 module.exports = handler;
