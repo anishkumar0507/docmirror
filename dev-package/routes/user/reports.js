@@ -117,6 +117,7 @@ async function handler(req, res) {
         competitors:  (Array.isArray(row.competitors) && row.competitors.length) ? row.competitors : base.competitors,
         pdf_url:      pdfByAudit[id]   || row.pdf_url || null,
         insights:     ad.insights      || null,
+        sentiment:    ad.sentiment     || null,
         created_at,
       };
     }).filter(r => r.score != null || r.doctor_name)

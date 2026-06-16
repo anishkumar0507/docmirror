@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<meta property="og:image" content="https://thedocmirror.com/assets/logo/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://thedocmirror.com/assets/logo/og-image.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Doctor Visibility Checker | Google & AI Visibility Audit | The Doc Mirror</title>
 <meta name="description" content="Analyze how patients find your practice across Google Search, Maps, ChatGPT, Gemini, and Claude. Compare against competitors and uncover visibility issues in minutes.">
@@ -381,6 +390,43 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .field-err{font-size:11px;color:var(--red);font-weight:500;margin-top:1px;display:none;align-items:center;gap:3px}
 .field-err.on{display:flex}
 .field-err::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0}
+/* ── Doctor name autocomplete ── */
+.name-ac{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:10px;grid-column:1 / -1}
+.dr-ac-panel{position:absolute;top:100%;left:0;right:0;z-index:60;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 44px rgba(10,37,64,.18);max-height:320px;overflow-y:auto;display:none;padding:4px;-webkit-overflow-scrolling:touch}
+.dr-ac-panel.open{display:block}
+.dr-ac-opt{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:9px;cursor:pointer;line-height:1.35}
+.dr-ac-opt:hover,.dr-ac-opt.active{background:var(--green-light)}
+.dr-ac-pin{flex-shrink:0;width:16px;height:16px;margin-top:2px;color:var(--green)}
+.dr-ac-main{min-width:0;flex:1}
+.dr-ac-name{font-size:14px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-ac-name mark{background:transparent;color:var(--green-dark);font-weight:800;padding:0}
+.dr-ac-meta{font-size:11.5px;color:var(--slate-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.dr-ac-meta .dot{margin:0 5px;opacity:.5}
+.dr-ac-rate{flex-shrink:0;font-size:11px;color:var(--slate);display:flex;align-items:center;gap:2px;margin-top:2px}
+.dr-ac-rate svg{width:11px;height:11px;color:#F59E0B}
+.dr-ac-state{padding:11px 12px;font-size:13px;color:var(--slate-light);display:flex;align-items:center;gap:8px}
+.dr-ac-spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:dr-ac-spin .7s linear infinite;flex-shrink:0}
+@keyframes dr-ac-spin{to{transform:rotate(360deg)}}
+.dr-ac-foot{padding:6px 11px 4px;font-size:10px;color:var(--slate-muted);border-top:1px solid var(--border);margin-top:2px;display:flex;align-items:center;gap:5px}
+@media(max-width:560px){.name-ac{grid-template-columns:1fr}}
+/* ── Specialty combobox ── */
+.sp-cb{position:relative}
+.sp-cb-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--navy);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.sp-cb-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,120,.1)}
+.sp-cb-input.err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.09)}
+.sp-cb-panel{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 40px rgba(10,37,64,.16);max-height:280px;overflow-y:auto;display:none;padding:4px}
+.sp-cb-panel.open{display:block}
+.sp-cb-group{font-size:10px;font-weight:700;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.08em;padding:8px 10px 4px;position:sticky;top:0;background:#fff}
+.sp-cb-opt{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--navy);line-height:1.3}
+.sp-cb-opt:hover,.sp-cb-opt.active{background:var(--green-light)}
+.sp-cb-name{font-weight:500}
+.sp-cb-sub{font-size:11px;color:var(--slate-muted);flex-shrink:0}
+.sp-cb-empty{padding:10px;font-size:13px;color:var(--slate-light)}
+.sp-cb-manual{margin-top:2px;font-size:13px;color:var(--slate);background:var(--warm-white)}
+.sp-cb-manual strong{color:var(--navy)}
+.sp-warn{display:none;font-size:11.5px;color:var(--amber);font-weight:600;margin-top:3px;line-height:1.4;align-items:flex-start;gap:5px;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:7px;padding:7px 9px}
+.sp-warn.on{display:flex}
+.sp-warn::before{content:'⚠';flex-shrink:0}
 
 /* Button */
 .tool-btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -438,6 +484,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .nf-body strong{color:var(--navy)}
 .nf-cta{display:inline-flex;align-items:center;gap:6px;background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s}
 .nf-cta:hover{background:#b91c1c}
+.vf-icon{background:var(--amber-light)}
+.vf-icon svg{stroke:var(--amber)}
+.vf-checklist{max-width:420px;margin:0 auto 1.25rem;text-align:left;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:10px;padding:14px 18px}
+.vf-checklist-h{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.vf-checklist ul{margin:0;padding-left:18px}
+.vf-checklist li{font-size:13px;color:var(--slate);line-height:1.7}
+.vf-cta{background:var(--navy)}
+.vf-cta:hover{background:var(--green)}
 .nf-note{font-size:11px;color:var(--slate-muted);margin-top:10px}
 .reset-btn{background:none;border:none;color:var(--slate-light);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;display:block;width:100%;text-align:center}
 .reset-btn:hover{color:var(--navy)}
@@ -624,24 +678,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 </head>
 <body>
 
-<nav>
-  <a class="nav-logo" href="/">
-    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
-    <div class="logo-word">The Doc <span>Mirror</span></div>
-  </a>
-  <div class="nav-mid">
-    <a href="#how-it-works">How it works</a>
-    <a href="#tool">Free audit</a>
-    <a href="/pages/pricing.html">Pricing</a>
-    <a href="/pages/resources.html">Resources</a>
-    <a href="#about">About</a>
-    <a href="#faq">FAQ</a>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <a href="/pages/auth.html?tab=login" style="font-size:.82rem;color:var(--slate-light);text-decoration:none;font-weight:500;padding:7px 12px">Log In</a>
-    <a class="nav-cta" href="#tool">Check free →</a>
-  </div>
-</nav>
+<div id="dm-header"></div>
 
 <section class="hero" id="tool">
   <div class="hero-eyebrow">Free &middot; No login &middot; 60 seconds</div>
@@ -733,29 +770,31 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 
     <div id="inp">
       <div class="field-grid">
-        <div class="field" id="ff">
-          <label for="fn">First name</label>
-          <input type="text" id="fn" placeholder="e.g. Sarah" autocomplete="given-name">
-          <div class="field-err" id="ef" role="alert">Enter your first name</div>
-        </div>
-        <div class="field" id="fl">
-          <label for="ln">Last name</label>
-          <input type="text" id="ln" placeholder="e.g. Johnson" autocomplete="family-name">
-          <div class="field-err" id="el" role="alert">Enter your last name</div>
+        <div class="name-ac" id="name-ac">
+          <div class="field" id="ff">
+            <label for="fn">First name</label>
+            <input type="text" id="fn" placeholder="e.g. Sarah" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+            <div class="field-err" id="ef" role="alert">Enter your first name</div>
+          </div>
+          <div class="field" id="fl">
+            <label for="ln">Last name</label>
+            <input type="text" id="ln" placeholder="e.g. Johnson" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+            <div class="field-err" id="el" role="alert">Enter your last name</div>
+          </div>
+          <input type="hidden" id="place-id">
+          <div class="dr-ac-panel" id="dr-ac-panel" role="listbox" aria-label="Matching doctors"></div>
         </div>
         <div class="field" id="fsp">
-          <label for="sp">Specialty</label>
-          <select id="sp">
-            <option value="">Select your specialty</option>
-            <optgroup label="Primary Care">
-              <option>Family Medicine</option><option>General Practitioner</option><option>Internal Medicine</option><option>Pediatrician</option>
-            </optgroup>
-            <optgroup label="Specialties">
-              <option>Cardiologist</option><option>Dermatologist</option><option>Gastroenterologist</option><option>Neurologist</option><option>OB/GYN</option><option>Oncologist</option><option>Ophthalmologist</option><option>Orthopedic Surgeon</option><option>Psychiatrist</option><option>Pulmonologist</option><option>Urologist</option>
-            </optgroup>
-            <optgroup label="Other"><option>Dentist</option><option>Oral Surgeon</option><option>Other</option></optgroup>
-          </select>
+          <label for="sp-input">Specialty</label>
+          <div class="sp-cb" id="sp-combobox">
+            <input type="text" id="sp-input" class="sp-cb-input" placeholder="Search e.g. heart, skin, teeth, IVF…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sp-cb-list">
+            <input type="hidden" id="sp">
+            <input type="hidden" id="sp-parent">
+            <input type="hidden" id="detected-specialty">
+            <div class="sp-cb-panel" id="sp-cb-list" role="listbox" aria-label="Medical specialties"></div>
+          </div>
           <div class="field-err" id="esp" role="alert">Select your specialty</div>
+          <div class="sp-warn" id="sp-warn" role="alert"></div>
         </div>
         <div class="field" id="fct">
           <label for="ct">City, State</label>
@@ -803,6 +842,21 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
       <button class="nf-cta" onclick="showWL()" type="button">Get your free step-by-step claim guide</button>
       <div class="nf-note">We&rsquo;ll show you how to claim and verify your listing in under 15 minutes.</div>
       <button class="reset-btn" onclick="resetTool()" type="button">&larr; Try a different name</button>
+    </div>
+
+    <div class="nf-state vf-state" id="vf" role="alert">
+      <div class="nf-icon vf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="nf-title">Doctor verification failed</div>
+      <p class="nf-body" id="vf-msg">We could not confidently verify this doctor with the entered city and speciality.</p>
+      <div class="vf-checklist">
+        <div class="vf-checklist-h">Please check:</div>
+        <ul>
+          <li>Doctor name spelling</li>
+          <li>City</li>
+          <li>Speciality</li>
+        </ul>
+      </div>
+      <button class="nf-cta vf-cta" onclick="resetTool()" type="button">Try Again</button>
     </div>
 
     <div class="results-section" id="rs">
@@ -1656,6 +1710,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <div class="p-desc">Weekly automated checks. Know instantly when something changes before patients notice.</div>
         <ul class="p-feats">
           <li>Everything in Full Audit</li>
+          <li>Live Visibility Dashboard &mdash; track scores, competitors, reviews &amp; AI rankings in real time</li>
           <li>Weekly patient view report</li>
           <li>Competitor rank tracking</li>
           <li>AI-generated fix suggestions</li>
@@ -1691,61 +1746,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   </div>
 </section>
 
-<footer class="site-footer">
-  <div class="footer-card">
-    <div class="footer-grid">
-      <div class="footer-col footer-brand">
-        <div class="footer-logo">The Doc Mirror</div>
-        <p>Get more patients to your practice by improving your visibility where patients are searching.</p>
-        <div class="footer-social">
-          <a class="social-chip" href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
-          <a class="social-chip" href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-          <a class="social-chip" href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
-          <a class="social-chip" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>PRODUCT</h4>
-        <div class="footer-links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#tool">Free audit</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#about">About</a>
-          <a href="#faq">FAQ</a>
-          <a href="#tool">Check my visibility</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>RESOURCES</h4>
-        <div class="footer-links">
-          <a href="/pages/ai-visibility-for-doctors.html">AI Visibility for Doctors</a>
-          <a href="/pages/doctor-visibility-score.html">Doctor Visibility Score</a>
-          <a href="/pages/how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a>
-          <a href="/pages/google-visibility-for-doctors.html">Google Visibility Guide</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>COMPANY</h4>
-        <div class="footer-links">
-          <a href="#about">About us</a>
-          <a href="mailto:thedocmirror@gmail.com">Contact</a>
-          <a href="./pages/privacy.html">Privacy</a>
-          <a href="./pages/terms.html">Terms</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>SUPPORT</h4>
-        <div class="footer-links">
-          <a href="#faq">FAQ</a>
-          <a href="./pages/help-center.html">Help Center</a>
-          <a href="mailto:thedocmirror@gmail.com">Contact Support</a>
-        </div>
-      </div>
-    </div>
-    <div class="footer-divider"></div>
-    <div class="footer-bottom">© 2025 The Doc Mirror. All rights reserved.</div>
-  </div>
-</footer>
+<div id="dm-footer"></div>
 
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────────────────
@@ -1764,7 +1765,22 @@ function setErr(fid,eid,on){
 }
 function clearAll(){['ff','fl','fsp','fct'].forEach(function(x,i){setErr(x,['ef','el','esp','ect'][i],false)});}
 ['fn','ln','ct'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){var m={fn:'ff',ln:'fl',ct:'fct'},em={fn:'ef',ln:'el',ct:'ect'};setErr(m[id],em[id],false)});});
-document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);});
+document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);if(window.__updateSpecialtyConflict)window.__updateSpecialtyConflict();});
+(function(){var si=document.getElementById('sp-input');if(si)si.addEventListener('input',function(){setErr('fsp','esp',false);});})();
+
+// Warn (and block) when the user-selected specialty contradicts the verified
+// Google result. Returns true when there is an unresolved conflict.
+window.__updateSpecialtyConflict=function(){
+  var warn=document.getElementById('sp-warn');
+  var sel=(document.getElementById('sp')||{}).value||'';
+  var det=(document.getElementById('detected-specialty')||{}).value||'';
+  var conflict=!!(det && sel && window.DoctorNameParser && window.DoctorNameParser.specialtyConflict(sel,det));
+  if(warn){
+    if(conflict){warn.textContent='Selected specialty does not match the verified Google result ('+det+').';warn.classList.add('on');}
+    else{warn.textContent='';warn.classList.remove('on');}
+  }
+  return conflict;
+};
 
 // ── VALIDATE ───────────────────────────────────────────────────────────────
 function validate(){
@@ -1783,8 +1799,9 @@ window.runCheck = async function() {
   var fn = (document.getElementById('fn') || {}).value || '';
   var ln = (document.getElementById('ln') || {}).value || '';
   var sp = (document.getElementById('sp') || {}).value || '';
+  var spp = (document.getElementById('sp-parent') || {}).value || '';
   var ct = (document.getElementById('ct') || {}).value || '';
-  fn = fn.trim(); ln = ln.trim(); sp = sp.trim(); ct = ct.trim();
+  fn = fn.trim(); ln = ln.trim(); sp = sp.trim(); spp = spp.trim(); ct = ct.trim();
 
   // Validate — use existing field-error UI
   clearAll();
@@ -1799,11 +1816,19 @@ window.runCheck = async function() {
     return;
   }
 
+  // Block when the chosen specialty contradicts the verified Google result.
+  if (window.__updateSpecialtyConflict && window.__updateSpecialtyConflict()) {
+    setErr('fsp','esp',false);
+    var w = document.getElementById('sp-warn'); if (w) w.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
   // Clear any stale report data from previous sessions before starting fresh
   try { localStorage.removeItem('docmirrorPreviewReport'); localStorage.removeItem('tdm_free_preview'); } catch(e) {}
 
+  var placeId = (document.getElementById('place-id') || {}).value || '';
   if (!API_READY) { runFreePreview({fn:fn,ln:ln,sp:sp,ct:ct}); return; }
-  doAudit({fn:fn,ln:ln,sp:sp,ct:ct});
+  doAudit({fn:fn,ln:ln,sp:sp,spp:spp,ct:ct,placeId:placeId.trim()});
 };
 function runURL(){
   var val=document.getElementById('mu').value.trim();
@@ -1854,9 +1879,10 @@ async function doAudit(p){
     setS(5,'spin');await wait(400);
     for(var i=1;i<=5;i++)setS(i,'dn');
     clearTimeout(_tm);await wait(600);
-    if(d.notFound){
+    if(d.verified===false || d.notFound){
+      // Verification failed — never store or show preview/competitor data.
       try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
-      showNF(p);
+      showVF(d,p);
     }else{
       try{localStorage.setItem('docmirrorPreviewReport',JSON.stringify(d));}catch(e2){}
       window.location.href='./pages/preview-report.html';
@@ -2324,6 +2350,15 @@ function showNF(p){
   _sc=0;_dn='Dr. '+(p.fn||'')+' '+(p.ln||'');
   document.getElementById('nf').scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Doctor verification failed — show error card, NO preview/competitor data.
+function showVF(d,p){
+  document.getElementById('ls').classList.remove('active');
+  document.getElementById('inp').style.display='none';
+  var msg=(d&&d.message)?d.message:"We couldn't confidently verify this doctor with the entered city and speciality.";
+  var el=document.getElementById('vf-msg');if(el)el.textContent=msg;
+  document.getElementById('vf').classList.add('active');
+  document.getElementById('vf').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function showWL(){
   document.getElementById('nf').classList.remove('active');
   document.getElementById('inp').style.display='none';
@@ -2389,7 +2424,7 @@ function doOneTime(){
 
 // ── RESET ──────────────────────────────────────────────────────────────────
 function resetTool(){
-  ['ls','rs','nf'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
+  ['ls','rs','nf','vf'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
   document.getElementById('inp').style.display='block';
   document.getElementById('wl').classList.remove('on');
   document.getElementById('tm').classList.remove('on');
@@ -2468,5 +2503,11 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+<script src="/js/medical-specialties.js" defer></script>
+<script src="/js/specialty-combobox.js" defer></script>
+<script src="/js/doctor-name-parser.js" defer></script>
+<script src="/js/doctor-autocomplete.js" defer></script>
+<script src="/js/layout.js" defer></script>
+<script src="/js/branding.js" defer></script>
 </body>
 </html>

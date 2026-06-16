@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<meta property="og:image" content="https://thedocmirror.com/assets/logo/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://thedocmirror.com/assets/logo/og-image.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dashboard | The Doc Mirror</title>
 <meta name="robots" content="noindex, nofollow">
@@ -33,11 +42,6 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:va
 .app{display:grid;grid-template-columns:240px 1fr;min-height:100vh}
 aside{background:#fff;border-right:.5px solid var(--border);padding:1.5rem 1rem;position:sticky;top:0;height:100vh;overflow-y:auto}
 .brand{display:flex;align-items:center;gap:8px;margin-bottom:1rem;text-decoration:none;color:var(--navy)}
-.brand-mark{width:28px;height:28px;flex-shrink:0}
-.brand-name{font-size:1rem;font-weight:700;letter-spacing:-.02em}
-.brand-name span{color:var(--green)}
-.brand-tier{font-size:10px;color:var(--green-dark);font-weight:700;background:var(--green-light);padding:2px 7px;border-radius:20px;letter-spacing:.05em;text-transform:uppercase;margin-left:6px}
-.brand-tier.audit{background:var(--warm);color:var(--slate-light)}
 
 .doctor-info{background:var(--warm);border-radius:10px;padding:10px 12px;margin-bottom:1.25rem}
 .doctor-av{width:32px;height:32px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;margin-bottom:6px}
@@ -399,7 +403,10 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
 
 <!-- AUTH GATE -->
 <div class="auth-gate" id="auth-gate">
-  <div class="logo">The Doc <span>Mirror</span></div>
+  <div style="display:flex;align-items:center;gap:10px;justify-content:center">
+    <span data-tdm-logo data-size="lg" style="width:36px;height:36px;display:inline-flex"></span>
+    <div class="logo">The Doc <span>Mirror</span></div>
+  </div>
   <h2>Checking your session&hellip;</h2>
   <p>Redirecting to sign-in.</p>
 </div>
@@ -408,10 +415,7 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
 
   <!-- ─── SIDEBAR ────────────────────────────────────────────────────────── -->
   <aside>
-    <a href="/" class="brand">
-      <div class="brand-mark"><svg viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="11.5" stroke="#00A878" stroke-width="2"/><path d="M9 14C9 11 11 9 14 9S19 11 19 14" stroke="#0A2540" stroke-width="2" stroke-linecap="round"/><circle cx="14" cy="19" r="2" fill="#00A878"/></svg></div>
-      <div><span class="brand-name">The Doc <span>Mirror</span></span><span class="brand-tier" id="brand-tier">Monitor</span></div>
-    </a>
+    <a href="/" class="brand" data-tdm-logo="full" data-size="md" aria-label="The Doc Mirror"></a>
 
     <div class="doctor-info">
       <div class="doctor-av" id="doc-av">DR</div>
@@ -803,8 +807,6 @@ function initDashboard(profile, reports) {
   el('doc-av').textContent   = initials;
   el('doc-name').textContent = doctorName;
   el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
-  el('brand-tier').textContent = 'Monitor';
-  el('brand-tier').className   = 'brand-tier';
 
   // Topbar
   el('practice-name').textContent = doctorName;
@@ -815,7 +817,7 @@ function initDashboard(profile, reports) {
 
   // Settings
   el('settings-email').textContent = email;
-  el('settings-plan').textContent  = 'Doctor Visibility Monitor™ — $49/month';
+  el('settings-plan').textContent  = 'Doctor Visibility Monitor — $49/month';
 
   // Show app and remove auth gate BEFORE chart rendering (Chart.js needs visible canvas to measure)
   el('auth-gate').classList.remove('show');
@@ -855,7 +857,7 @@ function initDashboard(profile, reports) {
   populateTasks(insights);
   populateContent(specialty, insights);
   populateReviews(latest);
-  populateReputation(insights);
+  populateReputation(insights, latest);
   populateKeywords(insights);
   populateRoadmap(latest, insights);
 
@@ -881,7 +883,7 @@ function scheduleInsightsRefresh() {
         populateJourney(insights);
         populateTasks(insights);
         populateContent(specialty, insights);
-        populateReputation(insights);
+        populateReputation(insights, reports[0]);
         populateKeywords(insights);
         populateRoadmap(reports[0], insights);
       } else {
@@ -1390,11 +1392,16 @@ function populateReviews(latest) {
 }
 
 // ── REVIEW RESPONSES (from insights.responseTemplates) ─────────────────────
-function populateReputation(insights) {
+function populateReputation(insights, latest) {
   var c = el('reputation-content');
+
+  // ── Review sentiment summary (from the weekly Google-review analysis) ───────
+  var sentimentHtml = sentimentCard(latest && latest.sentiment);
+
   var rt = insights && insights.responseTemplates ? insights.responseTemplates : null;
   if (!rt) {
-    c.innerHTML = generatingCard('🛡', 'Review responses generating', 'Claude-drafted, HIPAA-safe response templates for positive, neutral, and critical reviews appear here.');
+    c.innerHTML = sentimentHtml +
+      generatingCard('🛡', 'Review responses generating', 'Claude-drafted, HIPAA-safe response templates for positive, neutral, and critical reviews appear here.');
     return;
   }
   var rows = [
@@ -1402,12 +1409,32 @@ function populateReputation(insights) {
     { label: '3-star — mixed review',    key: 'neutral',  stars: '★★★☆☆' },
     { label: '1–2 star — critical review', key: 'critical', stars: '★☆☆☆☆' },
   ];
-  c.innerHTML = '<div class="reputation-card" style="border-left-color:var(--green)">' +
+  c.innerHTML = sentimentHtml +
+    '<div class="reputation-card" style="border-left-color:var(--green)">' +
     rows.filter(function(r){ return rt[r.key]; }).map(function(r){
       return '<div class="rep-alert-row"><div class="rep-stars">' + r.stars + '</div>' +
         '<div class="rep-content"><div class="rep-title">' + escH(r.label) + '</div>' +
         '<div class="rep-suggested"><strong>Suggested reply</strong>' + escH(rt[r.key]) + '</div></div></div>';
     }).join('') + '</div>';
+}
+
+// Renders the patient-sentiment summary block. Returns '' when no sentiment yet.
+function sentimentCard(s) {
+  if (!s || (s.score == null && (!s.positive || !s.positive.length) && (!s.negative || !s.negative.length))) {
+    return generatingCard('💬', 'Review sentiment refreshing', 'Each Monday we analyse your latest Google reviews for positive and negative themes. Your sentiment summary appears here.');
+  }
+  var label = (s.label || 'unknown');
+  var color = label === 'positive' ? 'var(--green)' : label === 'negative' ? 'var(--red)' : 'var(--amber)';
+  var scoreTxt = (s.score != null) ? (s.score + '/100') : '—';
+  function tags(list, cls){ return (Array.isArray(list)?list:[]).map(function(t){
+    return '<span class="sh-delta ' + cls + '" style="margin:3px 4px 0 0">' + escH(t) + '</span>'; }).join(''); }
+  return '<div class="reputation-card" style="border-left-color:' + color + ';margin-bottom:1rem">' +
+    '<div class="rep-alert-row"><div class="rep-stars" style="color:' + color + '">' + scoreTxt + '</div>' +
+    '<div class="rep-content"><div class="rep-title">Patient sentiment: ' + escH(label.charAt(0).toUpperCase() + label.slice(1)) + '</div>' +
+    (s.summary ? '<div class="rep-suggested" style="margin-top:4px">' + escH(s.summary) + '</div>' : '') +
+    ((s.positive && s.positive.length) ? '<div style="margin-top:8px"><strong style="font-size:12px">Patients praise</strong><br>' + tags(s.positive, 'delta-up') + '</div>' : '') +
+    ((s.negative && s.negative.length) ? '<div style="margin-top:8px"><strong style="font-size:12px">Common complaints</strong><br>' + tags(s.negative, 'delta-down') + '</div>' : '') +
+    '</div></div></div>';
 }
 
 // ── EXECUTIVE SUMMARY (from insights.execSummary) ──────────────────────────
@@ -1622,5 +1649,6 @@ window.addEventListener('scroll', function(){
 
 checkAuth();
 </script>
+<script src="/js/branding.js" defer></script>
 </body>
 </html>
