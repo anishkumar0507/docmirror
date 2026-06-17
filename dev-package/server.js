@@ -13,6 +13,8 @@ const cors    = require('cors');
 
 const auditModule             = require('./routes/audit');
 const auditHandler            = auditModule;
+const doctorAutocompleteHandler = require('./routes/doctors-autocomplete');
+const monthlyContentHandler   = require('./routes/monthly-content');
 const checkoutHandler         = require('./routes/checkout');
 const verifyPaymentHandler    = require('./routes/verify-payment');
 const reportHandler           = require('./routes/report');
@@ -28,6 +30,9 @@ const clientConfigHandler      = require('./routes/config');
 const userMeHandler            = require('./routes/user/me');
 const userReportsHandler       = require('./routes/user/reports');
 const userAlertsHandler        = require('./routes/user/alerts');
+const userDashboardHandler     = require('./routes/user/dashboard');
+const userHistoryHandler       = require('./routes/user/history');
+const userNotificationsHandler = require('./routes/user/notifications');
 const checkoutSubHandler          = require('./routes/checkout-subscription');
 const verifySubPaymentHandler     = require('./routes/verify-subscription-payment');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
@@ -49,11 +54,32 @@ app.post('/api/webhook-razorpay', express.raw({ type: 'application/json' }), web
 
 app.use(express.json({ limit: '2mb' }));
 
+// ── SEO: canonical clean URLs ────────────────────────────────────────────────
+// Each indexable content page is served at ONE canonical clean URL. The legacy
+// /pages/*.html path 301-redirects to that clean URL so only a single version is
+// crawlable (avoids duplicate-content / non-canonical warnings). Registered
+// before express.static so the .html → clean redirect runs before the static
+// file would be served. Page content/layout is unchanged — this is routing only.
+const CLEAN_PAGES = {
+  '/ai-visibility-for-doctors':     'ai-visibility-for-doctors.html',
+  '/doctor-visibility-score':       'doctor-visibility-score.html',
+  '/how-doctors-rank-in-chatgpt':   'how-doctors-rank-in-chatgpt.html',
+  '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
+  '/privacy':                       'privacy.html',
+  '/terms':                         'terms.html',
+};
+for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
+  app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));
+  app.get('/pages/' + file,   (_req, res) => res.redirect(301, cleanPath));
+}
+
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── API routes ─────────────────────────────────────────────────────────────
 app.post('/api/audit',                    auditHandler);
+app.get('/api/doctors/autocomplete',      doctorAutocompleteHandler);
+app.get('/api/monthly-content',           monthlyContentHandler);
 app.post('/api/checkout',                 checkoutHandler);
 app.post('/api/verify-payment',           verifyPaymentHandler);
 app.post('/api/download-pdf',             downloadPdfHandler);
@@ -69,6 +95,12 @@ app.get('/api/client-config',             clientConfigHandler);
 app.get('/api/user/me',                   userMeHandler);
 app.get('/api/user/reports',              userReportsHandler);
 app.get('/api/user/alerts',               userAlertsHandler);
+app.get('/api/dashboard',                 userDashboardHandler);    // aggregated Monitor dashboard
+app.get('/api/history',                   userHistoryHandler);      // week-over-week trend series
+app.get('/api/notifications',             userNotificationsHandler);
+app.post('/api/notifications',            userNotificationsHandler); // mark read
+app.get('/api/weekly-update',             weeklyCheckHandler);      // alias for the weekly cron
+app.post('/api/weekly-update',            weeklyCheckHandler);
 app.post('/api/checkout-subscription',        checkoutSubHandler);
 app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
 app.post('/api/generate-report',              generateReportHandler);  // pipeline stage 1: insights
@@ -79,6 +111,12 @@ app.post('/api/reconcile',                    reconcileHandler);
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Browsers auto-request /favicon.ico — serve the brand SVG instead of falling
+// through to the catch-all (which would return index.html / a stale icon).
+app.get('/favicon.ico', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'favicon.svg'));
 });
 
 app.get('*', (_req, res) => {

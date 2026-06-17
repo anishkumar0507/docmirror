@@ -2,6 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<link rel="canonical" href="https://www.thedocmirror.com/pages/pricing.html">
+<meta property="og:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pricing — The Doc Mirror</title>
 <meta name="description" content="Choose your doctor visibility plan. One-time audit or full monthly monitoring.">
@@ -82,21 +92,12 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
 </style>
 </head>
 <body>
-<nav>
-  <a href="/" class="logo">
-    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><rect x="2" y="2" width="6" height="9" rx="1.5" fill="#fff" opacity=".9"/><rect x="10" y="2" width="6" height="6" rx="1.5" fill="#fff" opacity=".6"/><rect x="10" y="10" width="6" height="4" rx="1.5" fill="#fff" opacity=".4"/></svg></div>
-    <span class="logo-word">The Doc <span>Mirror</span></span>
-  </a>
-  <div class="nav-right">
-    <a href="/pages/auth.html?tab=login" class="nav-link">Log In</a>
-    <a href="/#tool" class="nav-cta">Get Started</a>
-  </div>
-</nav>
+<div id="dm-header"></div>
 
 <main>
   <div class="hero">
     <h1>Simple, transparent pricing</h1>
-    <p>Start with a one-time audit, or unlock weekly monitoring to keep growing every month.</p>
+    <p>Start with a one-time audit, or subscribe to weekly monitoring — live alerts, competitor tracking, an AI growth engine, and recurring reports that keep you growing every month.</p>
   </div>
 
   <div class="cards">
@@ -125,7 +126,7 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
     <div class="plan-card monitor">
       <div class="popular-tag">Most Popular</div>
       <span class="plan-badge badge-monitor">Subscription</span>
-      <div class="plan-name">Doctor Visibility Monitor™</div>
+      <div class="plan-name">Doctor Visibility Monitor</div>
       <div class="plan-tagline">Weekly audits, live alerts, and an AI growth engine — every single month.</div>
       <div class="plan-price">
         <div class="plan-amount">$49</div>
@@ -134,6 +135,7 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
       <div class="plan-note">Cancel anytime. No contracts.</div>
       <ul class="features">
         <li><span class="ico ico-check">✓</span> Everything in Visibility Audit</li>
+        <li><span class="ico ico-check">✓</span> <span><strong>Live Visibility Dashboard</strong><br><span style="font-size:.8rem;opacity:.75">Track score changes, competitors, reviews, and AI rankings in real time.</span></span></li>
         <li><span class="ico ico-check">✓</span> Weekly Visibility Audit</li>
         <li><span class="ico ico-check">✓</span> AI Rank Tracker (ChatGPT, Claude, Gemini, Perplexity)</li>
         <li><span class="ico ico-check">✓</span> Competitor Watchlist &amp; Change Alerts</li>
@@ -175,11 +177,8 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
   </div>
 </main>
 
-<footer>
-  <a href="/">Home</a>
-  <a href="/pages/privacy.html">Privacy</a>
-  <a href="/pages/terms.html">Terms</a>
-  <a href="/pages/help-center.html">Help</a>
-</footer>
+<div id="dm-footer"></div>
+<script src="/js/layout.js" defer></script>
+<script src="/js/branding.js" defer></script>
 </body>
 </html>

@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "dev-package/server.js",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["dev-package/public/**"],
+        "maxDuration": 60
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "has": [{ "type": "host", "value": "thedocmirror.com" }],
+      "status": 301,
+      "headers": { "Location": "https://www.thedocmirror.com/$1" }
+    },
+    { "src": "/(.*)", "dest": "dev-package/server.js" }
+  ]
+}

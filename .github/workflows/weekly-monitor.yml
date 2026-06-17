@@ -1,0 +1,30 @@
+name: Weekly Monitor Report
+
+# Triggers the $49 Monitor weekly automation every Monday at 08:00 UTC.
+# Works on any Vercel plan (Hobby included) because the schedule lives in
+# GitHub Actions, not Vercel cron.
+#
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   MONITOR_BASE_URL   e.g. https://www.thedocmirror.com
+#   CRON_SECRET        must match the CRON_SECRET env var on the server
+#
+# You can also run it manually from the Actions tab (workflow_dispatch).
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'      # Mondays 08:00 UTC
+  workflow_dispatch:
+
+jobs:
+  trigger-weekly-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call /api/weekly-check
+        run: |
+          curl --fail --show-error --silent \
+            -X POST "${MONITOR_BASE_URL}/api/weekly-check" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json"
+        env:
+          MONITOR_BASE_URL: ${{ secrets.MONITOR_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}

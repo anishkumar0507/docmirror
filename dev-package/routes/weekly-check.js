@@ -3,6 +3,100 @@
 require('../lib/env');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { generateReport }    = require('./report');
+const reportsStore          = require('../lib/reports-store');
+const { getCurrentCampaign } = require('../lib/monthly-campaigns');
+const { detectAlerts }       = require('../lib/monitor-alerts');
+
+// Build this week's snapshot (self metrics + competitors) from the audit cache —
+// audit_cache.audit_data is the source of truth. Returns null if unavailable.
+async function buildSnapshot(supabase, auditId, profileName, campaign) {
+  const { data: cache } = await supabase
+    .from('audit_cache').select('audit_data').eq('cache_key', auditId).single();
+  const ad = (cache && cache.audit_data) || {};
+  const base = reportsStore.reportFromAuditData(auditId, ad);
+  const ai = ad.aiVisibility || {};
+  return {
+    score:       base.score || 0,
+    googleScore: typeof ai.google === 'number' ? ai.google : 0,
+    aiRank:      typeof ad.aiRank === 'number' ? ad.aiRank : 0,
+    rating:      base.rating || 0,
+    reviewCount: base.review_count || 0,
+    photoCount:  base.photo_count || 0,
+    competitors: Array.isArray(base.competitors) ? base.competitors : [],
+    specialty:   base.specialty || '',
+    city:        base.city || '',
+    pdfUrl:      base.pdf_url || null,
+    campaign:    campaign && campaign.name ? { name: campaign.name } : null,
+  };
+}
+
+// Persist snapshot, generate alerts, save content pack, write weekly metrics.
+// Fully guarded — any failure here must NOT affect report/email delivery.
+async function enrichMonitorData(supabase, userId, auditId, profile, pdfUrl) {
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const monthKey = today.slice(0, 7);
+
+    // last week's snapshot BEFORE we write this week's
+    const { data: prevRow } = await supabase
+      .from('competitor_snapshots').select('snapshot')
+      .eq('user_id', userId).order('week', { ascending: false }).limit(1).single();
+    const prev = (prevRow && prevRow.snapshot) || null;
+
+    // current campaign for this specialty/month (need specialty first)
+    const { data: cachePeek } = await supabase
+      .from('audit_cache').select('audit_data').eq('cache_key', auditId).single();
+    const adPeek = (cachePeek && cachePeek.audit_data) || {};
+    const campaign = getCurrentCampaign({
+      specialty:       adPeek.specialty || '',
+      parentSpecialty: adPeek.specialty || '',
+      city:            adPeek.city || (adPeek.cityState || '').split(',')[0] || '',
+      name:            profile.name || '',
+      region:          'GLOBAL',
+    });
+
+    const curr = await buildSnapshot(supabase, auditId, profile.name, campaign.campaign);
+
+    // alerts (week-over-week) → notifications feed
+    const alerts = detectAlerts(prev, curr);
+    if (alerts.length) {
+      await supabase.from('notifications').insert(alerts.map(a => ({
+        user_id: userId, type: a.type, severity: a.severity,
+        title: a.title, message: a.message, meta: a.meta || {},
+      }))).catch(e => console.warn('[weekly-check] notifications insert warn:', e.message));
+    }
+
+    // save this week's snapshot
+    await supabase.from('competitor_snapshots').upsert({
+      user_id: userId, week: today, snapshot: curr,
+    }, { onConflict: 'user_id,week' }).catch(e => console.warn('[weekly-check] snapshot warn:', e.message));
+
+    // monthly content pack (idempotent per month)
+    if (campaign.hasCampaign) {
+      await supabase.from('content_packs').upsert({
+        user_id: userId, month: monthKey,
+        campaign_name: campaign.campaign.name, campaign_theme: campaign.campaign.theme,
+        content: campaign, updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id,month' }).catch(e => console.warn('[weekly-check] content_pack warn:', e.message));
+    }
+
+    // richer weekly metrics row (replaces the old undefined-field upsert)
+    await supabase.from('dashboard_metrics').upsert({
+      user_id: userId, week: today,
+      visibility_score: curr.score || null,
+      google_score:     curr.googleScore || null,
+      ai_rank:          curr.aiRank || null,
+      review_count:     curr.reviewCount || null,
+      rating:           curr.rating || null,
+      pdf_url:          pdfUrl || curr.pdfUrl || null,
+    }, { onConflict: 'user_id,week' }).catch(e => console.warn('[weekly-check] metrics warn:', e.message));
+
+    return { alerts: alerts.length, campaign: campaign.campaign ? campaign.campaign.name : null };
+  } catch (err) {
+    console.warn(`[weekly-check] enrich warn user=${userId}:`, err.message);
+    return { alerts: 0, campaign: null };
+  }
+}
 
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -81,16 +175,11 @@ async function handler(req, res) {
         `[weekly-check] done user=${sub.user_id}  emailSent=${result.emailSent}  pdfUrl=${result.pdfUrl || '(none)'}`
       );
 
-      // Record weekly metric snapshot
-      const today = new Date().toISOString().slice(0, 10);
-      await supabase.from('dashboard_metrics').upsert({
-        user_id:          sub.user_id,
-        week:             today,
-        visibility_score: result.score        || null,
-        review_count:     result.reviewCount  || null,
-      }, { onConflict: 'user_id,week' }).catch(err =>
-        console.warn('[weekly-check] metrics upsert warn:', err.message)
+      // Snapshot + alerts + content pack + weekly metrics (guarded, non-fatal)
+      const enriched = await enrichMonitorData(
+        supabase, sub.user_id, lastReport.audit_id, profile, result.pdfUrl
       );
+      console.log(`[weekly-check] enriched user=${sub.user_id}  alerts=${enriched.alerts}  campaign=${enriched.campaign || '(none)'}`);
 
     } catch (err) {
       console.error(`[weekly-check] error for user=${sub.user_id}:`, err.message);

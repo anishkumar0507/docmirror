@@ -2,16 +2,25 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<meta property="og:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Doctor Visibility Checker | Google & AI Visibility Audit | The Doc Mirror</title>
 <meta name="description" content="Analyze how patients find your practice across Google Search, Maps, ChatGPT, Gemini, and Claude. Compare against competitors and uncover visibility issues in minutes.">
 <meta property="og:title" content="Doctor Visibility Checker | Google & AI Visibility Audit | The Doc Mirror">
 <meta property="og:description" content="Analyze how patients find your practice across Google Search, Maps, ChatGPT, Gemini, and Claude. Compare against competitors and uncover visibility issues in minutes.">
-<meta property="og:url" content="https://thedocmirror.com">
+<meta property="og:url" content="https://www.thedocmirror.com/">
 <meta property="og:type" content="website">
-<link rel="canonical" href="https://thedocmirror.com">
+<link rel="canonical" href="https://www.thedocmirror.com/">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://thedocmirror.com/#organization","name":"The Doc Mirror","url":"https://thedocmirror.com","description":"A visibility audit service for doctors across Google Search, Google Maps, and AI search tools.","logo":"https://thedocmirror.com/logo.png"},{"@type":"WebSite","@id":"https://thedocmirror.com/#website","url":"https://thedocmirror.com","name":"The Doc Mirror","description":"Doctor visibility checker for Google and AI search.","publisher":{"@id":"https://thedocmirror.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://thedocmirror.com/?q={search_term_string}","query-input":"required name=search_term_string"}},{"@type":"SoftwareApplication","@id":"https://thedocmirror.com/#software","name":"The Doc Mirror","operatingSystem":"Web","applicationCategory":"BusinessApplication","description":"A free doctor visibility checker that audits Google Search, Google Maps, ChatGPT, Gemini, and Claude visibility.","url":"https://thedocmirror.com","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"Service","@id":"https://thedocmirror.com/#service","name":"Doctor Visibility Audit","serviceType":"Online visibility audit","provider":{"@id":"https://thedocmirror.com/#organization"},"description":"A free online audit showing how doctors appear in Google Search, Google Maps, ChatGPT, Gemini, and Claude.","url":"https://thedocmirror.com"},{"@type":"FAQPage","@id":"https://thedocmirror.com/#faq","mainEntity":[{"@type":"Question","name":"Is The Doc Mirror really free?","acceptedAnswer":{"@type":"Answer","text":"Yes, completely free. No credit card, no signup. Email only for the fix guide."}},{"@type":"Question","name":"Will this change my Google listing?","acceptedAnswer":{"@type":"Answer","text":"Never. We read publicly available data only and never access your Google account."}},{"@type":"Question","name":"How is this different from Googling myself?","acceptedAnswer":{"@type":"Answer","text":"Your own search results are personalised. The Doc Mirror simulates a cold patient search with no history — showing what a first-time searcher actually finds."}}]}]
+{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.thedocmirror.com/#organization","name":"The Doc Mirror","url":"https://www.thedocmirror.com","description":"A visibility audit service for doctors across Google Search, Google Maps, and AI search tools.","logo":"https://www.thedocmirror.com/logo.png"},{"@type":"WebSite","@id":"https://www.thedocmirror.com/#website","url":"https://www.thedocmirror.com","name":"The Doc Mirror","description":"Doctor visibility checker for Google and AI search.","publisher":{"@id":"https://www.thedocmirror.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://www.thedocmirror.com/?q={search_term_string}","query-input":"required name=search_term_string"}},{"@type":"SoftwareApplication","@id":"https://www.thedocmirror.com/#software","name":"The Doc Mirror","operatingSystem":"Web","applicationCategory":"BusinessApplication","description":"A free doctor visibility checker that audits Google Search, Google Maps, ChatGPT, Gemini, and Claude visibility.","url":"https://www.thedocmirror.com","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"Service","@id":"https://www.thedocmirror.com/#service","name":"Doctor Visibility Audit","serviceType":"Online visibility audit","provider":{"@id":"https://www.thedocmirror.com/#organization"},"description":"A free online audit showing how doctors appear in Google Search, Google Maps, ChatGPT, Gemini, and Claude.","url":"https://www.thedocmirror.com"},{"@type":"FAQPage","@id":"https://www.thedocmirror.com/#faq","mainEntity":[{"@type":"Question","name":"Is The Doc Mirror really free?","acceptedAnswer":{"@type":"Answer","text":"Yes, completely free. No credit card, no signup. Email only for the fix guide."}},{"@type":"Question","name":"Will this change my Google listing?","acceptedAnswer":{"@type":"Answer","text":"Never. We read publicly available data only and never access your Google account."}},{"@type":"Question","name":"How is this different from Googling myself?","acceptedAnswer":{"@type":"Answer","text":"Your own search results are personalised. The Doc Mirror simulates a cold patient search with no history — showing what a first-time searcher actually finds."}}]}]
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,6 +59,21 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .hero-stat .n{font-size:1.75rem;font-weight:700;color:#fff;letter-spacing:-.03em;line-height:1}
 .hero-stat .l{font-size:11px;color:rgba(255,255,255,.48);margin-top:3px;max-width:130px;line-height:1.35}
 .stat-src-hero{font-size:10px;color:rgba(255,255,255,.28);margin-top:3px;font-style:italic}
+/* ── Hero "Analyzed on" platform strip ── */
+.analyzed-on{display:flex;flex-direction:column;align-items:center;gap:14px;margin:0 auto 2.75rem;animation:analyzedFade .6s ease both}
+.analyzed-label{font-size:12px;letter-spacing:0.12em;text-transform:uppercase;opacity:.75;color:#fff;text-align:center}
+.analyzed-pill{display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:24px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:999px;padding:16px 28px;max-width:100%}
+.analyzed-item{display:inline-flex;align-items:center;gap:8px;color:rgba(255,255,255,.92);font-size:14px;font-weight:600;white-space:nowrap;transition:all .3s ease}
+.analyzed-item:hover{transform:translateY(-2px);opacity:1}
+.analyzed-item svg{height:24px;width:auto;display:block;flex-shrink:0}
+.analyzed-item.is-chatgpt svg{opacity:.9}
+@keyframes analyzedFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(max-width:767px){
+  .analyzed-pill{flex-wrap:wrap;gap:12px;padding:14px 18px}
+  .analyzed-item{font-size:13px;gap:6px}
+  .analyzed-item svg{height:20px}
+}
+@media(prefers-reduced-motion:reduce){.analyzed-on{animation:none}}
 
 /* DEMO STRIP */
 .demo-strip{background:var(--warm-white);border-radius:12px;padding:1rem;margin-bottom:1.25rem;border:1px solid var(--border)}
@@ -381,6 +405,43 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .field-err{font-size:11px;color:var(--red);font-weight:500;margin-top:1px;display:none;align-items:center;gap:3px}
 .field-err.on{display:flex}
 .field-err::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--red);flex-shrink:0}
+/* ── Doctor name autocomplete ── */
+.name-ac{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:10px;grid-column:1 / -1}
+.dr-ac-panel{position:absolute;top:100%;left:0;right:0;z-index:60;margin-top:4px;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 16px 44px rgba(10,37,64,.18);max-height:320px;overflow-y:auto;display:none;padding:4px;-webkit-overflow-scrolling:touch}
+.dr-ac-panel.open{display:block}
+.dr-ac-opt{display:flex;align-items:flex-start;gap:10px;padding:9px 11px;border-radius:9px;cursor:pointer;line-height:1.35}
+.dr-ac-opt:hover,.dr-ac-opt.active{background:var(--green-light)}
+.dr-ac-pin{flex-shrink:0;width:16px;height:16px;margin-top:2px;color:var(--green)}
+.dr-ac-main{min-width:0;flex:1}
+.dr-ac-name{font-size:14px;font-weight:600;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-ac-name mark{background:transparent;color:var(--green-dark);font-weight:800;padding:0}
+.dr-ac-meta{font-size:11.5px;color:var(--slate-light);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.dr-ac-meta .dot{margin:0 5px;opacity:.5}
+.dr-ac-rate{flex-shrink:0;font-size:11px;color:var(--slate);display:flex;align-items:center;gap:2px;margin-top:2px}
+.dr-ac-rate svg{width:11px;height:11px;color:#F59E0B}
+.dr-ac-state{padding:11px 12px;font-size:13px;color:var(--slate-light);display:flex;align-items:center;gap:8px}
+.dr-ac-spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:dr-ac-spin .7s linear infinite;flex-shrink:0}
+@keyframes dr-ac-spin{to{transform:rotate(360deg)}}
+.dr-ac-foot{padding:6px 11px 4px;font-size:10px;color:var(--slate-muted);border-top:1px solid var(--border);margin-top:2px;display:flex;align-items:center;gap:5px}
+@media(max-width:560px){.name-ac{grid-template-columns:1fr}}
+/* ── Specialty combobox ── */
+.sp-cb{position:relative}
+.sp-cb-input{width:100%;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--navy);background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;-webkit-appearance:none;appearance:none}
+.sp-cb-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(0,168,120,.1)}
+.sp-cb-input.err{border-color:var(--red);box-shadow:0 0 0 3px rgba(220,38,38,.09)}
+.sp-cb-panel{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--border);border-radius:10px;box-shadow:0 14px 40px rgba(10,37,64,.16);max-height:280px;overflow-y:auto;display:none;padding:4px}
+.sp-cb-panel.open{display:block}
+.sp-cb-group{font-size:10px;font-weight:700;color:var(--slate-muted);text-transform:uppercase;letter-spacing:.08em;padding:8px 10px 4px;position:sticky;top:0;background:#fff}
+.sp-cb-opt{display:flex;align-items:baseline;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:7px;cursor:pointer;font-size:14px;color:var(--navy);line-height:1.3}
+.sp-cb-opt:hover,.sp-cb-opt.active{background:var(--green-light)}
+.sp-cb-name{font-weight:500}
+.sp-cb-sub{font-size:11px;color:var(--slate-muted);flex-shrink:0}
+.sp-cb-empty{padding:10px;font-size:13px;color:var(--slate-light)}
+.sp-cb-manual{margin-top:2px;font-size:13px;color:var(--slate);background:var(--warm-white)}
+.sp-cb-manual strong{color:var(--navy)}
+.sp-warn{display:none;font-size:11.5px;color:var(--amber);font-weight:600;margin-top:3px;line-height:1.4;align-items:flex-start;gap:5px;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:7px;padding:7px 9px}
+.sp-warn.on{display:flex}
+.sp-warn::before{content:'⚠';flex-shrink:0}
 
 /* Button */
 .tool-btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -438,6 +499,14 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .nf-body strong{color:var(--navy)}
 .nf-cta{display:inline-flex;align-items:center;gap:6px;background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s}
 .nf-cta:hover{background:#b91c1c}
+.vf-icon{background:var(--amber-light)}
+.vf-icon svg{stroke:var(--amber)}
+.vf-checklist{max-width:420px;margin:0 auto 1.25rem;text-align:left;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:10px;padding:14px 18px}
+.vf-checklist-h{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:6px}
+.vf-checklist ul{margin:0;padding-left:18px}
+.vf-checklist li{font-size:13px;color:var(--slate);line-height:1.7}
+.vf-cta{background:var(--navy)}
+.vf-cta:hover{background:var(--green)}
 .nf-note{font-size:11px;color:var(--slate-muted);margin-top:10px}
 .reset-btn{background:none;border:none;color:var(--slate-light);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:14px;display:block;width:100%;text-align:center}
 .reset-btn:hover{color:var(--navy)}
@@ -620,33 +689,78 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   .sentiment-cols,.cs-grid,.ai-platforms{grid-template-columns:1fr}
   .tool-card{padding:1.1rem}
 }
+/* ── Mobile card carousel (≤767px only; desktop & tablet untouched) ── */
+@media(max-width:767px){
+  .dm-car-on{
+    position:relative;
+    display:flex !important;
+    flex-wrap:nowrap !important;
+    overflow-x:auto;
+    overflow-y:hidden;
+    scroll-snap-type:x mandatory;
+    scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    gap:14px !important;
+    padding:4px 16px !important;
+    margin:1.25rem -4px 0 !important;
+  }
+  .dm-car-on::-webkit-scrollbar{display:none}
+  .dm-car-on > *{
+    flex:0 0 100% !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    scroll-snap-align:center;
+    box-sizing:border-box;
+  }
+  .dm-car-dots{display:flex;justify-content:center;gap:8px;margin-top:18px}
+  .dm-car-dot{
+    width:8px;height:8px;padding:0;border:none;border-radius:50%;cursor:pointer;
+    background:rgba(10,37,64,.18);transition:width .3s ease,background .3s ease;
+  }
+  .dm-car-dot.active{width:22px;border-radius:4px;background:var(--green,#00A878)}
+}
+@media(min-width:768px){.dm-car-dots{display:none}}
+/* ── Learn About Visibility: compact 2-col on mobile (≤767px); desktop/tablet untouched) ── */
+@media(max-width:767px){
+  .learn-section{padding:2.75rem 1rem}
+  .learn-grid{grid-template-columns:repeat(2,1fr);gap:16px;margin-top:1.5rem}
+  .learn-card{padding:16px}
+  .learn-icon{width:32px;height:32px;border-radius:8px;margin-bottom:0.6rem;font-size:16px}
+  .learn-card h3{font-size:15px;margin-bottom:4px}
+  .learn-card p{font-size:13px;line-height:1.45;margin-bottom:0.75rem}
+  .learn-cta{font-size:12px}
+}
+@media(max-width:379px){
+  .learn-grid{grid-template-columns:repeat(2,1fr);gap:12px}
+  .learn-card{padding:13px}
+  .learn-icon{width:28px;height:28px;margin-bottom:0.5rem;font-size:14px}
+  .learn-card h3{font-size:14px}
+  .learn-card p{font-size:12px}
+}
 </style>
 </head>
 <body>
 
-<nav>
-  <a class="nav-logo" href="/">
-    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
-    <div class="logo-word">The Doc <span>Mirror</span></div>
-  </a>
-  <div class="nav-mid">
-    <a href="#how-it-works">How it works</a>
-    <a href="#tool">Free audit</a>
-    <a href="/pages/pricing.html">Pricing</a>
-    <a href="/pages/resources.html">Resources</a>
-    <a href="#about">About</a>
-    <a href="#faq">FAQ</a>
-  </div>
-  <div style="display:flex;align-items:center;gap:10px">
-    <a href="/pages/auth.html?tab=login" style="font-size:.82rem;color:var(--slate-light);text-decoration:none;font-weight:500;padding:7px 12px">Log In</a>
-    <a class="nav-cta" href="#tool">Check free →</a>
-  </div>
-</nav>
+<div id="dm-header"></div>
 
 <section class="hero" id="tool">
   <div class="hero-eyebrow">Free &middot; No login &middot; 60 seconds</div>
   <h1>How your patients see you on ChatGPT, <em>AI</em> and Google?</h1>
   <p class="hero-sub">Patients no longer just Google. They ask ChatGPT, Gemini, and Claude. Find out where your practice ranks across all of them &mdash; in 60 seconds, for free.</p>
+  <div class="analyzed-on" aria-label="Platforms analyzed by The Doc Mirror">
+    <div class="analyzed-label">Analyzed on</div>
+    <div class="analyzed-pill">
+      <span class="analyzed-item"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>Google</span>
+      <span class="analyzed-item"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7Z" fill="#EA4335"/><path d="M5.6 6.2 12 11.6 18.4 6.2A7 7 0 0 0 5.6 6.2Z" fill="#4285F4"/><path d="M5.6 6.2A7 7 0 0 0 5 9c0 2.2 1.35 5 3.05 7.55L12 11.6 5.6 6.2Z" fill="#FBBC05" opacity=".95"/><path d="M12 22c1.6-1.83 3.95-4.78 5.5-7.7L12 11.6 8.05 16.55C9.6 18.9 11.1 20.96 12 22Z" fill="#34A853"/><circle cx="12" cy="9" r="2.5" fill="#fff"/></svg>Maps</span>
+      <span class="analyzed-item is-chatgpt"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6 6 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.52 2.9A6 6 0 0 0 19.02 19.8a5.98 5.98 0 0 0 4-2.9 6.05 6.05 0 0 0-.74-7.09Zm-9.02 12.6a4.48 4.48 0 0 1-2.88-1.04l.14-.08 4.78-2.76a.78.78 0 0 0 .39-.68v-6.74l2.02 1.17a.07.07 0 0 1 .04.05v5.58a4.5 4.5 0 0 1-4.49 4.49Zm-9.66-4.13a4.47 4.47 0 0 1-.54-3.01l.14.08 4.78 2.76a.78.78 0 0 0 .78 0l5.84-3.37v2.33a.08.08 0 0 1-.03.06l-4.83 2.79a4.5 4.5 0 0 1-6.14-1.64Zm-1.26-10.4a4.48 4.48 0 0 1 2.34-1.97v5.68a.78.78 0 0 0 .39.68l5.84 3.37-2.02 1.17a.07.07 0 0 1-.07 0L4.04 14.7a4.5 4.5 0 0 1-1.7-6.8Zm16.6 3.86-5.84-3.37 2.02-1.16a.07.07 0 0 1 .07 0l4.83 2.78a4.5 4.5 0 0 1-.68 8.12V12.4a.78.78 0 0 0-.4-.65ZM21.6 8.49l-.14-.08-4.78-2.77a.78.78 0 0 0-.78 0L10.06 9V6.68a.08.08 0 0 1 .03-.07l4.83-2.78a4.5 4.5 0 0 1 6.68 4.66ZM8.95 13.6 6.93 12.43a.07.07 0 0 1-.04-.06V6.8a4.5 4.5 0 0 1 7.37-3.45l-.14.08-4.78 2.76a.78.78 0 0 0-.39.68v6.73Zm1.1-2.36L12.65 9.7l2.6 1.5v3l-2.6 1.5-2.6-1.5v-3Z"/></svg>ChatGPT</span>
+      <span class="analyzed-item"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="dm-gemini-grad" x1="2" y1="20" x2="22" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4285F4"/><stop offset=".5" stop-color="#9168C0"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs><path fill="url(#dm-gemini-grad)" d="M12 2c.45 4.86 4.69 9.1 9.55 9.55v.9C16.69 12.9 12.45 17.14 12 22h-.9C10.66 17.14 6.42 12.9 1.55 12.45v-.9C6.42 11.1 10.66 6.86 11.1 2h.9Z"/></svg>Gemini</span>
+      <span class="analyzed-item"><svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M2.5 12h19M5.4 5.4l13.2 13.2M18.6 5.4 5.4 18.6"/></svg>Claude</span>
+    </div>
+  </div>
   <div class="hero-stats">
     <div class="hero-stat"><div class="n">77%</div><div class="l">of patients Google their doctor before booking</div><div class="stat-src-hero">Healthgrades, 2024</div></div>
     <div class="hero-stat"><div class="n">1 in 3</div><div class="l">now ask AI tools to recommend a doctor</div><div class="stat-src-hero">Pew Research, 2025</div></div>
@@ -733,29 +847,31 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 
     <div id="inp">
       <div class="field-grid">
-        <div class="field" id="ff">
-          <label for="fn">First name</label>
-          <input type="text" id="fn" placeholder="e.g. Sarah" autocomplete="given-name">
-          <div class="field-err" id="ef" role="alert">Enter your first name</div>
-        </div>
-        <div class="field" id="fl">
-          <label for="ln">Last name</label>
-          <input type="text" id="ln" placeholder="e.g. Johnson" autocomplete="family-name">
-          <div class="field-err" id="el" role="alert">Enter your last name</div>
+        <div class="name-ac" id="name-ac">
+          <div class="field" id="ff">
+            <label for="fn">First name</label>
+            <input type="text" id="fn" placeholder="e.g. Sarah" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+            <div class="field-err" id="ef" role="alert">Enter your first name</div>
+          </div>
+          <div class="field" id="fl">
+            <label for="ln">Last name</label>
+            <input type="text" id="ln" placeholder="e.g. Johnson" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+            <div class="field-err" id="el" role="alert">Enter your last name</div>
+          </div>
+          <input type="hidden" id="place-id">
+          <div class="dr-ac-panel" id="dr-ac-panel" role="listbox" aria-label="Matching doctors"></div>
         </div>
         <div class="field" id="fsp">
-          <label for="sp">Specialty</label>
-          <select id="sp">
-            <option value="">Select your specialty</option>
-            <optgroup label="Primary Care">
-              <option>Family Medicine</option><option>General Practitioner</option><option>Internal Medicine</option><option>Pediatrician</option>
-            </optgroup>
-            <optgroup label="Specialties">
-              <option>Cardiologist</option><option>Dermatologist</option><option>Gastroenterologist</option><option>Neurologist</option><option>OB/GYN</option><option>Oncologist</option><option>Ophthalmologist</option><option>Orthopedic Surgeon</option><option>Psychiatrist</option><option>Pulmonologist</option><option>Urologist</option>
-            </optgroup>
-            <optgroup label="Other"><option>Dentist</option><option>Oral Surgeon</option><option>Other</option></optgroup>
-          </select>
+          <label for="sp-input">Specialty</label>
+          <div class="sp-cb" id="sp-combobox">
+            <input type="text" id="sp-input" class="sp-cb-input" placeholder="Search e.g. heart, skin, teeth, IVF…" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sp-cb-list">
+            <input type="hidden" id="sp">
+            <input type="hidden" id="sp-parent">
+            <input type="hidden" id="detected-specialty">
+            <div class="sp-cb-panel" id="sp-cb-list" role="listbox" aria-label="Medical specialties"></div>
+          </div>
           <div class="field-err" id="esp" role="alert">Select your specialty</div>
+          <div class="sp-warn" id="sp-warn" role="alert"></div>
         </div>
         <div class="field" id="fct">
           <label for="ct">City, State</label>
@@ -803,6 +919,21 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
       <button class="nf-cta" onclick="showWL()" type="button">Get your free step-by-step claim guide</button>
       <div class="nf-note">We&rsquo;ll show you how to claim and verify your listing in under 15 minutes.</div>
       <button class="reset-btn" onclick="resetTool()" type="button">&larr; Try a different name</button>
+    </div>
+
+    <div class="nf-state vf-state" id="vf" role="alert">
+      <div class="nf-icon vf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+      <div class="nf-title">Doctor verification failed</div>
+      <p class="nf-body" id="vf-msg">We could not confidently verify this doctor with the entered city and speciality.</p>
+      <div class="vf-checklist">
+        <div class="vf-checklist-h">Please check:</div>
+        <ul>
+          <li>Doctor name spelling</li>
+          <li>City</li>
+          <li>Speciality</li>
+        </ul>
+      </div>
+      <button class="nf-cta vf-cta" onclick="resetTool()" type="button">Try Again</button>
     </div>
 
     <div class="results-section" id="rs">
@@ -1571,25 +1702,25 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
     <h2 class="sec-h2">Learn why patients find<br>some doctors first</h2>
     <p style="color:var(--slate-light);font-size:1rem;margin-bottom:0">Understand how Google, AI search, reviews, and online signals affect your visibility before you unlock your full report.</p>
     <div class="learn-grid">
-      <a class="learn-card" href="/pages/ai-visibility-for-doctors.html">
+      <a class="learn-card" href="/ai-visibility-for-doctors">
         <div class="learn-icon">&#x2728;</div>
         <h3>AI Visibility Guide</h3>
         <p>How doctors appear in ChatGPT and AI search.</p>
         <span class="learn-cta">Read guide</span>
       </a>
-      <a class="learn-card" href="/pages/doctor-visibility-score.html">
+      <a class="learn-card" href="/doctor-visibility-score">
         <div class="learn-icon">&#x1F4CA;</div>
         <h3>Doctor Visibility Score</h3>
         <p>What your score means and how it is calculated.</p>
         <span class="learn-cta">Read guide</span>
       </a>
-      <a class="learn-card" href="/pages/how-doctors-rank-in-chatgpt.html">
+      <a class="learn-card" href="/how-doctors-rank-in-chatgpt">
         <div class="learn-icon">&#x1F4AC;</div>
         <h3>ChatGPT Ranking Guide</h3>
         <p>Why AI may recommend competitors before you.</p>
         <span class="learn-cta">Read guide</span>
       </a>
-      <a class="learn-card" href="/pages/google-visibility-for-doctors.html">
+      <a class="learn-card" href="/google-visibility-for-doctors">
         <div class="learn-icon">&#x1F50D;</div>
         <h3>Google Visibility Guide</h3>
         <p>How Google Search and Maps affect patient discovery.</p>
@@ -1656,6 +1787,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         <div class="p-desc">Weekly automated checks. Know instantly when something changes before patients notice.</div>
         <ul class="p-feats">
           <li>Everything in Full Audit</li>
+          <li>Live Visibility Dashboard &mdash; track scores, competitors, reviews &amp; AI rankings in real time</li>
           <li>Weekly patient view report</li>
           <li>Competitor rank tracking</li>
           <li>AI-generated fix suggestions</li>
@@ -1691,61 +1823,7 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   </div>
 </section>
 
-<footer class="site-footer">
-  <div class="footer-card">
-    <div class="footer-grid">
-      <div class="footer-col footer-brand">
-        <div class="footer-logo">The Doc Mirror</div>
-        <p>Get more patients to your practice by improving your visibility where patients are searching.</p>
-        <div class="footer-social">
-          <a class="social-chip" href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
-          <a class="social-chip" href="#" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
-          <a class="social-chip" href="#" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"/><circle cx="4" cy="4" r="2"/></svg></a>
-          <a class="social-chip" href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>PRODUCT</h4>
-        <div class="footer-links">
-          <a href="#how-it-works">How it works</a>
-          <a href="#tool">Free audit</a>
-          <a href="#pricing">Pricing</a>
-          <a href="#about">About</a>
-          <a href="#faq">FAQ</a>
-          <a href="#tool">Check my visibility</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>RESOURCES</h4>
-        <div class="footer-links">
-          <a href="/pages/ai-visibility-for-doctors.html">AI Visibility for Doctors</a>
-          <a href="/pages/doctor-visibility-score.html">Doctor Visibility Score</a>
-          <a href="/pages/how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a>
-          <a href="/pages/google-visibility-for-doctors.html">Google Visibility Guide</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>COMPANY</h4>
-        <div class="footer-links">
-          <a href="#about">About us</a>
-          <a href="mailto:thedocmirror@gmail.com">Contact</a>
-          <a href="./pages/privacy.html">Privacy</a>
-          <a href="./pages/terms.html">Terms</a>
-        </div>
-      </div>
-      <div class="footer-col">
-        <h4>SUPPORT</h4>
-        <div class="footer-links">
-          <a href="#faq">FAQ</a>
-          <a href="./pages/help-center.html">Help Center</a>
-          <a href="mailto:thedocmirror@gmail.com">Contact Support</a>
-        </div>
-      </div>
-    </div>
-    <div class="footer-divider"></div>
-    <div class="footer-bottom">© 2025 The Doc Mirror. All rights reserved.</div>
-  </div>
-</footer>
+<div id="dm-footer"></div>
 
 <script>
 // ── CONFIG ─────────────────────────────────────────────────────────────────
@@ -1764,7 +1842,22 @@ function setErr(fid,eid,on){
 }
 function clearAll(){['ff','fl','fsp','fct'].forEach(function(x,i){setErr(x,['ef','el','esp','ect'][i],false)});}
 ['fn','ln','ct'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){var m={fn:'ff',ln:'fl',ct:'fct'},em={fn:'ef',ln:'el',ct:'ect'};setErr(m[id],em[id],false)});});
-document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);});
+document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);if(window.__updateSpecialtyConflict)window.__updateSpecialtyConflict();});
+(function(){var si=document.getElementById('sp-input');if(si)si.addEventListener('input',function(){setErr('fsp','esp',false);});})();
+
+// Warn (and block) when the user-selected specialty contradicts the verified
+// Google result. Returns true when there is an unresolved conflict.
+window.__updateSpecialtyConflict=function(){
+  var warn=document.getElementById('sp-warn');
+  var sel=(document.getElementById('sp')||{}).value||'';
+  var det=(document.getElementById('detected-specialty')||{}).value||'';
+  var conflict=!!(det && sel && window.DoctorNameParser && window.DoctorNameParser.specialtyConflict(sel,det));
+  if(warn){
+    if(conflict){warn.textContent='Selected specialty does not match the verified Google result ('+det+').';warn.classList.add('on');}
+    else{warn.textContent='';warn.classList.remove('on');}
+  }
+  return conflict;
+};
 
 // ── VALIDATE ───────────────────────────────────────────────────────────────
 function validate(){
@@ -1783,8 +1876,9 @@ window.runCheck = async function() {
   var fn = (document.getElementById('fn') || {}).value || '';
   var ln = (document.getElementById('ln') || {}).value || '';
   var sp = (document.getElementById('sp') || {}).value || '';
+  var spp = (document.getElementById('sp-parent') || {}).value || '';
   var ct = (document.getElementById('ct') || {}).value || '';
-  fn = fn.trim(); ln = ln.trim(); sp = sp.trim(); ct = ct.trim();
+  fn = fn.trim(); ln = ln.trim(); sp = sp.trim(); spp = spp.trim(); ct = ct.trim();
 
   // Validate — use existing field-error UI
   clearAll();
@@ -1799,11 +1893,19 @@ window.runCheck = async function() {
     return;
   }
 
+  // Block when the chosen specialty contradicts the verified Google result.
+  if (window.__updateSpecialtyConflict && window.__updateSpecialtyConflict()) {
+    setErr('fsp','esp',false);
+    var w = document.getElementById('sp-warn'); if (w) w.scrollIntoView({behavior:'smooth',block:'center'});
+    return;
+  }
+
   // Clear any stale report data from previous sessions before starting fresh
   try { localStorage.removeItem('docmirrorPreviewReport'); localStorage.removeItem('tdm_free_preview'); } catch(e) {}
 
+  var placeId = (document.getElementById('place-id') || {}).value || '';
   if (!API_READY) { runFreePreview({fn:fn,ln:ln,sp:sp,ct:ct}); return; }
-  doAudit({fn:fn,ln:ln,sp:sp,ct:ct});
+  doAudit({fn:fn,ln:ln,sp:sp,spp:spp,ct:ct,placeId:placeId.trim()});
 };
 function runURL(){
   var val=document.getElementById('mu').value.trim();
@@ -1854,9 +1956,10 @@ async function doAudit(p){
     setS(5,'spin');await wait(400);
     for(var i=1;i<=5;i++)setS(i,'dn');
     clearTimeout(_tm);await wait(600);
-    if(d.notFound){
+    if(d.verified===false || d.notFound){
+      // Verification failed — never store or show preview/competitor data.
       try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
-      showNF(p);
+      showVF(d,p);
     }else{
       try{localStorage.setItem('docmirrorPreviewReport',JSON.stringify(d));}catch(e2){}
       window.location.href='./pages/preview-report.html';
@@ -2324,6 +2427,15 @@ function showNF(p){
   _sc=0;_dn='Dr. '+(p.fn||'')+' '+(p.ln||'');
   document.getElementById('nf').scrollIntoView({behavior:'smooth',block:'start'});
 }
+// Doctor verification failed — show error card, NO preview/competitor data.
+function showVF(d,p){
+  document.getElementById('ls').classList.remove('active');
+  document.getElementById('inp').style.display='none';
+  var msg=(d&&d.message)?d.message:"We couldn't confidently verify this doctor with the entered city and speciality.";
+  var el=document.getElementById('vf-msg');if(el)el.textContent=msg;
+  document.getElementById('vf').classList.add('active');
+  document.getElementById('vf').scrollIntoView({behavior:'smooth',block:'start'});
+}
 function showWL(){
   document.getElementById('nf').classList.remove('active');
   document.getElementById('inp').style.display='none';
@@ -2355,12 +2467,12 @@ function submitEmail(){
 // ── SHARE ──────────────────────────────────────────────────────────────────
 function shareWA(){
   var name=_dn||'my Google listing',sc=_sc||0;
-  var url=_aid?'https://thedocmirror.com/share/'+_aid:'https://thedocmirror.com';
+  var url=_aid?'https://www.thedocmirror.com/share/'+_aid:'https://www.thedocmirror.com';
   var txt='I just checked '+name+' on The Doc Mirror — Doctor Visibility Score: '+sc+'/100. Check yours free: '+url;
   window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank','noopener');
 }
 function copyLnk(){
-  var url=_aid?'https://thedocmirror.com/share/'+_aid:'https://thedocmirror.com';
+  var url=_aid?'https://www.thedocmirror.com/share/'+_aid:'https://www.thedocmirror.com';
   var ok=function(){var c=document.getElementById('cok');c.classList.add('on');setTimeout(function(){c.classList.remove('on');},2500);};
   if(navigator.clipboard){navigator.clipboard.writeText(url).then(ok).catch(function(){fb(url,ok);});}else fb(url,ok);
 }
@@ -2389,7 +2501,7 @@ function doOneTime(){
 
 // ── RESET ──────────────────────────────────────────────────────────────────
 function resetTool(){
-  ['ls','rs','nf'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
+  ['ls','rs','nf','vf'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
   document.getElementById('inp').style.display='block';
   document.getElementById('wl').classList.remove('on');
   document.getElementById('tm').classList.remove('on');
@@ -2468,5 +2580,12 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+<script src="/js/medical-specialties.js" defer></script>
+<script src="/js/specialty-combobox.js" defer></script>
+<script src="/js/doctor-name-parser.js" defer></script>
+<script src="/js/doctor-autocomplete.js" defer></script>
+<script src="/js/layout.js" defer></script>
+<script src="/js/branding.js" defer></script>
+<script src="/js/mobile-carousel.js" defer></script>
 </body>
 </html>
