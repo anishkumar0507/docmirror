@@ -8,7 +8,7 @@
 
 import { MetadataRoute } from 'next'
 
-const BASE = 'https://thedocmirror.com'
+const BASE = 'https://www.thedocmirror.com'
 const TODAY = new Date().toISOString().split('T')[0]
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
