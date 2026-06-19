@@ -12,10 +12,10 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Doctor Visibility Checker | Google & AI Visibility Audit | The Doc Mirror</title>
-<meta name="description" content="Analyze how patients find your practice across Google Search, Maps, ChatGPT, Gemini, and Claude. Compare against competitors and uncover visibility issues in minutes.">
-<meta property="og:title" content="Doctor Visibility Checker | Google & AI Visibility Audit | The Doc Mirror">
-<meta property="og:description" content="Analyze how patients find your practice across Google Search, Maps, ChatGPT, Gemini, and Claude. Compare against competitors and uncover visibility issues in minutes.">
+<title>Doctor Visibility Checker — Google &amp; AI | The Doc Mirror</title>
+<meta name="description" content="See how patients find your practice on Google Search, Maps, ChatGPT, Gemini, and Claude — and how you compare to nearby competitors in minutes.">
+<meta property="og:title" content="Doctor Visibility Checker — Google &amp; AI | The Doc Mirror">
+<meta property="og:description" content="See how patients find your practice on Google Search, Maps, ChatGPT, Gemini, and Claude — and how you compare to nearby competitors in minutes.">
 <meta property="og:url" content="https://www.thedocmirror.com/">
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://www.thedocmirror.com/">
@@ -740,6 +740,30 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   .learn-icon{width:28px;height:28px;margin-bottom:0.5rem;font-size:14px}
   .learn-card h3{font-size:14px}
   .learn-card p{font-size:12px}
+}
+/* ── Hero stats: premium metric cards on mobile (≤767px); desktop unchanged ── */
+@media(max-width:767px){
+  .hero-stats{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:14px;
+    flex-wrap:initial;
+    max-width:420px;
+    margin:0 auto 2rem;
+  }
+  .hero-stat{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:18px;
+    padding:18px 14px;
+    backdrop-filter:blur(8px);
+    -webkit-backdrop-filter:blur(8px);
+  }
+  .hero-stat:nth-child(3){grid-column:1 / -1}
+  .hero-stat .n{font-size:1.9rem}
+  .hero-stat .l{font-size:12px;color:rgba(255,255,255,.6);max-width:100%;margin-top:6px}
+  .stat-src-hero{color:rgba(255,255,255,.34)}
 }
 </style>
 </head>

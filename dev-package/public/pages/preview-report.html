@@ -47,9 +47,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .report-hero .hero-sub{font-size:.97rem;color:rgba(255,255,255,.55);position:relative}
 
 /* ── NOTICE ── */
-.preview-notice{background:#fff;border-bottom:1px solid var(--border);padding:.65rem clamp(1rem,4vw,2.5rem);display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--slate-muted)}
-.preview-notice svg{width:14px;height:14px;flex-shrink:0;color:var(--slate-muted)}
-.preview-notice strong{color:var(--slate);font-weight:600}
 
 /* ── LAYOUT ── */
 main{max-width:860px;margin:0 auto;padding:1.5rem clamp(1rem,3vw,1.5rem) 4rem;display:flex;flex-direction:column;gap:1.25rem}
@@ -91,29 +88,30 @@ main{max-width:860px;margin:0 auto;padding:1.5rem clamp(1rem,3vw,1.5rem) 4rem;di
 .pill-val.pv-strong{color:var(--green)}
 .pill-val.pv-mid{color:var(--amber)}
 .pill-val.pv-weak{color:var(--red)}
-.score-note{font-size:.78rem;color:var(--slate-muted);border-top:1px solid var(--border);padding-top:.85rem;line-height:1.5}
 @media(max-width:480px){.score-pills{grid-template-columns:repeat(2,1fr)}}
 
 /* ── AI SNAPSHOT CARD ── */
 .dark-card{background:linear-gradient(135deg,#0A2540 0%,#142E50 100%);border:none}
 .dark-card .card-inner{color:#fff}
 .dark-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.45);margin-bottom:3px}
-.dark-title{font-size:1rem;font-weight:700;color:#fff;margin-bottom:1.25rem}
-.ai-row{display:flex;align-items:center;gap:12px;margin-bottom:.9rem}
+.dark-card .card-inner{padding:1.75rem 1.5rem}
+.dark-title{font-size:1rem;font-weight:700;color:#fff;margin-bottom:1.5rem}
+.ai-row{display:flex;align-items:center;gap:14px;margin-bottom:1.25rem}
 .ai-row:last-of-type{margin-bottom:0}
-.ai-platform-name{font-size:.82rem;font-weight:600;color:rgba(255,255,255,.75);min-width:80px;flex-shrink:0}
-.ai-score-val{font-size:1.15rem;font-weight:700;font-family:'DM Mono',monospace;min-width:36px;text-align:right;flex-shrink:0}
+.ai-logo{width:44px;height:44px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ai-logo svg{width:44px;height:44px;display:block}
+.ai-platform-name{font-size:.85rem;font-weight:600;color:rgba(255,255,255,.78);min-width:74px;flex-shrink:0}
+.ai-score-val{font-size:1.45rem;font-weight:800;font-family:'DM Mono',monospace;min-width:42px;text-align:right;flex-shrink:0;letter-spacing:-.02em}
 .ai-score-out{font-size:.72rem;color:rgba(255,255,255,.35);margin-left:1px;flex-shrink:0}
-.ai-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.ai-bar-wrap{flex:1;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:visible}
 .ai-bar-fill{height:100%;border-radius:3px;transition:width .6s ease}
-.fill-strong{background:#1D9E75}
-.fill-mid{background:#EF9F27}
-.fill-weak{background:#E24B4A}
+.fill-strong{background:#1D9E75;box-shadow:0 0 12px rgba(29,158,117,.65)}
+.fill-mid{background:#EF9F27;box-shadow:0 0 12px rgba(239,159,39,.6)}
+.fill-weak{background:#E24B4A;box-shadow:0 0 12px rgba(226,75,74,.55)}
 .score-strong{color:#4ADE80}
 .score-mid{color:#FCD34D}
 .score-weak{color:#F87171}
-.ai-divider{height:1px;background:rgba(255,255,255,.1);margin:1rem 0}
-.ai-disclaimer{font-size:.78rem;color:rgba(255,255,255,.38);line-height:1.6;font-style:italic}
+@media(max-width:560px){.ai-logo,.ai-logo svg{width:40px;height:40px}.ai-platform-name{min-width:60px;font-size:.8rem}.ai-row{gap:10px}.ai-score-val{font-size:1.3rem;min-width:38px}}
 
 /* ── AI RECS CARD ── */
 .recs-query{font-size:.9rem;color:var(--slate);font-style:italic;background:var(--warm);border-radius:8px;border-left:3px solid var(--green);padding:8px 12px;margin-bottom:1rem;font-family:'DM Mono',monospace}
@@ -132,9 +130,17 @@ table.ldr-table th:first-child{text-align:left}
 table.ldr-table td{font-size:.9rem;padding:10px 12px;border-bottom:1px solid var(--border);text-align:center;color:var(--slate);font-family:'DM Mono',monospace}
 table.ldr-table tr:last-child td{border-bottom:none}
 table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;color:var(--navy);text-align:left}
-.you-row td{background:rgba(220,38,38,.05)!important;color:#991b1b!important}
-.you-row td:first-child{color:#991b1b!important}
-.you-badge{font-size:10px;font-weight:700;background:rgba(220,38,38,.12);color:var(--red);padding:1px 6px;border-radius:10px;margin-left:5px;font-family:'DM Sans',sans-serif}
+.you-row td{background:rgba(0,168,120,.08)!important}
+.you-row td:first-child{color:var(--navy)!important;font-weight:700}
+.you-badge{font-size:10px;font-weight:700;background:rgba(0,168,120,.14);color:var(--green-dark);padding:1px 6px;border-radius:10px;margin-left:5px;font-family:'DM Sans',sans-serif}
+.ldr-rowname{display:flex;align-items:center;gap:10px;text-align:left}
+.ldr-rank{flex-shrink:0;width:28px;height:28px;border-radius:50%;background:var(--navy);color:#fff;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif}
+.ldr-rank.r1{background:#D4AF37}
+.ldr-rank.r2{background:#9AA4AF}
+.ldr-rank.r3{background:#B87333}
+.ldr-docname{min-width:0;line-height:1.3;overflow-wrap:anywhere}
+.you-row .ldr-docname{font-weight:700}
+@media(max-width:560px){table.ldr-table{min-width:0}table.ldr-table td,table.ldr-table th{padding:10px 8px}.ldr-rank{width:26px;height:26px;font-size:.72rem}.ldr-rowname{gap:8px}}
 .table-note{font-size:.76rem;color:var(--slate-muted);padding:.75rem 1.5rem 1.25rem;border-top:1px solid var(--border)}
 
 /* ── LOCKED CARDS ── */
@@ -220,25 +226,6 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
 .recs-note{font-size:.76rem;color:var(--slate-muted);padding:.65rem 0 0;line-height:1.55;border-top:1px solid var(--border);margin-top:.75rem}
 
 /* ── FOOTER ── */
-footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 1.5rem;margin-top:3rem}
-.footer-inner{max-width:1040px;margin:0 auto}
-.footer-cols{display:grid;grid-template-columns:1.8fr 1fr 1.4fr 1fr 1fr;gap:2.5rem;padding-bottom:2rem}
-.footer-brand{display:flex;flex-direction:column;gap:.6rem}
-.footer-brand-logo{display:flex;align-items:center;gap:8px;text-decoration:none}
-.footer-brand-mark{width:28px;height:28px;background:var(--green);border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.footer-brand-mark svg{width:16px;height:16px}
-.footer-brand-name{font-size:15px;font-weight:700;color:#fff;letter-spacing:-.02em}
-.footer-brand-name span{color:var(--green)}
-.footer-tagline{font-size:.875rem;color:#8fa3b8;line-height:1.6;margin:0}
-.footer-col h4{font-size:.75rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.08em;margin:0 0 .85rem;padding-bottom:.45rem;border-bottom:2px solid var(--green);display:inline-block}
-.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:.55rem;margin:0;padding:0}
-.footer-col a{color:#8fa3b8;text-decoration:none;font-size:.875rem;transition:color .15s}
-.footer-col a:hover{color:var(--green)}
-.footer-divider{border:none;border-top:1px solid rgba(255,255,255,.1);margin:0 0 1.25rem}
-.footer-bottom{display:flex;justify-content:center}
-.footer-bottom p{font-size:.8rem;color:#5a7080;margin:0}
-@media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
-@media(max-width:480px){.footer-cols{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -266,11 +253,6 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
   <p class="hero-sub" id="hero-sub">&nbsp;</p>
 </div>
 
-<!-- Notice bar -->
-<div class="preview-notice">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-  <span><strong>Preview only.</strong> Scores are signal-based estimates derived from publicly visible profile data — not from direct Google, ChatGPT, Gemini, or Claude APIs. Unlock the full report for verified data.</span>
-</div>
 
 <!-- No-data fallback -->
 <div id="no-data" style="display:none">
@@ -311,7 +293,6 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="pill-val" id="pill-claude">--</div>
         </div>
       </div>
-      <div class="score-note">Signal-based preview &middot; Derived from publicly visible profile signals, not official APIs &middot; Results vary by practice</div>
     </div>
   </div>
 
@@ -376,31 +357,33 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
       <div class="dark-label">AI Search Visibility Snapshot</div>
       <div class="dark-title">Visibility Signal Scores across AI platforms</div>
       <div class="ai-row">
+        <div class="ai-logo"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M22.28 9.82a5.98 5.98 0 0 0-.52-4.91 6.05 6.05 0 0 0-6.51-2.9A6 6 0 0 0 4.98 4.18a5.98 5.98 0 0 0-4 2.9 6.05 6.05 0 0 0 .74 7.1 5.98 5.98 0 0 0 .51 4.91 6.05 6.05 0 0 0 6.52 2.9A6 6 0 0 0 19.02 19.8a5.98 5.98 0 0 0 4-2.9 6.05 6.05 0 0 0-.74-7.09Zm-9.02 12.6a4.48 4.48 0 0 1-2.88-1.04l.14-.08 4.78-2.76a.78.78 0 0 0 .39-.68v-6.74l2.02 1.17a.07.07 0 0 1 .04.05v5.58a4.5 4.5 0 0 1-4.49 4.49Zm-9.66-4.13a4.47 4.47 0 0 1-.54-3.01l.14.08 4.78 2.76a.78.78 0 0 0 .78 0l5.84-3.37v2.33a.08.08 0 0 1-.03.06l-4.83 2.79a4.5 4.5 0 0 1-6.14-1.64Zm-1.26-10.4a4.48 4.48 0 0 1 2.34-1.97v5.68a.78.78 0 0 0 .39.68l5.84 3.37-2.02 1.17a.07.07 0 0 1-.07 0L4.04 14.7a4.5 4.5 0 0 1-1.7-6.8Zm16.6 3.86-5.84-3.37 2.02-1.16a.07.07 0 0 1 .07 0l4.83 2.78a4.5 4.5 0 0 1-.68 8.12V12.4a.78.78 0 0 0-.4-.65ZM21.6 8.49l-.14-.08-4.78-2.77a.78.78 0 0 0-.78 0L10.06 9V6.68a.08.08 0 0 1 .03-.07l4.83-2.78a4.5 4.5 0 0 1 6.68 4.66ZM8.95 13.6 6.93 12.43a.07.07 0 0 1-.04-.06V6.8a4.5 4.5 0 0 1 7.37-3.45l-.14.08-4.78 2.76a.78.78 0 0 0-.39.68v6.73Zm1.1-2.36L12.65 9.7l2.6 1.5v3l-2.6 1.5-2.6-1.5v-3Z"/></svg></div>
         <div class="ai-platform-name">ChatGPT</div>
         <div class="ai-score-val score-weak" id="ai-chatgpt">--</div>
         <div class="ai-score-out">/100</div>
         <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-chatgpt" style="width:0%"></div></div>
       </div>
       <div class="ai-row">
+        <div class="ai-logo"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="pv-gemini-grad" x1="2" y1="20" x2="22" y2="4" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4285F4"/><stop offset=".5" stop-color="#9168C0"/><stop offset="1" stop-color="#D96570"/></linearGradient></defs><path fill="url(#pv-gemini-grad)" d="M12 2c.45 4.86 4.69 9.1 9.55 9.55v.9C16.69 12.9 12.45 17.14 12 22h-.9C10.66 17.14 6.42 12.9 1.55 12.45v-.9C6.42 11.1 10.66 6.86 11.1 2h.9Z"/></svg></div>
         <div class="ai-platform-name">Gemini</div>
         <div class="ai-score-val score-weak" id="ai-gemini">--</div>
         <div class="ai-score-out">/100</div>
         <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-gemini" style="width:0%"></div></div>
       </div>
       <div class="ai-row">
+        <div class="ai-logo"><svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5v19M2.5 12h19M5.4 5.4l13.2 13.2M18.6 5.4 5.4 18.6"/></svg></div>
         <div class="ai-platform-name">Claude</div>
         <div class="ai-score-val score-weak" id="ai-claude">--</div>
         <div class="ai-score-out">/100</div>
         <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-claude" style="width:0%"></div></div>
       </div>
       <div class="ai-row">
+        <div class="ai-logo"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></div>
         <div class="ai-platform-name">Google</div>
         <div class="ai-score-val score-mid" id="ai-google">--</div>
         <div class="ai-score-out">/100</div>
         <div class="ai-bar-wrap"><div class="ai-bar-fill" id="bar-google" style="width:0%"></div></div>
       </div>
-      <div class="ai-divider"></div>
-      <div class="ai-disclaimer">Signal-based estimate derived from publicly visible profile signals, review strength, website content, and competitor presence. These are not direct results from ChatGPT, Gemini, or Claude APIs.</div>
     </div>
   </div>
 
@@ -435,7 +418,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
         <div class="card-head-icon">&#x1F3C6;</div>
         <div>
           <div class="card-head-title">Competitor Visibility Leaderboard</div>
-          <div class="card-head-sub">Signal-based estimates &middot; Your row highlighted</div>
+          <div class="card-head-sub">Top competitors ranked by visibility score</div>
         </div>
       </div>
     </div>
@@ -605,57 +588,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
 
 </main>
 
-<footer>
-  <div class="footer-inner">
-    <div class="footer-cols">
-      <div class="footer-brand">
-        <a class="footer-brand-logo" href="/">
-          <div class="footer-brand-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#fff" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#fff"/></svg></div>
-          <span class="footer-brand-name">The Doc <span>Mirror</span></span>
-        </a>
-        <p class="footer-tagline">How your patients see you on ChatGPT, AI and Google?<br>Find out, free.</p>
-      </div>
-      <div class="footer-col">
-        <h4>Product</h4>
-        <ul>
-          <li><a href="/">Home</a></li>
-          <li><a href="./resources.html">Resources</a></li>
-          <li><a href="/#pricing">Pricing</a></li>
-          <li><a href="mailto:thedocmirror@gmail.com">Contact</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Resources</h4>
-        <ul>
-          <li><a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a></li>
-          <li><a href="./doctor-visibility-score.html">Doctor Visibility Score</a></li>
-          <li><a href="./how-doctors-rank-in-chatgpt.html">How Doctors Rank in ChatGPT</a></li>
-          <li><a href="./google-visibility-for-doctors.html">Google Visibility for Doctors</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Company</h4>
-        <ul>
-          <li><a href="/#about">About</a></li>
-          <li><a href="./privacy.html">Privacy</a></li>
-          <li><a href="./terms.html">Terms</a></li>
-        </ul>
-      </div>
-      <div class="footer-col">
-        <h4>Support</h4>
-        <ul>
-          <li><a href="/#faq">FAQ</a></li>
-          <li><a href="./help-center.html">Help Center</a></li>
-          <li><a href="mailto:thedocmirror@gmail.com">Contact Support</a></li>
-        </ul>
-      </div>
-    </div>
-    <hr class="footer-divider">
-    <div class="footer-bottom">
-      <p>&copy; 2026 The Doc Mirror. All rights reserved.</p>
-    </div>
-  </div>
-</footer>
+<div id="dm-footer"></div>
 
 <script>
 (function () {
@@ -747,8 +680,6 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
     }
 
     // Update notice bar wording for real data
-    var noticeSpan = document.querySelector('.preview-notice span');
-    if (noticeSpan) noticeSpan.innerHTML = '<strong>Google Places data.</strong> Rating, reviews, photos, and address are from the Google Places API. AI platform scores are signal-based estimates — not from direct AI API calls.';
 
     // Update hero badge
     var heroBadge = document.querySelector('.hero-badge');
@@ -851,21 +782,25 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
   // ── Leaderboard ───────────────────────────────────────────────────────────
   var tbody = document.getElementById('leaderboard-body');
   // Competitors: show name only, lock the score column
-  var rows = competitors.map(function(c) {
+  var rows = competitors.map(function(c, i) {
+    var rank = i + 1;
+    var rc = rank === 1 ? ' r1' : rank === 2 ? ' r2' : rank === 3 ? ' r3' : '';
     return '<tr>'
-      +'<td>'+escH(c.name)+'</td>'
-      +'<td style=”text-align:center;color:var(--slate-muted);letter-spacing:.12em;filter:blur(3px);user-select:none” aria-label=”Locked”>&#x2022;&#x2022;&#x2022;</td>'
+      +'<td><div class="ldr-rowname"><span class="ldr-rank'+rc+'">'+rank+'</span><span class="ldr-docname">'+escH(c.name)+'</span></div></td>'
+      +'<td style="text-align:center;color:var(--slate-muted);letter-spacing:.12em;filter:blur(3px);user-select:none" aria-label="Locked">&#x2022;&#x2022;&#x2022;</td>'
       +'</tr>';
   });
 
   if (rows.length === 0) {
-    rows.push('<tr><td colspan=”2” style=”text-align:center;color:var(--slate-muted);'
-      +'font-size:.85rem;padding:1rem 0”>No verified competitors found from Google Places.</td></tr>');
+    rows.push('<tr><td colspan="2" style="text-align:center;color:var(--slate-muted);'
+      +'font-size:.85rem;padding:1rem 0">No verified competitors found from Google Places.</td></tr>');
   }
 
   // Your row: show your real overall score
-  rows.push('<tr class=”you-row”><td>'+escH(doctorName)+' <span class=”you-badge”>You</span></td>'
-    +'<td style=”text-align:center”><strong>'+overallScore+'</strong></td></tr>');
+  var youRank = competitors.length + 1;
+  var youRc = youRank === 1 ? ' r1' : youRank === 2 ? ' r2' : youRank === 3 ? ' r3' : '';
+  rows.push('<tr class="you-row"><td><div class="ldr-rowname"><span class="ldr-rank'+youRc+'">'+youRank+'</span><span class="ldr-docname">'+escH(doctorName)+' <span class="you-badge">You</span></span></div></td>'
+    +'<td style="text-align:center"><strong>'+overallScore+'</strong></td></tr>');
   tbody.innerHTML = rows.join('');
 
 })();
@@ -1366,7 +1301,9 @@ function doActualCheckout() {
   // ── Leaderboard: show real competitor scores instead of blurred dots ─────────
   var tbody = document.getElementById('leaderboard-body');
   if (tbody && competitors.length) {
-    var lbRows = competitors.map(function(c) {
+    var lbRows = competitors.map(function(c, i) {
+      var rank = i + 1;
+      var rc = rank === 1 ? ' r1' : rank === 2 ? ' r2' : rank === 3 ? ' r3' : '';
       // Use googleScore from API; estimate if missing
       var gs = c.googleScore !== undefined ? c.googleScore
              : Math.min(99, Math.round(
@@ -1376,7 +1313,7 @@ function doActualCheckout() {
                ));
       var scoreColor = gs >= 70 ? '#00A878' : gs >= 45 ? '#D97706' : '#DC2626';
       return '<tr>' +
-        '<td style="font-family:\'DM Sans\',sans-serif;font-weight:600;color:var(--navy)">' + esc2(c.name) + '</td>' +
+        '<td style="font-family:\'DM Sans\',sans-serif;font-weight:600;color:var(--navy)"><div class="ldr-rowname"><span class="ldr-rank' + rc + '">' + rank + '</span><span class="ldr-docname">' + esc2(c.name) + '</span></div></td>' +
         '<td style="text-align:center;font-family:\'DM Mono\',monospace;font-weight:700;color:' + scoreColor + '">' + gs + '</td>' +
         '</tr>';
     });
@@ -1448,6 +1385,7 @@ function doActualCheckout() {
 })();
 </script>
 
+<script src="/js/layout.js" defer></script>
 <script src="/js/branding.js" defer></script>
 </body>
 </html>
