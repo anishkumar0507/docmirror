@@ -55,9 +55,9 @@
   </a>\
   <div class="dm-nav-mid">\
     <a href="/">Home</a>\
-    <a href="/pages/resources.html">Resources</a>\
-    <a href="/pages/pricing.html">Pricing</a>\
-    <a href="/pages/about.html">About</a>\
+    <a href="/resources">Resources</a>\
+    <a href="/pricing">Pricing</a>\
+    <a href="/about">About</a>\
     <a href="/#faq">FAQ</a>\
   </div>\
   <div class="dm-nav-right">\
@@ -85,8 +85,8 @@
         <div class="dm-footer-links">\
           <a href="/#how-it-works">How it works</a>\
           <a href="/#tool">Free audit</a>\
-          <a href="/pages/pricing.html">Pricing</a>\
-          <a href="/pages/about.html">About</a>\
+          <a href="/pricing">Pricing</a>\
+          <a href="/about">About</a>\
           <a href="/#faq">FAQ</a>\
           <a href="/#tool">Check my visibility</a>\
         </div>\
@@ -103,8 +103,8 @@
       <div class="dm-footer-col">\
         <h4>COMPANY</h4>\
         <div class="dm-footer-links">\
-          <a href="/pages/about.html">About Us</a>\
-          <a href="/pages/about.html#contact">Contact</a>\
+          <a href="/about">About Us</a>\
+          <a href="/about#contact">Contact</a>\
           <a href="/privacy">Privacy</a>\
           <a href="/terms">Terms</a>\
         </div>\
@@ -113,8 +113,8 @@
         <h4>SUPPORT</h4>\
         <div class="dm-footer-links">\
           <a href="/#faq">FAQ</a>\
-          <a href="/pages/help-center.html">Help Center</a>\
-          <a href="/pages/about.html#contact">Contact Support</a>\
+          <a href="/help-center">Help Center</a>\
+          <a href="/about#contact">Contact Support</a>\
         </div>\
       </div>\
     </div>\

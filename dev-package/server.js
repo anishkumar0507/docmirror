@@ -67,6 +67,10 @@ const CLEAN_PAGES = {
   '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
+  '/resources':                     'resources.html',
+  '/about':                         'about.html',
+  '/pricing':                       'pricing.html',
+  '/help-center':                   'help-center.html',
 };
 for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
   app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));

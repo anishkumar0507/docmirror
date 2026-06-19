@@ -140,7 +140,7 @@ async function init(){
 
   // Monitor users get the full dashboard; free users must pick a plan.
   if(plan==='monitor'){ window.location.replace('/dashboard.html'); return; }
-  if(plan!=='audit'){ window.location.replace('/pages/pricing.html'); return; }
+  if(plan!=='audit'){ window.location.replace('/pricing'); return; }
 
   el('auth-gate').classList.remove('show');
   el('app').style.display='';
