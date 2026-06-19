@@ -54,6 +54,29 @@ app.post('/api/webhook-razorpay', express.raw({ type: 'application/json' }), web
 
 app.use(express.json({ limit: '2mb' }));
 
+// ── SEO: canonical clean URLs ────────────────────────────────────────────────
+// Each indexable content page is served at ONE canonical clean URL. The legacy
+// /pages/*.html path 301-redirects to that clean URL so only a single version is
+// crawlable (avoids duplicate-content / non-canonical warnings). Registered
+// before express.static so the .html → clean redirect runs before the static
+// file would be served. Page content/layout is unchanged — this is routing only.
+const CLEAN_PAGES = {
+  '/ai-visibility-for-doctors':     'ai-visibility-for-doctors.html',
+  '/doctor-visibility-score':       'doctor-visibility-score.html',
+  '/how-doctors-rank-in-chatgpt':   'how-doctors-rank-in-chatgpt.html',
+  '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
+  '/privacy':                       'privacy.html',
+  '/terms':                         'terms.html',
+  '/resources':                     'resources.html',
+  '/about':                         'about.html',
+  '/pricing':                       'pricing.html',
+  '/help-center':                   'help-center.html',
+};
+for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
+  app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));
+  app.get('/pages/' + file,   (_req, res) => res.redirect(301, cleanPath));
+}
+
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
 

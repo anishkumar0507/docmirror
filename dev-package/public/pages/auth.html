@@ -111,7 +111,7 @@ footer a{color:var(--slate-light)}
 
     <div class="switch-link" style="margin-top:1.25rem">
       Don't have an account yet?<br>
-      <a href="/pages/pricing.html">Choose a plan to get started →</a>
+      <a href="/pricing">Choose a plan to get started →</a>
     </div>
   </div>
 </main>
@@ -193,7 +193,7 @@ async function routeAfterAuth(session, viaSignup) {
 
   if (viaSignup) {
     // Generic new account with no chosen plan → Pricing / Plan Selection (both plans).
-    window.location.replace('/pages/pricing.html');
+    window.location.replace('/pricing');
     return;
   }
 
@@ -209,10 +209,10 @@ async function routeAfterAuth(session, viaSignup) {
     } else if (plan === 'audit') {
       window.location.replace('/pages/audit-history.html');
     } else {
-      window.location.replace('/pages/pricing.html');
+      window.location.replace('/pricing');
     }
   } catch(e) {
-    window.location.replace('/pages/pricing.html');
+    window.location.replace('/pricing');
   }
 }
 
