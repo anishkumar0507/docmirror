@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <link rel="canonical" href="https://www.thedocmirror.com/dashboard">
 <meta name="robots" content="noindex, follow">
@@ -868,7 +870,7 @@ function initDashboard(profile, reports) {
   populateTasks(insights);
   populateContent(specialty, insights);
   populateReviews(latest);
-  populateReputation(insights, latest);
+  populateReputation(insights);
   populateKeywords(insights);
   populateRoadmap(latest, insights);
 
@@ -894,7 +896,7 @@ function scheduleInsightsRefresh() {
         populateJourney(insights);
         populateTasks(insights);
         populateContent(specialty, insights);
-        populateReputation(insights, reports[0]);
+        populateReputation(insights);
         populateKeywords(insights);
         populateRoadmap(reports[0], insights);
       } else {
@@ -1403,16 +1405,11 @@ function populateReviews(latest) {
 }
 
 // ── REVIEW RESPONSES (from insights.responseTemplates) ─────────────────────
-function populateReputation(insights, latest) {
+function populateReputation(insights) {
   var c = el('reputation-content');
-
-  // ── Review sentiment summary (from the weekly Google-review analysis) ───────
-  var sentimentHtml = sentimentCard(latest && latest.sentiment);
-
   var rt = insights && insights.responseTemplates ? insights.responseTemplates : null;
   if (!rt) {
-    c.innerHTML = sentimentHtml +
-      generatingCard('🛡', 'Review responses generating', 'Claude-drafted, HIPAA-safe response templates for positive, neutral, and critical reviews appear here.');
+    c.innerHTML = generatingCard('🛡', 'Review responses generating', 'Claude-drafted, HIPAA-safe response templates for positive, neutral, and critical reviews appear here.');
     return;
   }
   var rows = [
@@ -1420,32 +1417,12 @@ function populateReputation(insights, latest) {
     { label: '3-star — mixed review',    key: 'neutral',  stars: '★★★☆☆' },
     { label: '1–2 star — critical review', key: 'critical', stars: '★☆☆☆☆' },
   ];
-  c.innerHTML = sentimentHtml +
-    '<div class="reputation-card" style="border-left-color:var(--green)">' +
+  c.innerHTML = '<div class="reputation-card" style="border-left-color:var(--green)">' +
     rows.filter(function(r){ return rt[r.key]; }).map(function(r){
       return '<div class="rep-alert-row"><div class="rep-stars">' + r.stars + '</div>' +
         '<div class="rep-content"><div class="rep-title">' + escH(r.label) + '</div>' +
         '<div class="rep-suggested"><strong>Suggested reply</strong>' + escH(rt[r.key]) + '</div></div></div>';
     }).join('') + '</div>';
-}
-
-// Renders the patient-sentiment summary block. Returns '' when no sentiment yet.
-function sentimentCard(s) {
-  if (!s || (s.score == null && (!s.positive || !s.positive.length) && (!s.negative || !s.negative.length))) {
-    return generatingCard('💬', 'Review sentiment refreshing', 'Each Monday we analyse your latest Google reviews for positive and negative themes. Your sentiment summary appears here.');
-  }
-  var label = (s.label || 'unknown');
-  var color = label === 'positive' ? 'var(--green)' : label === 'negative' ? 'var(--red)' : 'var(--amber)';
-  var scoreTxt = (s.score != null) ? (s.score + '/100') : '—';
-  function tags(list, cls){ return (Array.isArray(list)?list:[]).map(function(t){
-    return '<span class="sh-delta ' + cls + '" style="margin:3px 4px 0 0">' + escH(t) + '</span>'; }).join(''); }
-  return '<div class="reputation-card" style="border-left-color:' + color + ';margin-bottom:1rem">' +
-    '<div class="rep-alert-row"><div class="rep-stars" style="color:' + color + '">' + scoreTxt + '</div>' +
-    '<div class="rep-content"><div class="rep-title">Patient sentiment: ' + escH(label.charAt(0).toUpperCase() + label.slice(1)) + '</div>' +
-    (s.summary ? '<div class="rep-suggested" style="margin-top:4px">' + escH(s.summary) + '</div>' : '') +
-    ((s.positive && s.positive.length) ? '<div style="margin-top:8px"><strong style="font-size:12px">Patients praise</strong><br>' + tags(s.positive, 'delta-up') + '</div>' : '') +
-    ((s.negative && s.negative.length) ? '<div style="margin-top:8px"><strong style="font-size:12px">Common complaints</strong><br>' + tags(s.negative, 'delta-down') + '</div>' : '') +
-    '</div></div></div>';
 }
 
 // ── EXECUTIVE SUMMARY (from insights.execSummary) ──────────────────────────
