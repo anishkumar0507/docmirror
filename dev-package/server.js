@@ -17,6 +17,7 @@ const doctorAutocompleteHandler = require('./routes/doctors-autocomplete');
 const monthlyContentHandler   = require('./routes/monthly-content');
 const checkoutHandler         = require('./routes/checkout');
 const verifyPaymentHandler    = require('./routes/verify-payment');
+const paymentStatusHandler    = require('./routes/payment-status');
 const reportHandler           = require('./routes/report');
 const downloadPdfHandler      = require('./routes/download-pdf');
 const emailCaptureHandler     = require('./routes/email-capture');
@@ -86,6 +87,7 @@ app.get('/api/doctors/autocomplete',      doctorAutocompleteHandler);
 app.get('/api/monthly-content',           monthlyContentHandler);
 app.post('/api/checkout',                 checkoutHandler);
 app.post('/api/verify-payment',           verifyPaymentHandler);
+app.get('/api/payment-status',            paymentStatusHandler);   // backend-verified paid status (no URL/localStorage trust)
 app.post('/api/download-pdf',             downloadPdfHandler);
 app.post('/api/report',                   reportHandler);
 app.post('/api/email-capture',            emailCaptureHandler);
