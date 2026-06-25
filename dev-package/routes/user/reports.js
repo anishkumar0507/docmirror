@@ -104,11 +104,23 @@ async function handler(req, res) {
       const created_at =
         dateByAudit[id] || (cache && cache.created_at) || row.created_at || new Date().toISOString();
 
+      // Multi-platform visibility scores — read straight from the audit's existing
+      // aiVisibility data (same source the AI Rank Tracker uses). Never fabricated:
+      // a platform with no stored value stays null so the UI shows "Pending".
+      const ai = ad.aiVisibility || {};
+      const overall = row.score != null ? row.score : base.score;
+      const num = v => (typeof v === 'number' && !isNaN(v)) ? v : null;
+
       return {
         id:           row.id || id,
         audit_id:     id,
         doctor_name:  row.doctor_name  || base.doctor_name,
-        score:        row.score        != null ? row.score        : base.score,
+        score:        overall,
+        overall_score: overall,
+        google_score:  num(ai.google),
+        chatgpt_score: num(ai.chatgpt),
+        gemini_score:  num(ai.gemini),
+        claude_score:  num(ai.claude),
         review_count: row.review_count != null ? row.review_count : base.review_count,
         rating:       row.rating       != null ? row.rating       : base.rating,
         photo_count:  row.photo_count  != null ? row.photo_count  : base.photo_count,
@@ -117,7 +129,6 @@ async function handler(req, res) {
         competitors:  (Array.isArray(row.competitors) && row.competitors.length) ? row.competitors : base.competitors,
         pdf_url:      pdfByAudit[id]   || row.pdf_url || null,
         insights:     ad.insights      || null,
-        sentiment:    ad.sentiment     || null,
         created_at,
       };
     }).filter(r => r.score != null || r.doctor_name)
