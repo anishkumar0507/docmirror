@@ -12,9 +12,11 @@ const {
 } = require('../lib/audit-helpers');
 
 const { verifyDoctor, nameMatch, extractCity, specialtyMatch } = require('../lib/doctor-verification');
-const { textSearch, placeDetails, findCompetitors } = require('../lib/places-client');
+const { relatedSearchTerms, detectGoogleSpecialty, specialtyNotice } = require('../lib/specialty-relationships');
 let parsePlace = null;
 try { parsePlace = require('../public/js/doctor-name-parser.js').parseDoctorPlaceResult; } catch (e) { parsePlace = null; }
+
+const PLACES = 'https://maps.googleapis.com/maps/api/place';
 
 // ── Startup key check — visible immediately when server boots ─────────────
 const _startupKey = process.env.GOOGLE_PLACES_API_KEY;
@@ -25,8 +27,153 @@ if (_startupKey) {
 }
 
 // ── Google Places helpers ──────────────────────────────────────────────────
-// textSearch / placeDetails / findCompetitors now live in ../lib/places-client
-// so the weekly Monitor refresh can reuse the exact same fetch + ranking logic.
+async function textSearch(query, key) {
+  const url = `${PLACES}/textsearch/json?query=${encodeURIComponent(query)}&key=${key}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`textSearch HTTP ${res.status}`);
+  return res.json();
+}
+
+async function placeDetails(placeId, key) {
+  const fields = 'name,rating,user_ratings_total,formatted_address,address_components,types,opening_hours,website,photos';
+  const url = `${PLACES}/details/json?place_id=${placeId}&fields=${fields}&key=${key}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`placeDetails HTTP ${res.status}`);
+  return res.json();
+}
+
+// ── Visibility score (V5 — 7 pillars, sum = score) ────────────────────────
+function calcScore(d) {
+  return computePillarsV5(d).total;
+}
+
+// ── Sanitise specialty — "Other" / blank → "doctor" ───────────────────────
+function resolveSpecialty(specialty) {
+  const s = (specialty || '').trim();
+  if (!s || s.toLowerCase() === 'other') return 'doctor';
+  return s;
+}
+
+// ── Find real competitors via Google Places Text Search ────────────────────
+// `specialtyTerms` is a PRIORITY list: user specialty first, then Google category,
+// then related-specialty mappings, then parent (built by relatedSearchTerms()).
+// We query in order and only broaden to the next term when the user's exact
+// specialty hasn't yielded enough same-city candidates — so the benchmark stays
+// as close to the doctor's real specialty as possible, never limited to Google's.
+async function findCompetitors(specialtyTerms, cityState, doctorPlaceId, key) {
+  if (!cityState) {
+    console.log('[comp] cityState missing — skipping');
+    return [];
+  }
+
+  // Normalise the input to an ordered, de-duplicated list of resolved terms.
+  const rawTerms = Array.isArray(specialtyTerms) ? specialtyTerms : [specialtyTerms];
+  const terms = [];
+  const seenTerm = new Set();
+  rawTerms.forEach(t => {
+    const r = resolveSpecialty(t);
+    const k = r.toLowerCase();
+    if (r && !seenTerm.has(k)) { seenTerm.add(k); terms.push(r); }
+  });
+  if (!terms.length) terms.push('doctor');
+
+  // Use only the city part — full "City, State" string degrades Google results
+  const city = cityState.split(',')[0].trim();
+  const cityNorm = city.toLowerCase().replace(/[^a-z0-9]+/g, '');
+
+  console.log('\n[comp] ══════════════════════════════════════');
+  console.log(`[comp] city             : "${city}"`);
+  console.log(`[comp] priority terms   : ${terms.map(t => `"${t}"`).join(' → ')}`);
+  console.log(`[comp] exclude placeId  : ${doctorPlaceId || '(none)'}`);
+
+  const TARGET = 5;        // stop once we have this many ranked candidates
+  const MAX_QUERIES = 3;   // bound API cost/latency
+  const byPlaceId = new Map();
+
+  for (let i = 0; i < terms.length && i < MAX_QUERIES; i++) {
+    const sp = terms[i];
+    const query = `${sp} doctor in ${city}`;
+    console.log(`[comp] query #${i + 1}      : "${query}"`);
+
+    let results = [];
+    try {
+      const data = await textSearch(query, key);
+      console.log(`[comp]   status: ${data.status}  results: ${data.results?.length ?? 0}`);
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        console.error(`[comp]   Google error: ${data.status} — ${data.error_message || '(no message)'}`);
+      }
+      results = data.results || [];
+    } catch (err) {
+      console.error(`[comp]   textSearch failed: ${err.message}`);
+      results = [];
+    }
+
+    for (const r of results.slice(0, 10)) {
+      if (!r.place_id || r.place_id === doctorPlaceId) continue;       // exclude the doctor
+      if (byPlaceId.has(r.place_id)) continue;                          // dedupe across terms
+      if (cityNorm) {                                                   // SAME city only — never fabricate
+        const addr = (r.formatted_address || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+        if (!addr.includes(cityNorm)) continue;
+      }
+      byPlaceId.set(r.place_id, r);
+    }
+    console.log(`[comp]   accumulated same-city candidates: ${byPlaceId.size}`);
+    if (byPlaceId.size >= TARGET) break;   // user/related specialty already gave enough
+  }
+
+  let withoutDoctor = Array.from(byPlaceId.values());
+  if (!withoutDoctor.length) {
+    console.log('[comp] No same-city candidates across priority terms — returning none (no fabrication)');
+    return [];
+  }
+
+  // Sort by rating desc, then review count desc
+  withoutDoctor.sort((a, b) => {
+    const ratingDiff = (b.rating || 0) - (a.rating || 0);
+    return ratingDiff !== 0 ? ratingDiff : (b.user_ratings_total || 0) - (a.user_ratings_total || 0);
+  });
+
+  // Take top 3 and fetch full details
+  const top3 = withoutDoctor.slice(0, 3);
+  console.log(`\n[comp] Fetching details for top 3:`);
+  top3.forEach((r, i) =>
+    console.log(`  ${i + 1}. "${r.name}" | ★${r.rating ?? '-'} | ${r.user_ratings_total ?? 0} reviews`)
+  );
+
+  const detailed = await Promise.all(
+    top3.map(c =>
+      placeDetails(c.place_id, key)
+        .then(d => ({ detail: d.result || null, raw: c }))
+        .catch(() => ({ detail: null, raw: c }))
+    )
+  );
+
+  const competitors = detailed.map(({ detail, raw }) => {
+    const name        = detail?.name || raw.name;
+    const rating      = typeof (detail?.rating ?? raw.rating) === 'number'
+                          ? (detail?.rating ?? raw.rating) : 0;
+    const reviewCount = detail?.user_ratings_total ?? raw.user_ratings_total ?? 0;
+    const website     = detail?.website || null;
+    const hasHours    = !!(detail?.opening_hours?.weekday_text?.length);
+    const photoCount  = Array.isArray(detail?.photos) ? detail.photos.length : 0;
+    return {
+      name,
+      placeId:     raw.place_id,
+      rating,
+      reviewCount,
+      address:     detail?.formatted_address || raw.formatted_address || '',
+      googleScore: calcScore({ rating, reviewCount, website, hasHours, photoCount }),
+      source:      'google_places'
+    };
+  });
+
+  console.log(`\n[comp] Final competitors (${competitors.length}):`);
+  competitors.forEach((c, i) =>
+    console.log(`  ${i + 1}. "${c.name}" | ★${c.rating} | ${c.reviewCount} reviews | score: ${c.googleScore} | placeId: ${c.placeId}`)
+  );
+
+  return competitors;
+}
 
 // ── Anthropic: issues + recs + competitor EXPLANATIONS only ───────────────
 // Anthropic does NOT generate competitor names — Google Places does.
@@ -154,17 +301,12 @@ async function handler(req, res) {
       // The user explicitly picked this exact doctor from the verified
       // autocomplete → identity & city are confirmed by Place ID (the strongest
       // signal). We still require a valid, non-conflicting speciality.
+      // Speciality is informational only — NEVER blocks. The user explicitly
+      // picked this exact listing, so identity is confirmed by Place ID; whatever
+      // Google's category is, the doctor's selected specialty stays primary.
       const spec = specialtyMatch(sp, place.name, place.types, parentSp);
       verifiedCity = extractCity(place) || (ct || '').split(',')[0].trim();
       console.log(`[audit] verification(placeId): listing="${place.name}" actualCity="${verifiedCity}" specialty="${sp || ''}" specStatus=${spec.status}`);
-      if (spec.status === 'invalid') {
-        return res.status(200).json({ verified: false, reason: 'specialty_invalid',
-          message: "Please select the doctor's actual speciality — “Other” can't be verified." });
-      }
-      if (spec.status === 'conflict') {
-        return res.status(200).json({ verified: false, reason: 'specialty_mismatch',
-          message: "The speciality you entered doesn't match this doctor's listing. Please check the speciality." });
-      }
       vConfidence = 100;
       vChecks = {
         mode: 'place_id', placeId,
@@ -230,6 +372,13 @@ async function handler(req, res) {
     const state = (ct || '').split(',')[1]?.trim() || '';
     const region = detectRegion(city, state);
 
+    // ── Specialty: user is PRIMARY, Google is informational ───────────────────
+    // Store both separately; never overwrite the user's specialty with Google's
+    // broad category. A difference becomes a non-blocking notice (no score impact).
+    const userSpecialty   = sp || '';
+    const googleSpecialty = detectGoogleSpecialty(place);
+    const specialtyMsg    = specialtyNotice(userSpecialty, googleSpecialty);
+
     const doctorName = `Dr. ${displayFn} ${displayLn}`.replace(/\s+/g, ' ').trim();
     const rawData = { doctorName, rating, reviewCount, website, address, hasHours, photoCount, specialty: sp || '', city, state, region };
     const pillarsV5 = computePillarsV5(rawData);
@@ -247,7 +396,10 @@ async function handler(req, res) {
       // Identity
       doctorName,
       doctorNameClean: cleanDoctorName(doctorName),
-      specialty:       sp || '',
+      specialty:       sp || '',         // user-selected specialty (PRIMARY — never overwritten)
+      userSpecialty,                     // explicit alias for clarity
+      googleSpecialty,                   // Google's broad category (informational)
+      specialtyNotice: specialtyMsg,     // non-blocking notice when the two differ
       cityState:       ct || '',
       city, state, region,
       businessName:    place.name,
@@ -292,10 +444,16 @@ async function handler(req, res) {
       valuePerPatientHigh: regionDef.valuePerPatientHigh,
     };
 
-    // Find real competitors from Google Places — SAME city (verified, canonical)
-    // and SAME speciality only (uses parentSpecialty so e.g. "Interventional
-    // Cardiologist" matches other cardiologists). No Anthropic, no placeholders, max 3.
-    const competitors = await findCompetitors(parentSp || sp, verifiedCity, placeId, placesKey);
+    // Find real competitors from Google Places — SAME city (verified, canonical).
+    // Discovery uses a PRIORITY list of specialties: user specialty first, then
+    // Google category, then related-specialty mapping (so "Spine Surgeon" also
+    // matches Neurosurgeons / Orthopedic Spine Surgeons), then parent. Not limited
+    // to Google's category. No Anthropic, no placeholders, max 3.
+    const searchTerms = relatedSearchTerms(userSpecialty, parentSp || sp, googleSpecialty);
+    const competitors = await findCompetitors(searchTerms, verifiedCity, placeId, placesKey);
+    auditData.competitorBenchmark = userSpecialty
+      ? `Top ${userSpecialty}s in ${city || verifiedCity}`.replace(/\s+/g, ' ').trim()
+      : '';
 
     // 5. Anthropic: explains competitors + generates issues/recs
     //    Anthropic does NOT create competitor names — only explanations

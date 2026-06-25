@@ -227,7 +227,7 @@ function verifyDoctor(input, place) {
     threshold: PASS_THRESHOLD,
   };
 
-  // Hard failures (stop immediately — accuracy over results) ───────────────
+  // Hard failures — IDENTITY only (name + city). Accuracy over results.
   if (!name.matched) {
     return { verified: false, reason: 'not_found', confidence, checks,
       message: "We couldn't verify this doctor. Please check the doctor's name and location." };
@@ -236,16 +236,16 @@ function verifyDoctor(input, place) {
     return { verified: false, reason: 'city_mismatch', confidence, checks,
       message: "We couldn't verify this doctor in the city you entered. Please check the city." };
   }
-  if (spec.status === 'invalid') {
-    return { verified: false, reason: 'specialty_invalid', confidence, checks,
-      message: "Please select the doctor's actual speciality — “Other” can't be verified." };
-  }
-  if (spec.status === 'conflict') {
-    return { verified: false, reason: 'specialty_mismatch', confidence, checks,
-      message: "The speciality you entered doesn't match this doctor's listing. Please check the speciality." };
-  }
 
-  // Confidence gate ────────────────────────────────────────────────────────
+  // NOTE: speciality is NEVER a hard failure. Google's category is broad and
+  // often differs from the doctor's real specialty (Spine Surgeon vs Neurosurgeon,
+  // Implantologist vs Dentist, …). The user's specialty is primary; a Google
+  // mismatch is surfaced as an informational notice, it does not block the report,
+  // reduce the score, or stop competitor matching. `spec` stays in `checks` for
+  // transparency only. Identity is fully established by name + city above, which
+  // already meet the confidence threshold — so we proceed.
+
+  // Confidence gate (name + city) ───────────────────────────────────────────
   if (confidence < PASS_THRESHOLD) {
     return { verified: false, reason: 'low_confidence', confidence, checks,
       message: "We couldn't confidently verify this doctor. Please check the entered details." };

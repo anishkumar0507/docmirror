@@ -429,7 +429,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
         <div class="card-head-icon">&#x1F3C6;</div>
         <div>
           <div class="card-head-title">Competitor Visibility Leaderboard</div>
-          <div class="card-head-sub">Top competitors ranked by visibility score</div>
+          <div class="card-head-sub" id="ldr-sub">Top competitors ranked by visibility score</div>
         </div>
       </div>
     </div>
@@ -733,6 +733,11 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
   // ── Hero ──────────────────────────────────────────────────────────────────
   document.getElementById('hero-name').textContent = doctorName + ' — Visibility Preview';
   document.getElementById('hero-sub').textContent  = specialty + (specialty && cityState ? ' · ' : '') + cityState;
+
+  // ── Specialty transparency (user specialty is primary; Google is informational) ─
+  // Competitor benchmark line reflects the doctor's SELECTED specialty, not Google's.
+  var ldrSub = document.getElementById('ldr-sub');
+  if (ldrSub && d.competitorBenchmark) ldrSub.textContent = d.competitorBenchmark;
 
   // ── Score card ────────────────────────────────────────────────────────────
   var sn = document.getElementById('score-num');

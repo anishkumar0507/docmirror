@@ -441,9 +441,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .sp-cb-empty{padding:10px;font-size:13px;color:var(--slate-light)}
 .sp-cb-manual{margin-top:2px;font-size:13px;color:var(--slate);background:var(--warm-white)}
 .sp-cb-manual strong{color:var(--navy)}
-.sp-warn{display:none;font-size:11.5px;color:var(--amber);font-weight:600;margin-top:3px;line-height:1.4;align-items:flex-start;gap:5px;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:7px;padding:7px 9px}
-.sp-warn.on{display:flex}
-.sp-warn::before{content:'⚠';flex-shrink:0}
 
 /* Button */
 .tool-btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -906,7 +903,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
             <div class="sp-cb-panel" id="sp-cb-list" role="listbox" aria-label="Medical specialties"></div>
           </div>
           <div class="field-err" id="esp" role="alert">Select your specialty</div>
-          <div class="sp-warn" id="sp-warn" role="alert"></div>
         </div>
         <div class="field" id="fct">
           <label for="ct">City, State</label>
@@ -1880,19 +1876,12 @@ function clearAll(){['ff','fl','fsp','fct'].forEach(function(x,i){setErr(x,['ef'
 document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);if(window.__updateSpecialtyConflict)window.__updateSpecialtyConflict();});
 (function(){var si=document.getElementById('sp-input');if(si)si.addEventListener('input',function(){setErr('fsp','esp',false);});})();
 
-// Warn (and block) when the user-selected specialty contradicts the verified
-// Google result. Returns true when there is an unresolved conflict.
-window.__updateSpecialtyConflict=function(){
-  var warn=document.getElementById('sp-warn');
-  var sel=(document.getElementById('sp')||{}).value||'';
-  var det=(document.getElementById('detected-specialty')||{}).value||'';
-  var conflict=!!(det && sel && window.DoctorNameParser && window.DoctorNameParser.specialtyConflict(sel,det));
-  if(warn){
-    if(conflict){warn.textContent='Selected specialty does not match the verified Google result ('+det+').';warn.classList.add('on');}
-    else{warn.textContent='';warn.classList.remove('on');}
-  }
-  return conflict;
-};
+// No specialty notice is ever shown on the form — the box has been removed.
+// The doctor's selected specialty is always primary and Google's category is
+// NEVER surfaced before the report. Specialty matching still runs in the BACKEND
+// (user_specialty + google_specialty are stored there for competitor analysis).
+// Kept as a no-op so existing callers (change/autocomplete handlers) don't break.
+window.__updateSpecialtyConflict=function(){ return false; };
 
 // ── VALIDATE ───────────────────────────────────────────────────────────────
 function validate(){
@@ -1928,12 +1917,9 @@ window.runCheck = async function() {
     return;
   }
 
-  // Block when the chosen specialty contradicts the verified Google result.
-  if (window.__updateSpecialtyConflict && window.__updateSpecialtyConflict()) {
-    setErr('fsp','esp',false);
-    var w = document.getElementById('sp-warn'); if (w) w.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
-  }
+  // Specialty vs Google category is INFORMATIONAL only — refresh the notice but
+  // never block. The doctor's selected specialty is always respected.
+  if (window.__updateSpecialtyConflict) window.__updateSpecialtyConflict();
 
   // Clear any stale report data from previous sessions before starting fresh
   try { localStorage.removeItem('docmirrorPreviewReport'); localStorage.removeItem('tdm_free_preview'); } catch(e) {}
