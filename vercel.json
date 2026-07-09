@@ -5,7 +5,7 @@
       "src": "dev-package/server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dev-package/public/**"],
+        "includeFiles": ["dev-package/public/**", "dev-package/content/resources/**"],
         "maxDuration": 60
       }
     }
@@ -17,6 +17,14 @@
       "status": 301,
       "headers": { "Location": "https://www.thedocmirror.com/$1" }
     },
+    { "src": "/pages/ai-visibility-for-doctors\\.html", "status": 301, "headers": { "Location": "https://www.thedocmirror.com/ai-visibility-for-doctors" } },
+    { "src": "/pages/doctor-visibility-score\\.html", "status": 301, "headers": { "Location": "https://www.thedocmirror.com/doctor-visibility-score" } },
+    { "src": "/pages/how-doctors-rank-in-chatgpt\\.html", "status": 301, "headers": { "Location": "https://www.thedocmirror.com/how-doctors-rank-in-chatgpt" } },
+    { "src": "/pages/google-visibility-for-doctors\\.html", "status": 301, "headers": { "Location": "https://www.thedocmirror.com/google-visibility-for-doctors" } },
+    { "src": "/pages/resources\\.html",   "status": 301, "headers": { "Location": "https://www.thedocmirror.com/resources" } },
+    { "src": "/pages/about\\.html",       "status": 301, "headers": { "Location": "https://www.thedocmirror.com/about" } },
+    { "src": "/pages/pricing\\.html",     "status": 301, "headers": { "Location": "https://www.thedocmirror.com/pricing" } },
+    { "src": "/pages/help-center\\.html", "status": 301, "headers": { "Location": "https://www.thedocmirror.com/help-center" } },
     { "src": "/(.*)", "dest": "dev-package/server.js" }
   ]
 }

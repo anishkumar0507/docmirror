@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <link rel="canonical" href="https://www.thedocmirror.com/pages/checkout.html">
 <meta name="robots" content="noindex, follow">
@@ -87,6 +89,15 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
   .summary,.pay-card{max-width:100%}
 }
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 
@@ -311,21 +322,13 @@ function startPayment() {
           })
           .then(function(verifyRes) {
             if (verifyRes.ok) {
-              // Store payment proof so the preview page knows it's paid
-              try {
-                localStorage.setItem('tdm_paid_session', JSON.stringify({
-                  auditId:   orderRes.auditId,
-                  email:     email,
-                  paymentId: response.razorpay_payment_id,
-                  paidAt:    Date.now()
-                }));
-              } catch(_) {}
-
-              // Show success state then redirect
-              showSuccess(email);
+              // Payment is backend-verified. Redirect with reportId only — the
+              // preview page re-verifies via /api/payment-status. No client-side
+              // payment flag is stored (that would be a forgeable bypass).
+              showSuccess(email, orderRes.auditId);
             } else if (verifyRes.isRateLimit) {
               showErr(verifyRes.error || 'Payment received — AI is busy. Use Download PDF in a minute.');
-              showSuccess(email);
+              showSuccess(email, orderRes.auditId);
             } else {
               showErr(verifyRes.error || 'Verification failed. Contact support.');
               setBtnReady();
@@ -354,9 +357,15 @@ function startPayment() {
 }
 
 // ── Success state — thank you page, no dashboard (not a SaaS product) ──────
-function showSuccess(email) {
+// Redirect carries ONLY reportId. The preview page re-verifies it against
+// /api/payment-status before unlocking — no ?paid / ?demo bypass.
+function showSuccess(email, reportId) {
   var card = document.getElementById('pay-card');
   if (!card) return;
+
+  var target = reportId
+    ? '/pages/preview-report.html?reportId=' + encodeURIComponent(reportId)
+    : '/pages/preview-report.html';
 
   card.innerHTML =
     '<div class="success-state">' +
@@ -364,13 +373,13 @@ function showSuccess(email) {
     '<h2>Payment Confirmed!</h2>' +
     '<p>Opening your full report&hellip;<br>' +
     'A PDF copy is also being emailed to <strong>' + escH(email) + '</strong>.</p>' +
-    '<a class="view-btn" href="/pages/preview-report.html?paid=1">View Full Report →</a>' +
+    '<a class="view-btn" href="' + target + '">View Full Report →</a>' +
     '</div>';
 
-  // Redirect to the full unlocked report page (renders from the saved audit data).
+  // Redirect to the full report page (it unlocks only after backend re-verifies).
   // replace() so the back button doesn't return to the payment screen.
   setTimeout(function () {
-    window.location.replace('/pages/preview-report.html?paid=1');
+    window.location.replace(target);
   }, 1200);
 }
 

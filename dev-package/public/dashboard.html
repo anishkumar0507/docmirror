@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <link rel="canonical" href="https://www.thedocmirror.com/dashboard">
 <meta name="robots" content="noindex, follow">
@@ -270,6 +272,14 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
 .ri-change.down{background:var(--red-light);color:#991B1B}
 .dl-btn{background:var(--navy);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;text-decoration:none;display:inline-block}
 .dl-btn:hover{background:var(--green)}
+/* Multi-platform visibility chips inside each report row (compact mini columns) */
+.ri-platforms{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch}
+.ri-chip{text-align:center;min-width:48px;background:var(--warm);border:.5px solid var(--border);border-radius:8px;padding:5px 8px;line-height:1}
+.ri-chip .v{display:block;font-size:15px;font-weight:700;font-family:'DM Mono',monospace;color:var(--navy)}
+.ri-chip .k{display:block;font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.03em;color:var(--slate-muted);margin-top:3px}
+.ri-chip.overall{background:var(--green-light);border-color:transparent}
+.ri-chip.overall .v{color:var(--green-dark)}
+.ri-chip.pending .v{font-size:11px;font-weight:600;color:var(--slate-muted);padding:2px 0}
 
 /* ── SETTINGS CARD ──────────────────────────────────────────────────────── */
 .settings-card{background:#fff;border-radius:14px;padding:1.5rem;border:.5px solid var(--border);margin-bottom:1rem}
@@ -400,6 +410,15 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
   .seo-grid{grid-template-columns:1fr 1fr}
 }
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 
@@ -958,16 +977,88 @@ function setKpiDelta(id, delta, text) {
 }
 
 // ── SCORE TREND ──────────────────────────────────────────────────────────
+// The trend chart only renders when there is MEANINGFUL trend data
+// (>= 5 reports AND >= 3 unique score values). Otherwise — including the common
+// case where every audit returns the same score — a "Visibility Progress" card
+// is shown instead, so the graph never looks like a flat/fake line.
 function populateTrend(reports) {
-  if (!reports || reports.length < 2) {
-    el('trend-chart-wrap').innerHTML =
+  reports = reports || [];
+  var wrap    = el('trend-chart-wrap');
+  var countEl = el('trend-reports-count');
+  if (!wrap) return;
+
+  // chronological (oldest → newest), non-null scores only — used for the card metrics
+  var chrono = reports.slice().reverse()
+    .filter(function(r){ return r && r.score != null; })
+    .map(function(r){ return r.score; });
+
+  var reportCount = reports.length;
+
+  // Variation is judged on the SAME data the chart would plot (the 12 newest
+  // reports). If that window is flat — e.g. the recent audits are all 81 even
+  // though a few old ones differ — the line would look fake, so we show the card.
+  var windowScores = reports.slice(0, 12)
+    .filter(function(r){ return r && r.score != null; })
+    .map(function(r){ return r.score; });
+  var uniqueScoreCount = (function(){ var s = {}; windowScores.forEach(function(v){ s[v] = 1; }); return Object.keys(s).length; })();
+
+  // No data at all → keep the existing empty state.
+  if (reportCount === 0 || chrono.length === 0) {
+    wrap.style.height = '';
+    wrap.innerHTML =
       '<div class="empty-card" style="height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center">' +
       '<div class="empty-icon">📈</div>' +
-      '<div class="empty-title">Need 2+ reports for trend</div>' +
-      '<div class="empty-sub">Score trend will appear after your second report is generated.</div></div>';
-    el('trend-reports-count').textContent = '';
+      '<div class="empty-title">No reports yet</div>' +
+      '<div class="empty-sub">Your score trend will appear here as audits are generated.</div></div>';
+    if (countEl) countEl.textContent = '';
     return;
   }
+
+  // ── Not enough variation for a real trend → Visibility Progress card ───────
+  if (reportCount < 5 || uniqueScoreCount < 3) {
+    var current = chrono[chrono.length - 1];
+    var first   = chrono[0];
+    var change  = current - first;
+    var best    = Math.max.apply(null, chrono);
+    var deltaCls = change > 0 ? 'up' : change < 0 ? 'down' : 'same';
+    var arrow    = change > 0 ? '▲' : change < 0 ? '▼' : '–';
+    var changeStr = (change > 0 ? '+' : '') + change;
+
+    var infoIcon =
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'stroke-linecap="round" stroke-linejoin="round" style="color:var(--slate-light);flex-shrink:0;margin-top:1px">' +
+      '<circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line>' +
+      '<line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+
+    function tile(label, valHtml, extra) {
+      return '<div class="kpi-card"><div class="kpi-label">' + label + '</div>' +
+        '<div class="kpi-num">' + valHtml + '</div>' + (extra || '') + '</div>';
+    }
+
+    wrap.style.height = 'auto';
+    wrap.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem">' +
+        '<span style="font-size:.95rem;font-weight:700;color:var(--navy)">Visibility Progress</span>' + infoIcon +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1rem">' +
+        tile('Current Score', current + ' <span style="font-size:.9rem;font-weight:600;color:var(--slate-light)">/ 100</span>') +
+        tile('Score Change Since First Audit', changeStr, '<span class="kpi-delta ' + deltaCls + '">' + arrow + ' points</span>') +
+        tile('Reports Generated', String(reportCount)) +
+        tile('Best Score', String(best)) +
+        tile('Monitoring Status', '<span style="font-size:1.15rem;color:var(--green-dark)">Active</span>') +
+      '</div>' +
+      '<div style="margin-top:1rem;display:flex;align-items:flex-start;gap:8px;background:var(--warm);border:.5px solid var(--border);border-radius:10px;padding:11px 14px">' +
+        infoIcon +
+        '<span style="font-size:.82rem;color:var(--slate);line-height:1.6">Your visibility score is currently stable. ' +
+        'Continue monitoring to unlock trend analysis and performance insights.</span>' +
+      '</div>';
+    if (countEl) countEl.textContent = '';
+    return;
+  }
+
+  // ── Enough variation → render the trend graph ──────────────────────────────
+  wrap.style.height = '';
+  wrap.innerHTML = '<canvas id="trendChart"></canvas>';
 
   var sorted = reports.slice(0, 12).reverse();
   var labels = sorted.map(function(r){
@@ -1037,10 +1128,31 @@ function populateReports(reports) {
     var deltaHtml = delta != null
       ? '<span class="ri-change ' + (delta > 0 ? 'up' : delta < 0 ? 'down' : '') + '">' + (delta > 0 ? '+' : '') + delta + ' pts</span>'
       : '';
+    // ── Multi-platform visibility chips: Overall | Google | ChatGPT | Gemini | Claude
+    // Real values come straight from the report data (no fabrication). A platform
+    // with no stored score shows "Pending" rather than a fake number.
+    function chip(label, val, cls) {
+      if (val == null || isNaN(val)) {
+        return '<div class="ri-chip pending' + (cls ? ' ' + cls : '') + '" title="Not available yet">' +
+               '<span class="v">Pending</span><span class="k">' + label + '</span></div>';
+      }
+      return '<div class="ri-chip' + (cls ? ' ' + cls : '') + '">' +
+             '<span class="v">' + val + '</span><span class="k">' + label + '</span></div>';
+    }
+    var overall = (r.overall_score != null) ? r.overall_score : r.score;
+    var platforms =
+      '<div class="ri-platforms">' +
+        chip('Overall', overall, 'overall') +
+        chip('Google',  r.google_score) +
+        chip('ChatGPT', r.chatgpt_score) +
+        chip('Gemini',  r.gemini_score) +
+        chip('Claude',  r.claude_score) +
+      '</div>';
+
     return '<div class="report-item">' +
-      '<div class="ri-left"><h4>Audit Report &mdash; ' + escH(dateStr) + '</h4>' +
+      '<div class="ri-left" style="flex:1 1 160px"><h4>Audit Report &mdash; ' + escH(dateStr) + '</h4>' +
       (subline ? '<p>' + escH(subline) + '</p>' : '') + '</div>' +
-      '<div class="ri-score"><div class="n">' + (r.score != null ? r.score : '&mdash;') + '</div><div class="l">Score</div></div>' +
+      platforms +
       deltaHtml +
       (r.pdf_url
         ? '<a class="dl-btn" href="' + escH(r.pdf_url) + '" target="_blank" rel="noopener">PDF &darr;</a>'

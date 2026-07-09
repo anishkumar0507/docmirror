@@ -3,6 +3,7 @@
 require('../lib/env');
 
 const Razorpay   = require('razorpay');
+const pricing    = require('../lib/pricing');
 const auditCache = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const { verifyAuditCacheTable, getSupabaseClient } = require('../lib/supabase-client');
@@ -55,13 +56,16 @@ async function handler(req, res) {
 
     await paidReports.insertPending({ auditId, email, userId });
 
-    const amountUnits = parseInt(process.env.RAZORPAY_AMOUNT_UNITS || '1900', 10);
+    // Amount + currency come from the centralized pricing config (India live:
+    // ₹1,599 in paise, INR). No test-era fallback — values are always real.
+    const amountUnits = pricing.reportAmountUnits();
+    const currency    = pricing.billingCurrency();
     const receipt = `rpt_${Date.now()}`.slice(0, 40);
 
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const order    = await razorpay.orders.create({
       amount:   amountUnits,
-      currency: process.env.RAZORPAY_CURRENCY || 'USD',
+      currency,
       receipt,
       notes:    { auditId, email },
     });

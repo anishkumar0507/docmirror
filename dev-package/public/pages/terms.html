@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <meta property="og:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -82,6 +84,15 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
 @media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
 @media(max-width:480px){.footer-cols{grid-template-columns:1fr}}
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 <div id="dm-header"></div>

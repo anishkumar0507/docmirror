@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <meta property="og:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -100,6 +102,15 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
 @media(max-width:720px){.footer-cols{grid-template-columns:1fr 1fr;gap:1.5rem}.footer-brand{grid-column:1/-1}}
 @media(max-width:480px){.footer-cols{grid-template-columns:1fr}.support-card{flex-direction:column;align-items:stretch}.support-email{text-align:center;justify-content:center}}
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 <div id="dm-header"></div>
@@ -144,7 +155,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="faq-answer-inner">
             <p>Your Doctor Visibility Score is a number from 0 to 100 that reflects how visible your practice is across Google and AI search. It combines five pillars: Google Search presence, Google Maps presence, AI platform mentions, online reviews, and website quality.</p>
             <p>A score below 40 means patients searching for you are likely finding competitors first. Scores above 70 indicate strong visibility across the channels patients use most.</p>
-            <p>Read the full explanation in <a href="./doctor-visibility-score.html">Doctor Visibility Score Explained</a>.</p>
+            <p>Read the full explanation in <a href="/doctor-visibility-score">Doctor Visibility Score Explained</a>.</p>
           </div>
         </div>
       </div>
@@ -178,7 +189,7 @@ footer{background:var(--navy);color:#8fa3b8;padding:3rem clamp(1rem,4vw,2.5rem) 
           <div class="faq-answer-inner">
             <p>AI Visibility measures whether your practice is being mentioned and recommended by AI tools like ChatGPT, Gemini, and Claude when a patient asks for a doctor in your specialty and city.</p>
             <p>As more patients use AI to find healthcare providers, this signal is increasingly important. Practices with poor AI visibility can lose patients to competitors even when their Google rankings are strong.</p>
-            <p>Learn more in <a href="./ai-visibility-for-doctors.html">AI Visibility for Doctors</a>.</p>
+            <p>Learn more in <a href="/ai-visibility-for-doctors">AI Visibility for Doctors</a>.</p>
           </div>
         </div>
       </div>

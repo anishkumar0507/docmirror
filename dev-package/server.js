@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs   = require('fs');
 require('./lib/env');
 
 const { verifyAuditCacheTable } = require('./lib/supabase-client');
@@ -17,6 +18,7 @@ const doctorAutocompleteHandler = require('./routes/doctors-autocomplete');
 const monthlyContentHandler   = require('./routes/monthly-content');
 const checkoutHandler         = require('./routes/checkout');
 const verifyPaymentHandler    = require('./routes/verify-payment');
+const paymentStatusHandler    = require('./routes/payment-status');
 const reportHandler           = require('./routes/report');
 const downloadPdfHandler      = require('./routes/download-pdf');
 const emailCaptureHandler     = require('./routes/email-capture');
@@ -40,6 +42,10 @@ const generateReportHandler       = require('./routes/generate-report');
 const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
+
+// ── Resources: Markdown-driven blog engine ──────────────────────────────────
+const resourcesRoute              = require('./routes/resources');
+const { resourceSitemapEntries }  = require('./lib/resources');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -67,7 +73,6 @@ const CLEAN_PAGES = {
   '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
-  '/resources':                     'resources.html',
   '/about':                         'about.html',
   '/pricing':                       'pricing.html',
   '/help-center':                   'help-center.html',
@@ -76,6 +81,38 @@ for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
   app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));
   app.get('/pages/' + file,   (_req, res) => res.redirect(301, cleanPath));
 }
+
+// ── Resources: Markdown blog engine ──────────────────────────────────────────
+// Server-rendered from Markdown in /resources. Registered before express.static
+// so /resources (listing) and /resources/:slug (article) are handled here.
+// Deep static paths like /resources/images/* have >1 segment, so they never
+// match /resources/:slug and fall through to express.static as normal.
+app.get('/resources',        resourcesRoute.listingHandler);
+app.get('/resources/:slug',  resourcesRoute.articleHandler);
+// Legacy static resources page → canonical clean URL (parity with CLEAN_PAGES).
+app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
+
+// ── Sitemap ──────────────────────────────────────────────────────────────────
+// Served dynamically so every Markdown resource is included automatically.
+// Merges the curated static sitemap with one <url> per resource article.
+app.get('/sitemap.xml', (_req, res) => {
+  let base;
+  try {
+    base = fs.readFileSync(path.join(__dirname, 'public', 'sitemap.xml'), 'utf8');
+  } catch (_) {
+    base = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+  }
+  const blocks = resourceSitemapEntries().map(e =>
+    '  <url>\n' +
+    `    <loc>${e.loc}</loc>\n` +
+    (e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>\n` : '') +
+    `    <changefreq>${e.changefreq}</changefreq>\n` +
+    `    <priority>${e.priority}</priority>\n` +
+    '  </url>'
+  ).join('\n');
+  const xml = blocks ? base.replace('</urlset>', blocks + '\n</urlset>') : base;
+  res.set('Content-Type', 'application/xml; charset=utf-8').send(xml);
+});
 
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -86,6 +123,7 @@ app.get('/api/doctors/autocomplete',      doctorAutocompleteHandler);
 app.get('/api/monthly-content',           monthlyContentHandler);
 app.post('/api/checkout',                 checkoutHandler);
 app.post('/api/verify-payment',           verifyPaymentHandler);
+app.get('/api/payment-status',            paymentStatusHandler);   // backend-verified paid status (no URL/localStorage trust)
 app.post('/api/download-pdf',             downloadPdfHandler);
 app.post('/api/report',                   reportHandler);
 app.post('/api/email-capture',            emailCaptureHandler);
@@ -117,10 +155,12 @@ app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
 });
 
-// Browsers auto-request /favicon.ico — serve the brand SVG instead of falling
-// through to the catch-all (which would return index.html / a stale icon).
+// Browsers auto-request /favicon.ico — serve the real .ico (Google reads this
+// for the search-result icon). express.static above already serves it; this is
+// a fallback so it never falls through to the catch-all (which would return
+// index.html / a stale icon).
 app.get('/favicon.ico', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'favicon.svg'));
+  res.sendFile(path.join(__dirname, 'public', 'favicon.ico'));
 });
 
 app.get('*', (_req, res) => {

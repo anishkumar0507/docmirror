@@ -227,7 +227,7 @@ function verifyDoctor(input, place) {
     threshold: PASS_THRESHOLD,
   };
 
-  // Hard failures (stop immediately — accuracy over results) ───────────────
+  // Hard failures — IDENTITY only (name + city). Accuracy over results.
   if (!name.matched) {
     return { verified: false, reason: 'not_found', confidence, checks,
       message: "We couldn't verify this doctor. Please check the doctor's name and location." };
@@ -236,16 +236,16 @@ function verifyDoctor(input, place) {
     return { verified: false, reason: 'city_mismatch', confidence, checks,
       message: "We couldn't verify this doctor in the city you entered. Please check the city." };
   }
-  if (spec.status === 'invalid') {
-    return { verified: false, reason: 'specialty_invalid', confidence, checks,
-      message: "Please select the doctor's actual speciality — “Other” can't be verified." };
-  }
-  if (spec.status === 'conflict') {
-    return { verified: false, reason: 'specialty_mismatch', confidence, checks,
-      message: "The speciality you entered doesn't match this doctor's listing. Please check the speciality." };
-  }
 
-  // Confidence gate ────────────────────────────────────────────────────────
+  // NOTE: speciality is NEVER a hard failure. Google's category is broad and
+  // often differs from the doctor's real specialty (Spine Surgeon vs Neurosurgeon,
+  // Implantologist vs Dentist, …). The user's specialty is primary; a Google
+  // mismatch is surfaced as an informational notice, it does not block the report,
+  // reduce the score, or stop competitor matching. `spec` stays in `checks` for
+  // transparency only. Identity is fully established by name + city above, which
+  // already meet the confidence threshold — so we proceed.
+
+  // Confidence gate (name + city) ───────────────────────────────────────────
   if (confidence < PASS_THRESHOLD) {
     return { verified: false, reason: 'low_confidence', confidence, checks,
       message: "We couldn't confidently verify this doctor. Please check the entered details." };
@@ -259,12 +259,62 @@ function verifyDoctor(input, place) {
   };
 }
 
+// ── Strict candidate name scoring (0..100) ──────────────────────────────────
+// Scores how strongly a Google Places candidate's TEXT (listing name + address
+// + website + editorial summary) matches the searched doctor. Strict on purpose:
+// a clinic that shares only the specialty/city but NOT the doctor's name scores 0
+// so it is never auto-selected as that doctor.
+//
+//   100  full name appears adjacently ("ruhi satija" / "satija ruhi")
+//    90  both first and last name appear somewhere
+//    75  last name + first initial (e.g. "dr r satija")
+//    40  last name only              → weak (do NOT auto-accept)
+//    25  first name only             → weak
+//     0  neither name present        → unrelated (a different clinic/doctor)
+//
+// Strong match threshold = 70 (full name OR last name + first initial).
+const NAME_STOPWORDS = /\b(dr|dr\.?|doctor|mr|mrs|ms|prof|professor|clinic|hospital|centre|center|care|hospitals|multispeciality|multispecialty)\b/g;
+
+function cleanNameText(s) {
+  return String(s == null ? '' : s)
+    .toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(NAME_STOPWORDS, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function scoreDoctorNameMatch(firstName, lastName, text) {
+  const fn  = cleanNameText(firstName);
+  const ln  = cleanNameText(lastName);
+  const hay = cleanNameText(text);
+  if (!hay || (!fn && !ln)) return 0;
+
+  const words = hay.split(' ').filter(Boolean);
+  const has = (name) => !!name && words.some(w =>
+    w === name || (name.length >= 3 && w.includes(name)) || (w.length >= 4 && name.includes(w)));
+
+  const fnIn = has(fn);
+  const lnIn = has(ln);
+  const finit = fn ? fn[0] : '';
+  const finitIn = !!finit && words.some(w => w === finit || w[0] === finit);
+
+  if (fn && ln && (hay.includes(`${fn} ${ln}`) || hay.includes(`${ln} ${fn}`))) return 100;
+  if (fnIn && lnIn) return 90;
+  if (lnIn && finitIn) return 75;
+  if (lnIn) return 40;
+  if (fnIn) return 25;
+  return 0;
+}
+
 module.exports = {
   verifyDoctor,
   extractCity,
   nameMatch,
   cityMatch,
   specialtyMatch,
+  scoreDoctorNameMatch,
+  cleanNameText,
   normalize,
   loose,
   PASS_THRESHOLD,

@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <link rel="canonical" href="https://www.thedocmirror.com/pages/preview-report.html">
 <meta name="robots" content="noindex, follow">
@@ -227,6 +229,15 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
 
 /* ── FOOTER ── */
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 
@@ -418,7 +429,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
         <div class="card-head-icon">&#x1F3C6;</div>
         <div>
           <div class="card-head-title">Competitor Visibility Leaderboard</div>
-          <div class="card-head-sub">Top competitors ranked by visibility score</div>
+          <div class="card-head-sub" id="ldr-sub">Top competitors ranked by visibility score</div>
         </div>
       </div>
     </div>
@@ -723,6 +734,35 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
   document.getElementById('hero-name').textContent = doctorName + ' — Visibility Preview';
   document.getElementById('hero-sub').textContent  = specialty + (specialty && cityState ? ' · ' : '') + cityState;
 
+  // ── Specialty transparency (user specialty is primary; Google is informational) ─
+  // Competitor benchmark line reflects the doctor's SELECTED specialty, not Google's.
+  var ldrSub = document.getElementById('ldr-sub');
+  if (ldrSub && d.competitorBenchmark) ldrSub.textContent = d.competitorBenchmark;
+
+  // ── Profile status banner — only for no-GMB / organic-fallback reports ──────
+  // Additive info block (does not alter the existing layout). Clearly separates a
+  // real GMB from an organic-only presence so no clinic's data is implied as theirs.
+  (function(){
+    if (!(d.source === 'organic_profile' || d.gmbMissing)) return;
+    if (document.getElementById('gmb-status-banner')) return;
+    var organic = d.source === 'organic_profile';
+    var rows = [['Google Business Profile', 'Not Found', '#DC2626']];
+    if (organic) {
+      rows.push(['Organic Google Profile', 'Found', '#00A878']);
+      if (d.profileSource) rows.push(['Source', d.profileSource, 'var(--navy)']);
+      if (d.profileTitle)  rows.push(['Profile', d.profileTitle, 'var(--navy)']);
+    }
+    var html = '<div id="gmb-status-banner" style="max-width:760px;margin:0 auto 1rem;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px">' +
+      '<div style="font-size:.85rem;font-weight:700;color:var(--navy);margin-bottom:8px">Profile status</div>';
+    rows.forEach(function(r){
+      html += '<div style="display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:.85rem"><span style="color:var(--slate-light)">' + r[0] + '</span><span style="font-weight:700;color:' + r[2] + '">' + escH(r[1]) + '</span></div>';
+    });
+    if (organic && d.profileUrl) html += '<a href="' + escH(d.profileUrl) + '" target="_blank" rel="noopener" style="display:inline-block;margin-top:8px;font-size:.8rem;color:var(--green-dark);text-decoration:underline">View profile &rarr;</a>';
+    html += '</div>';
+    var hero = document.querySelector('.report-hero');
+    if (hero && hero.parentNode) { var div = document.createElement('div'); div.innerHTML = html; hero.parentNode.insertBefore(div.firstChild, hero.nextSibling); }
+  })();
+
   // ── Score card ────────────────────────────────────────────────────────────
   var sn = document.getElementById('score-num');
   sn.textContent = overallScore;
@@ -1018,42 +1058,20 @@ function doActualCheckout() {
           })
           .then(function(verifyRes) {
             if (verifyRes.ok || verifyRes.isRateLimit) {
-              // Unlock all locked sections immediately after payment
-              document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
-              document.querySelectorAll('.locked-content').forEach(function(el) {
-                el.removeAttribute('aria-hidden');
-                el.style.filter = 'none';
-                el.style.opacity = '1';
-              });
-              // Hide leaderboard lock footer
-              var lbf = document.getElementById('leaderboard-footer');
-              if (lbf) lbf.style.display = 'none';
-
-              // Remember the buyer's email so an upgrade reuses the same account.
+              // Backend has signature-verified the payment. Remember the buyer's
+              // email (so an upgrade reuses the account), pin reportId into the URL
+              // so a refresh re-verifies via /api/payment-status, then unlock.
               window._tdmPaidEmail = email;
               try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
-
-              // Show payment success + download button + Monitor upgrade upsell.
-              var ctaSection = document.getElementById('cta-section');
-              if (ctaSection) ctaSection.innerHTML =
-                '<div style="text-align:center;padding:2rem 1rem">' +
-                '<div style="font-size:2.5rem;margin-bottom:12px">✅</div>' +
-                '<h2 style="color:#fff;margin-bottom:8px">Payment Successful!</h2>' +
-                '<p style="color:rgba(255,255,255,.8);line-height:1.8;margin-bottom:4px">' +
-                  (verifyRes.isRateLimit
-                    ? 'Payment confirmed. AI is busy — use Download PDF below in ~30 sec.'
-                    : 'Full report is being generated and sent to<br><strong>' + escH(email) + '</strong> — PDF arrives in ~60 seconds.') + '</p>' +
-                '<p style="color:rgba(255,255,255,.6);font-size:.85rem;margin-bottom:16px">Or download it directly right now:</p>' +
-                downloadBtnHtml() +
-                upgradeSectionHtml() +
-                '</div>';
-
-              // Show success banner at top
-              var topBanner = document.createElement('div');
-              topBanner.innerHTML = '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;' +
-                'background:#00A878;color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600">' +
-                '✅ Payment confirmed — all sections unlocked. PDF sent to ' + escH(email) + '</div>';
-              document.body.insertBefore(topBanner.firstChild, document.body.firstChild);
+              try {
+                if (orderRes.auditId) {
+                  var u = new URL(window.location.href);
+                  u.searchParams.delete('demo'); u.searchParams.delete('paid');
+                  u.searchParams.set('reportId', orderRes.auditId);
+                  window.history.replaceState(null, '', u.toString());
+                }
+              } catch (e) {}
+              unlockFullReport({ email: email });
             } else {
               if (errEl) errEl.textContent = verifyRes.error || 'Verification failed. Contact support.';
               if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report'; }
@@ -1084,24 +1102,11 @@ function doActualCheckout() {
   });
 }
 
-// ── FULL REPORT DATA — ?demo=1 (preview) or ?paid=1 (after payment) ──────────
-// Injects REAL computed audit data into every paid section. Runs for both demo
-// and paid so the post-payment report page shows the genuine full report.
-(function () {
-  if (!/[?&](demo|paid)=1/.test(window.location.search)) return;
-
-  // ── Demo banner (preview only — paid mode shows its own confirmation banner) ─
-  if (/[?&]demo=1/.test(window.location.search)) {
-    var banner = document.createElement('div');
-    banner.innerHTML =
-      '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#D97706;' +
-      'color:#fff;text-align:center;padding:8px 16px;font-size:.85rem;font-weight:600;">' +
-      '🔓 DEMO MODE — Full paid report preview · Real audit data shown' +
-      '<button onclick="this.parentElement.remove()" style="background:none;border:none;' +
-      'color:#fff;cursor:pointer;margin-left:12px;font-size:1rem">✕</button></div>';
-    document.body.insertBefore(banner.firstChild, document.body.firstChild);
-  }
-
+// ── FULL REPORT DATA INJECTION ───────────────────────────────────────────────
+// Fills every paid section with the REAL computed audit data. Called ONLY by
+// unlockFullReport(), which runs solely after a backend-verified payment.
+// There is NO ?demo / ?paid URL trigger — those bypasses were removed for security.
+function injectFullReportData() {
   // ── Pull real audit data from the page ────────────────────────────────────
   var d            = window._tdmAuditData || {};
   var specialty    = d.specialty    || 'Specialist';
@@ -1327,49 +1332,46 @@ function doActualCheckout() {
     if (lbFooter) lbFooter.style.display = 'none';
   }
 
-  // ── Replace CTA with demo state + download button ─────────────────────────
-  var cta = document.getElementById('cta-section');
-  if (cta) cta.innerHTML =
-    '<div style="text-align:center;padding:2.5rem 1rem">' +
-    '<div style="font-size:2.5rem;margin-bottom:12px">&#x1F389;</div>' +
-    '<h2 style="color:#fff;margin-bottom:8px">Demo Mode Active</h2>' +
-    '<p style="color:rgba(255,255,255,.7);line-height:1.8;margin-bottom:16px">' +
-      'All sections show real computed data from the free audit.<br>' +
-      'Download the PDF report below or run a real check.</p>' +
-    downloadBtnHtml() +
-    '<br><a href="../index.html#tool" style="display:inline-block;color:rgba(255,255,255,.6);' +
-      'font-size:.85rem;margin-top:12px;text-decoration:underline">' +
-      '&larr; Run a real free check</a>' +
-    '</div>';
+  // Lock overlays, leaderboard footer and the CTA are handled by unlockFullReport().
+}
 
-})();
+// ── unlockFullReport() — the ONLY way paid sections become visible ───────────
+// Runs solely after a backend-verified payment: either the page-load check
+// against /api/payment-status, or an in-page Razorpay payment the backend just
+// signature-verified. Never triggered by URL params or localStorage. Idempotent.
+var _tdmUnlocked = false;
+function unlockFullReport(opts) {
+  if (_tdmUnlocked) return;
+  _tdmUnlocked = true;
+  opts = opts || {};
 
-// ── PAID MODE — ?paid=1 ────────────────────────────────────────────────────
-// Triggered after successful Razorpay payment redirect.
-// Unlocks all sections and shows download button.
-(function () {
-  if (!/[?&]paid=1/.test(window.location.search)) return;
+  // Fill paid sections with the real audit data.
+  try { injectFullReportData(); } catch (e) {}
 
-  // Success banner
-  var banner = document.createElement('div');
-  banner.innerHTML =
-    '<div style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#00A878;' +
-    'color:#fff;text-align:center;padding:9px 16px;font-size:.85rem;font-weight:600">' +
-    '✅ Payment confirmed — all sections unlocked &nbsp;·&nbsp; PDF being sent to your email' +
-    '</div>';
-  document.body.insertBefore(banner.firstChild, document.body.firstChild);
-
-  // Unlock all locked sections
+  // Remove every lock overlay / blur.
   document.querySelectorAll('.locked-overlay').forEach(function(el) { el.remove(); });
   document.querySelectorAll('.locked-content').forEach(function(el) {
     el.removeAttribute('aria-hidden');
-    el.style.filter  = 'none';
-    el.style.opacity = '1';
+    el.style.filter        = 'none';
+    el.style.opacity       = '1';
+    el.style.pointerEvents = 'auto';
   });
   var lbf = document.getElementById('leaderboard-footer');
   if (lbf) lbf.style.display = 'none';
 
-  // Replace CTA with download + Monitor upgrade upsell
+  // Green confirmation banner (once) — only ever shown on verified payment.
+  if (!document.getElementById('tdm-paid-banner')) {
+    var banner = document.createElement('div');
+    banner.innerHTML =
+      '<div id="tdm-paid-banner" style="position:fixed;top:60px;left:0;right:0;z-index:999;background:#00A878;' +
+      'color:#fff;text-align:center;padding:9px 16px;font-size:.85rem;font-weight:600">' +
+      '✅ Payment verified — full report unlocked' +
+      (opts.email ? ' &nbsp;·&nbsp; PDF sent to ' + escH(opts.email) : '') +
+      '</div>';
+    document.body.insertBefore(banner.firstChild, document.body.firstChild);
+  }
+
+  // CTA → download + Monitor upgrade upsell.
   var cta = document.getElementById('cta-section');
   if (cta) cta.innerHTML =
     '<div style="text-align:center;padding:2.5rem 1rem">' +
@@ -1381,7 +1383,30 @@ function doActualCheckout() {
     downloadBtnHtml() +
     upgradeSectionHtml() +
     '</div>';
+}
 
+// ── Page load: paid vs free decided ONLY by backend-verified status ──────────
+// Trusts NOTHING from the client. Only `reportId` is read from the URL; the paid
+// state comes from GET /api/payment-status. ?paid and ?demo are ignored entirely,
+// so /preview-report.html?paid=1 or ?demo=1 shows the free preview only.
+(function () {
+  function getReportId() {
+    try {
+      var p = new URLSearchParams(window.location.search);
+      return (p.get('reportId') || p.get('auditId') || '').trim();
+    } catch (e) { return ''; }
+  }
+
+  var reportId = getReportId();
+  if (!reportId) return;  // no reportId → free preview (default locked state)
+
+  fetch('/api/payment-status?reportId=' + encodeURIComponent(reportId), { cache: 'no-store' })
+    .then(function (r) { return r.json(); })
+    .then(function (res) {
+      // Unlock ONLY when the backend confirms a verified payment.
+      if (res && res.paid === true) unlockFullReport();
+    })
+    .catch(function () { /* fail closed — stay on free preview */ });
 })();
 </script>
 

@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="apple-touch-icon" href="/assets/logo/apple-touch-icon.png">
-<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#0A2540">
 <meta property="og:image" content="https://www.thedocmirror.com/assets/logo/og-image.png">
 <meta property="og:image:width" content="1200">
@@ -20,7 +22,7 @@
 <meta property="og:type" content="website">
 <link rel="canonical" href="https://www.thedocmirror.com/">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.thedocmirror.com/#organization","name":"The Doc Mirror","url":"https://www.thedocmirror.com","description":"A visibility audit service for doctors across Google Search, Google Maps, and AI search tools.","logo":"https://www.thedocmirror.com/logo.png"},{"@type":"WebSite","@id":"https://www.thedocmirror.com/#website","url":"https://www.thedocmirror.com","name":"The Doc Mirror","description":"Doctor visibility checker for Google and AI search.","publisher":{"@id":"https://www.thedocmirror.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://www.thedocmirror.com/?q={search_term_string}","query-input":"required name=search_term_string"}},{"@type":"SoftwareApplication","@id":"https://www.thedocmirror.com/#software","name":"The Doc Mirror","operatingSystem":"Web","applicationCategory":"BusinessApplication","description":"A free doctor visibility checker that audits Google Search, Google Maps, ChatGPT, Gemini, and Claude visibility.","url":"https://www.thedocmirror.com","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"Service","@id":"https://www.thedocmirror.com/#service","name":"Doctor Visibility Audit","serviceType":"Online visibility audit","provider":{"@id":"https://www.thedocmirror.com/#organization"},"description":"A free online audit showing how doctors appear in Google Search, Google Maps, ChatGPT, Gemini, and Claude.","url":"https://www.thedocmirror.com"},{"@type":"FAQPage","@id":"https://www.thedocmirror.com/#faq","mainEntity":[{"@type":"Question","name":"Is The Doc Mirror really free?","acceptedAnswer":{"@type":"Answer","text":"Yes, completely free. No credit card, no signup. Email only for the fix guide."}},{"@type":"Question","name":"Will this change my Google listing?","acceptedAnswer":{"@type":"Answer","text":"Never. We read publicly available data only and never access your Google account."}},{"@type":"Question","name":"How is this different from Googling myself?","acceptedAnswer":{"@type":"Answer","text":"Your own search results are personalised. The Doc Mirror simulates a cold patient search with no history — showing what a first-time searcher actually finds."}}]}]
+{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://www.thedocmirror.com/#organization","name":"The Doc Mirror","url":"https://www.thedocmirror.com","description":"A visibility audit service for doctors across Google Search, Google Maps, and AI search tools.","logo":"https://www.thedocmirror.com/android-chrome-512x512.png"},{"@type":"WebSite","@id":"https://www.thedocmirror.com/#website","url":"https://www.thedocmirror.com","name":"The Doc Mirror","description":"Doctor visibility checker for Google and AI search.","publisher":{"@id":"https://www.thedocmirror.com/#organization"},"potentialAction":{"@type":"SearchAction","target":"https://www.thedocmirror.com/?q={search_term_string}","query-input":"required name=search_term_string"}},{"@type":"SoftwareApplication","@id":"https://www.thedocmirror.com/#software","name":"The Doc Mirror","operatingSystem":"Web","applicationCategory":"BusinessApplication","description":"A free doctor visibility checker that audits Google Search, Google Maps, ChatGPT, Gemini, and Claude visibility.","url":"https://www.thedocmirror.com","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}},{"@type":"Service","@id":"https://www.thedocmirror.com/#service","name":"Doctor Visibility Audit","serviceType":"Online visibility audit","provider":{"@id":"https://www.thedocmirror.com/#organization"},"description":"A free online audit showing how doctors appear in Google Search, Google Maps, ChatGPT, Gemini, and Claude.","url":"https://www.thedocmirror.com"},{"@type":"FAQPage","@id":"https://www.thedocmirror.com/#faq","mainEntity":[{"@type":"Question","name":"Is The Doc Mirror really free?","acceptedAnswer":{"@type":"Answer","text":"Yes, completely free. No credit card, no signup. Email only for the fix guide."}},{"@type":"Question","name":"Will this change my Google listing?","acceptedAnswer":{"@type":"Answer","text":"Never. We read publicly available data only and never access your Google account."}},{"@type":"Question","name":"How is this different from Googling myself?","acceptedAnswer":{"@type":"Answer","text":"Your own search results are personalised. The Doc Mirror simulates a cold patient search with no history — showing what a first-time searcher actually finds."}}]}]
 }
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -439,9 +441,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .sp-cb-empty{padding:10px;font-size:13px;color:var(--slate-light)}
 .sp-cb-manual{margin-top:2px;font-size:13px;color:var(--slate);background:var(--warm-white)}
 .sp-cb-manual strong{color:var(--navy)}
-.sp-warn{display:none;font-size:11.5px;color:var(--amber);font-weight:600;margin-top:3px;line-height:1.4;align-items:flex-start;gap:5px;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:7px;padding:7px 9px}
-.sp-warn.on{display:flex}
-.sp-warn::before{content:'⚠';flex-shrink:0}
 
 /* Button */
 .tool-btn{width:100%;background:var(--navy);color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s,transform .1s;margin-top:6px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -499,6 +498,17 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .nf-body strong{color:var(--navy)}
 .nf-cta{display:inline-flex;align-items:center;gap:6px;background:var(--red);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background .15s}
 .nf-cta:hover{background:#b91c1c}
+/* "Please select yours" listings (reuses card styling; no redesign) */
+.ds-list{max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:8px;text-align:left}
+.ds-item{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:11px 14px;transition:border-color .15s}
+.ds-item:hover{border-color:var(--green)}
+.ds-info{min-width:0}
+.ds-item .ds-name{display:block;font-size:14px;font-weight:700;color:var(--navy)}
+.ds-item .ds-addr{display:block;font-size:12px;color:var(--slate-light);margin-top:2px;line-height:1.4}
+.ds-item .ds-meta2{display:block;font-size:12px;color:var(--slate);margin-top:3px}
+.ds-web{color:var(--green-dark);text-decoration:underline}
+.ds-use{flex-shrink:0;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;transition:background .15s}
+.ds-use:hover{background:var(--green)}
 .vf-icon{background:var(--amber-light)}
 .vf-icon svg{stroke:var(--amber)}
 .vf-checklist{max-width:420px;margin:0 auto 1.25rem;text-align:left;background:var(--amber-light);border:1px solid var(--amber-border);border-radius:10px;padding:14px 18px}
@@ -766,6 +776,15 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
   .stat-src-hero{color:rgba(255,255,255,.34)}
 }
 </style>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-QS7ZLTTZLF"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-QS7ZLTTZLF');
+</script>
 </head>
 <body>
 
@@ -895,7 +914,6 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
             <div class="sp-cb-panel" id="sp-cb-list" role="listbox" aria-label="Medical specialties"></div>
           </div>
           <div class="field-err" id="esp" role="alert">Select your specialty</div>
-          <div class="sp-warn" id="sp-warn" role="alert"></div>
         </div>
         <div class="field" id="fct">
           <label for="ct">City, State</label>
@@ -947,8 +965,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 
     <div class="nf-state vf-state" id="vf" role="alert">
       <div class="nf-icon vf-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
-      <div class="nf-title">Doctor verification failed</div>
-      <p class="nf-body" id="vf-msg">We could not confidently verify this doctor with the entered city and speciality.</p>
+      <div class="nf-title" id="vf-title">We couldn&rsquo;t confirm this listing</div>
+      <p class="nf-body" id="vf-msg">Please double-check the name, city and specialty, then try again.</p>
       <div class="vf-checklist">
         <div class="vf-checklist-h">Please check:</div>
         <ul>
@@ -958,6 +976,13 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
         </ul>
       </div>
       <button class="nf-cta vf-cta" onclick="resetTool()" type="button">Try Again</button>
+    </div>
+
+    <div class="nf-state ds-state" id="ds" role="alert">
+      <div class="nf-title" id="ds-title">We found possible profiles. Please select yours.</div>
+      <p class="nf-body" id="ds-body">Select the listing that matches your practice to continue.</p>
+      <div class="ds-list" id="ds-list"></div>
+      <button class="nf-cta vf-cta" onclick="noneOfThese()" type="button" style="margin-top:1rem">None of these</button>
     </div>
 
     <div class="results-section" id="rs">
@@ -1869,19 +1894,12 @@ function clearAll(){['ff','fl','fsp','fct'].forEach(function(x,i){setErr(x,['ef'
 document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);if(window.__updateSpecialtyConflict)window.__updateSpecialtyConflict();});
 (function(){var si=document.getElementById('sp-input');if(si)si.addEventListener('input',function(){setErr('fsp','esp',false);});})();
 
-// Warn (and block) when the user-selected specialty contradicts the verified
-// Google result. Returns true when there is an unresolved conflict.
-window.__updateSpecialtyConflict=function(){
-  var warn=document.getElementById('sp-warn');
-  var sel=(document.getElementById('sp')||{}).value||'';
-  var det=(document.getElementById('detected-specialty')||{}).value||'';
-  var conflict=!!(det && sel && window.DoctorNameParser && window.DoctorNameParser.specialtyConflict(sel,det));
-  if(warn){
-    if(conflict){warn.textContent='Selected specialty does not match the verified Google result ('+det+').';warn.classList.add('on');}
-    else{warn.textContent='';warn.classList.remove('on');}
-  }
-  return conflict;
-};
+// No specialty notice is ever shown on the form — the box has been removed.
+// The doctor's selected specialty is always primary and Google's category is
+// NEVER surfaced before the report. Specialty matching still runs in the BACKEND
+// (user_specialty + google_specialty are stored there for competitor analysis).
+// Kept as a no-op so existing callers (change/autocomplete handlers) don't break.
+window.__updateSpecialtyConflict=function(){ return false; };
 
 // ── VALIDATE ───────────────────────────────────────────────────────────────
 function validate(){
@@ -1917,12 +1935,9 @@ window.runCheck = async function() {
     return;
   }
 
-  // Block when the chosen specialty contradicts the verified Google result.
-  if (window.__updateSpecialtyConflict && window.__updateSpecialtyConflict()) {
-    setErr('fsp','esp',false);
-    var w = document.getElementById('sp-warn'); if (w) w.scrollIntoView({behavior:'smooth',block:'center'});
-    return;
-  }
+  // Specialty vs Google category is INFORMATIONAL only — refresh the notice but
+  // never block. The doctor's selected specialty is always respected.
+  if (window.__updateSpecialtyConflict) window.__updateSpecialtyConflict();
 
   // Clear any stale report data from previous sessions before starting fresh
   try { localStorage.removeItem('docmirrorPreviewReport'); localStorage.removeItem('tdm_free_preview'); } catch(e) {}
@@ -1980,7 +1995,11 @@ async function doAudit(p){
     setS(5,'spin');await wait(400);
     for(var i=1;i<=5;i++)setS(i,'dn');
     clearTimeout(_tm);await wait(600);
-    if(d.verified===false || d.notFound){
+    if(d.needsSelection && d.matches && d.matches.length){
+      // Several plausible listings — let the user pick the right one.
+      try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
+      showDidYouMean(d.matches,p,d);
+    }else if(d.verified===false || d.notFound){
       // Verification failed — never store or show preview/competitor data.
       try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
       showVF(d,p);
@@ -2451,14 +2470,68 @@ function showNF(p){
   _sc=0;_dn='Dr. '+(p.fn||'')+' '+(p.ln||'');
   document.getElementById('nf').scrollIntoView({behavior:'smooth',block:'start'});
 }
-// Doctor verification failed — show error card, NO preview/competitor data.
+// Could not verify this listing — show a soft, reason-aware card (NOT alarming).
+// GMB-missing is NOT handled here (it returns verified:true → a limited report).
 function showVF(d,p){
   document.getElementById('ls').classList.remove('active');
   document.getElementById('inp').style.display='none';
-  var msg=(d&&d.message)?d.message:"We couldn't confidently verify this doctor with the entered city and speciality.";
+  var reason=(d&&d.reason)||'';
+  var titleEl=document.getElementById('vf-title');
+  if(titleEl){
+    titleEl.textContent = reason==='city_mismatch'
+      ? "We couldn't find this doctor in that city"
+      : "We couldn't confirm this listing";
+  }
+  var msg=(d&&d.message)?d.message:"Please double-check the name, city and specialty, then try again.";
   var el=document.getElementById('vf-msg');if(el)el.textContent=msg;
   document.getElementById('vf').classList.add('active');
   document.getElementById('vf').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// "Please select yours" — render candidate profiles; picking one re-runs the
+// audit with that exact placeId (the trusted path). "None of these" generates a
+// GMB-missing report (never another clinic's data).
+var _dsParams=null;
+function showDidYouMean(matches,p,d){
+  _dsParams=p;
+  document.getElementById('ls').classList.remove('active');
+  document.getElementById('inp').style.display='none';
+  var body=document.getElementById('ds-body');
+  if(body&&d&&d.message)body.textContent=d.message;
+  var list=document.getElementById('ds-list');
+  if(list){
+    list.innerHTML='';
+    matches.forEach(function(m){
+      var item=document.createElement('div');
+      item.className='ds-item';
+      item.innerHTML='<div class="ds-info"><span class="ds-name"></span><span class="ds-addr"></span><span class="ds-meta2"></span></div><button type="button" class="ds-use">Use this profile</button>';
+      item.querySelector('.ds-name').textContent=m.name||'Listing';
+      item.querySelector('.ds-addr').textContent=m.address||'';
+      var meta=(m.rating!=null?('★ '+m.rating+' · '):'')+(m.reviewCount||0)+' reviews';
+      var metaEl=item.querySelector('.ds-meta2');
+      metaEl.textContent=meta;
+      if(m.website){
+        metaEl.appendChild(document.createTextNode(' · '));
+        var a=document.createElement('a');a.className='ds-web';a.href=m.website;a.target='_blank';a.rel='noopener';a.textContent='Website';
+        metaEl.appendChild(a);
+      }
+      item.querySelector('.ds-use').onclick=function(){
+        document.getElementById('ds').classList.remove('active');
+        var np={};for(var k in p){np[k]=p[k];}np.placeId=m.placeId;np.gmbMissing=false;
+        doAudit(np);
+      };
+      list.appendChild(item);
+    });
+  }
+  document.getElementById('ds').classList.add('active');
+  document.getElementById('ds').scrollIntoView({behavior:'smooth',block:'start'});
+}
+// "None of these" → no GMB for this exact doctor → limited GMB-missing report.
+function noneOfThese(){
+  document.getElementById('ds').classList.remove('active');
+  var p=_dsParams||{};
+  var np={};for(var k in p){np[k]=p[k];}np.gmbMissing=true;np.placeId='';
+  doAudit(np);
 }
 function showWL(){
   document.getElementById('nf').classList.remove('active');
@@ -2525,7 +2598,7 @@ function doOneTime(){
 
 // ── RESET ──────────────────────────────────────────────────────────────────
 function resetTool(){
-  ['ls','rs','nf','vf'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
+  ['ls','rs','nf','vf','ds'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
   document.getElementById('inp').style.display='block';
   document.getElementById('wl').classList.remove('on');
   document.getElementById('tm').classList.remove('on');
