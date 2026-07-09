@@ -5,7 +5,7 @@
       "src": "dev-package/server.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": ["dev-package/public/**"],
+        "includeFiles": ["dev-package/public/**", "dev-package/content/resources/**"],
         "maxDuration": 60
       }
     }
