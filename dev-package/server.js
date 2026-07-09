@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+const fs   = require('fs');
 require('./lib/env');
 
 const { verifyAuditCacheTable } = require('./lib/supabase-client');
@@ -42,6 +43,10 @@ const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
 
+// ── Resources: Markdown-driven blog engine ──────────────────────────────────
+const resourcesRoute              = require('./routes/resources');
+const { resourceSitemapEntries }  = require('./lib/resources');
+
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
@@ -68,7 +73,6 @@ const CLEAN_PAGES = {
   '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
-  '/resources':                     'resources.html',
   '/about':                         'about.html',
   '/pricing':                       'pricing.html',
   '/help-center':                   'help-center.html',
@@ -77,6 +81,36 @@ for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
   app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));
   app.get('/pages/' + file,   (_req, res) => res.redirect(301, cleanPath));
 }
+
+// ── Resources: Markdown blog engine ──────────────────────────────────────────
+// Server-rendered from Markdown in /content/resources. Registered before
+// express.static so /resources (listing) and /resources/:slug (article) are
+// handled here. Deep static paths like /images/resources/* never match
+// /resources/:slug (>1 segment) and fall through to express.static.
+app.get('/resources',        resourcesRoute.listingHandler);
+app.get('/resources/:slug',  resourcesRoute.articleHandler);
+app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
+
+// ── Sitemap ──────────────────────────────────────────────────────────────────
+// Served dynamically so every Markdown resource is included automatically.
+app.get('/sitemap.xml', (_req, res) => {
+  let base;
+  try {
+    base = fs.readFileSync(path.join(__dirname, 'public', 'sitemap.xml'), 'utf8');
+  } catch (_) {
+    base = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+  }
+  const blocks = resourceSitemapEntries().map(e =>
+    '  <url>\n' +
+    `    <loc>${e.loc}</loc>\n` +
+    (e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>\n` : '') +
+    `    <changefreq>${e.changefreq}</changefreq>\n` +
+    `    <priority>${e.priority}</priority>\n` +
+    '  </url>'
+  ).join('\n');
+  const xml = blocks ? base.replace('</urlset>', blocks + '\n</urlset>') : base;
+  res.set('Content-Type', 'application/xml; charset=utf-8').send(xml);
+});
 
 // ── Static site ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
