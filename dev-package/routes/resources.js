@@ -57,7 +57,7 @@ h1{font-size:clamp(2rem,4vw,3rem);line-height:1.06;color:var(--navy);margin:0}
 .res-featured-title{font-size:clamp(1.3rem,2.4vw,1.85rem);line-height:1.2;margin:0;color:var(--navy);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .res-featured-excerpt{font-size:.98rem;color:var(--slate-light);line-height:1.65;margin:0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .res-featured-link{font-size:.9rem;font-weight:600;color:var(--green-dark);margin-top:.15rem}
-.res-featured-media{width:100%;aspect-ratio:16/9;align-self:center;overflow:hidden;background:#061b2f;display:block}
+.res-featured-media{aspect-ratio:16/9;align-self:center;overflow:hidden;background:#061b2f;display:block;border-radius:14px;margin:clamp(1.4rem,3vw,2.2rem);margin-left:0}
 .res-featured-media>img{width:100%;height:100%;object-fit:contain;object-position:center;display:block}
 .res-featured-media--ph{aspect-ratio:16/9;align-self:center;display:flex;align-items:center;justify-content:center;text-align:center;padding:1.5rem;background:linear-gradient(135deg,#061b2f,var(--green-dark));color:#fff;font-weight:700;font-size:clamp(1.1rem,2.5vw,1.5rem);line-height:1.25}
 
@@ -111,7 +111,7 @@ h1{font-size:clamp(2rem,4vw,3rem);line-height:1.06;color:var(--navy);margin:0}
 @media(max-width:768px){.cta-block{flex-direction:column;align-items:stretch;padding:28px 24px}.cta-btn{width:100%;max-width:none;justify-content:center}}
 /* Resources grid: 3 cols desktop → 2 tablet → 1 mobile; featured stacks (image above text) on mobile */
 @media(max-width:980px){.res-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:768px){.res-featured{grid-template-columns:1fr}.res-featured-media{order:-1;aspect-ratio:16/9;align-self:stretch}.res-featured-media--ph{aspect-ratio:16/9;align-self:stretch}.res-featured-body{padding:1.4rem 1.35rem}}
+@media(max-width:768px){.res-featured{grid-template-columns:1fr}.res-featured-media{order:-1;aspect-ratio:16/9;align-self:stretch;margin:1.35rem 1.35rem 0;border-radius:14px}.res-featured-media--ph{aspect-ratio:16/9;align-self:stretch;margin:1.35rem 1.35rem 0}.res-featured-body{padding:1.4rem 1.35rem}}
 @media(max-width:640px){.res-grid{grid-template-columns:1fr}}
 @media(max-width:720px){main{padding:1.25rem 1rem 2rem}}
 `;
