@@ -27,7 +27,7 @@
 @media(max-width:480px){.dm-nav-login{display:none}}\
 .dm-footer{width:100%;margin:0;background:#0D1B35;padding:56px 1rem 24px;display:flex;justify-content:center;text-align:left;font-family:"DM Sans",system-ui,sans-serif}\
 .dm-footer-card{width:100%;max-width:1200px;margin:0 auto;background:#102343;border-radius:32px;padding:48px 48px 32px;box-shadow:0 30px 80px rgba(4,18,45,.18)}\
-.dm-footer-grid{display:grid;grid-template-columns:repeat(5,minmax(140px,1fr));gap:32px}\
+.dm-footer-grid{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:32px}\
 .dm-footer-col{display:flex;flex-direction:column;gap:1rem}\
 .dm-footer-logo{font-size:1.35rem;font-weight:800;color:#fff;letter-spacing:-.02em}\
 .dm-footer-brand p{color:rgba(255,255,255,.75);font-size:0.95rem;line-height:1.8;max-width:320px}\
@@ -88,16 +88,7 @@
           <a href="/pricing">Pricing</a>\
           <a href="/about">About</a>\
           <a href="/#faq">FAQ</a>\
-          <a href="/#tool">Check my visibility</a>\
-        </div>\
-      </div>\
-      <div class="dm-footer-col">\
-        <h4>RESOURCES</h4>\
-        <div class="dm-footer-links">\
-          <a href="/ai-visibility-for-doctors">AI Visibility for Doctors</a>\
-          <a href="/doctor-visibility-score">Doctor Visibility Score</a>\
-          <a href="/how-doctors-rank-in-chatgpt">How Doctors Rank in ChatGPT</a>\
-          <a href="/google-visibility-for-doctors">Google Visibility Guide</a>\
+          <a href="/resources">Resources</a>\
         </div>\
       </div>\
       <div class="dm-footer-col">\
