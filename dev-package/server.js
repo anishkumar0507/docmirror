@@ -67,10 +67,7 @@ app.use(express.json({ limit: '2mb' }));
 // before express.static so the .html → clean redirect runs before the static
 // file would be served. Page content/layout is unchanged — this is routing only.
 const CLEAN_PAGES = {
-  '/ai-visibility-for-doctors':     'ai-visibility-for-doctors.html',
   '/doctor-visibility-score':       'doctor-visibility-score.html',
-  '/how-doctors-rank-in-chatgpt':   'how-doctors-rank-in-chatgpt.html',
-  '/google-visibility-for-doctors': 'google-visibility-for-doctors.html',
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
   '/about':                         'about.html',
@@ -80,6 +77,20 @@ const CLEAN_PAGES = {
 for (const [cleanPath, file] of Object.entries(CLEAN_PAGES)) {
   app.get(cleanPath,          (_req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', file)));
   app.get('/pages/' + file,   (_req, res) => res.redirect(301, cleanPath));
+}
+
+// ── Migrated guides → Resources blog engine ──────────────────────────────────
+// The old hand-coded guide pages now live in the Markdown Resources system.
+// 301-redirect the old clean URLs (and their legacy /pages/*.html) to the new
+// /resources/<slug> URLs so links and search rankings carry over.
+const GUIDE_REDIRECTS = {
+  '/ai-visibility-for-doctors':     '/resources/ai-visibility-for-doctors',
+  '/how-doctors-rank-in-chatgpt':   '/resources/how-doctors-rank-in-chatgpt',
+  '/google-visibility-for-doctors': '/resources/google-visibility-guide',
+};
+for (const [oldPath, newPath] of Object.entries(GUIDE_REDIRECTS)) {
+  app.get(oldPath,                              (_req, res) => res.redirect(301, newPath));
+  app.get('/pages' + oldPath + '.html',         (_req, res) => res.redirect(301, newPath));
 }
 
 // ── Resources: Markdown blog engine ──────────────────────────────────────────
