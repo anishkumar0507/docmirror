@@ -101,6 +101,23 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
 
   gtag('config', 'G-QS7ZLTTZLF');
 </script>
+<style>
+/* ── Pricing CTA → visibility-form modal (reuses the real homepage form via iframe) ── */
+.tdm-modal-overlay{position:fixed;inset:0;z-index:2000;display:none;align-items:center;justify-content:center;padding:2.5vh 2.5vw;background:rgba(10,37,64,.55);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.tdm-modal-overlay.open{display:flex}
+/* Mobile fallback: if the (mobile-layout) component is taller than the viewport,
+   the whole OVERLAY scrolls — never an inner scrollbox. */
+.tdm-modal-overlay.tdm-scrolly{align-items:flex-start;overflow-y:auto}
+/* The card wraps the scaled component exactly — no max-height, no inner scroll. */
+.tdm-modal{position:relative;background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(4,18,45,.35);overflow:hidden;max-width:95vw;font-family:'DM Sans',system-ui,sans-serif}
+.tdm-modal-close{position:absolute;top:12px;right:12px;z-index:3;width:34px;height:34px;border-radius:50%;border:none;background:rgba(241,245,249,.92);color:#3D4D5C;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;box-shadow:0 1px 4px rgba(10,37,64,.12)}
+.tdm-modal-close:hover{background:#e2e8f0;color:#0A2540}
+.tdm-modal-close:focus-visible{outline:2px solid #00A878;outline-offset:2px}
+/* Scale wrapper is sized (via JS) to the SCALED box, so transform leaves no blank space. */
+.tdm-scale-wrap{overflow:hidden;line-height:0}
+.tdm-modal-iframe{border:0;display:block;transform-origin:top left;width:620px;height:600px;background:#fff}
+body.tdm-modal-open{overflow:hidden}
+</style>
 </head>
 <body>
 <div id="dm-header"></div>
@@ -130,7 +147,7 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
         <li><span class="ico ico-check">✓</span> PDF Download + Email Delivery</li>
         <li><span class="ico ico-check">✓</span> Audit History page (your past reports)</li>
       </ul>
-      <a href="/?plan=audit#tool" class="plan-cta cta-audit">Get My Report →</a>
+      <a href="/?plan=audit#tool" class="plan-cta cta-audit js-plan-cta" data-plan="audit">Get My Report →</a>
     </div>
 
     <!-- ── Plan 2: Doctor Visibility Monitor $49/month ── -->
@@ -160,7 +177,7 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
         <li><span class="ico ico-check">✓</span> Historical Trend Tracking</li>
         <li><span class="ico ico-check">✓</span> Weekly PDF Reports by Email</li>
       </ul>
-      <a href="/?plan=monitor#tool" class="plan-cta cta-monitor">Start Monitoring →</a>
+      <a href="/?plan=monitor#tool" class="plan-cta cta-monitor js-plan-cta" data-plan="monitor">Start Monitoring →</a>
     </div>
 
   </div>
@@ -189,6 +206,129 @@ footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
 </main>
 
 <div id="dm-footer"></div>
+
+<!-- ── Visibility-form modal (opened by the pricing CTAs; reuses the real
+     homepage form via a same-origin iframe in embed mode) ── -->
+<div class="tdm-modal-overlay" id="tdm-plan-modal" role="dialog" aria-modal="true" aria-label="Check your visibility">
+  <div class="tdm-modal">
+    <button class="tdm-modal-close" id="tdm-modal-close" type="button" aria-label="Close visibility form">&times;</button>
+    <div class="tdm-scale-wrap" id="tdm-scale-wrap">
+      <iframe class="tdm-modal-iframe" id="tdm-modal-iframe" title="Check your visibility form"></iframe>
+    </div>
+  </div>
+</div>
+<script>
+(function(){
+  var overlay = document.getElementById('tdm-plan-modal');
+  if(!overlay) return;
+  var iframe  = document.getElementById('tdm-modal-iframe');
+  var scaleWrap = document.getElementById('tdm-scale-wrap');
+  var closeBtn= document.getElementById('tdm-modal-close');
+  var lastTrigger = null;
+  var NATURAL_W = 620;   // the component's natural width (.tool-card max-width)
+  var _ro = null, _fitRAF = null;
+
+  // Scale the WHOLE component to fit the viewport so it shows at once with no
+  // inner scrollbar. Desktop/tablet: fit width AND height. Small mobile: fit
+  // width, render the component's mobile layout, and let the overlay scroll if
+  // it's still taller than the viewport (never an inner scrollbox).
+  function fit(){
+    var doc; try { doc = iframe.contentDocument; } catch(e){ return; }
+    if(!doc || !doc.body) return;
+    var vpW = window.innerWidth, vpH = window.innerHeight;
+    var isMobile = vpW < 768;
+    var NW = isMobile ? Math.min(vpW - 16, NATURAL_W) : NATURAL_W;
+    iframe.style.transform = 'none';
+    iframe.style.width  = NW + 'px';
+    iframe.style.height = '2200px';                       // tall enough to measure freely
+    var card = doc.querySelector('.tool-card');
+    var NH = Math.ceil(card ? card.scrollHeight : doc.body.scrollHeight);
+    if(!NH){ return; }
+    iframe.style.height = NH + 'px';
+    var availW = vpW * (isMobile ? 0.98 : 0.94);
+    var availH = vpH * (isMobile ? 0.98 : 0.92);
+    var s = isMobile ? Math.min(1, availW / NW)           // width-fit only on mobile
+                     : Math.min(1, availW / NW, availH / NH);
+    iframe.style.transform = 'scale(' + s + ')';
+    scaleWrap.style.width  = Math.ceil(NW * s) + 'px';
+    scaleWrap.style.height = Math.ceil(NH * s) + 'px';
+    // Only allow overlay scrolling when the fitted component is still taller
+    // than the viewport (mobile fallback). Never on desktop.
+    overlay.classList.toggle('tdm-scrolly', (NH * s) > availH + 2);
+  }
+  function scheduleFit(){ if(_fitRAF) cancelAnimationFrame(_fitRAF); _fitRAF = requestAnimationFrame(fit); }
+  iframe.addEventListener('load', function(){
+    scheduleFit(); setTimeout(fit, 250); setTimeout(fit, 700);   // re-fit as fonts/layout settle
+    try {
+      if(_ro) _ro.disconnect();
+      _ro = new ResizeObserver(scheduleFit);      // re-fit on any content height change (loading/results states)
+      _ro.observe(iframe.contentDocument.body);
+    } catch(e){}
+  });
+  window.addEventListener('resize', scheduleFit);
+
+  function focusables(){ return overlay.querySelectorAll('button, iframe, a[href], input, [tabindex]:not([tabindex="-1"])'); }
+  // True while the embedded audit is running (its loading state is active) —
+  // used to block closing mid-submission.
+  function isSubmitting(){
+    try { var d = iframe.contentDocument; var ls = d && d.getElementById('ls'); return !!(ls && ls.classList.contains('active')); }
+    catch(e){ return false; }
+  }
+  function openModal(plan, trigger){
+    plan = (plan === 'monitor') ? 'monitor' : 'audit';
+    lastTrigger = trigger || document.activeElement;
+    // Preserve the selected plan (does not touch payment logic or the component).
+    try { sessionStorage.setItem('tdm_selected_plan', plan); } catch(e){}
+    // Load the SAME homepage "Check your visibility now" component in embed mode.
+    iframe.src = '/?embed=1&plan=' + plan + '#tool';
+    overlay.classList.add('open');
+    document.body.classList.add('tdm-modal-open');
+    document.addEventListener('keydown', onKey, true);
+    setTimeout(function(){ closeBtn.focus(); }, 40);
+  }
+  function closeModal(){
+    if(!overlay.classList.contains('open')) return;
+    if(isSubmitting()) return;                  // do not close while the audit is processing
+    overlay.classList.remove('open');
+    overlay.classList.remove('tdm-scrolly');
+    document.body.classList.remove('tdm-modal-open');
+    document.removeEventListener('keydown', onKey, true);
+    if(_ro){ try { _ro.disconnect(); } catch(e){} _ro = null; }
+    iframe.src = 'about:blank';                 // stop/reset the embedded form
+    if(lastTrigger && lastTrigger.focus) lastTrigger.focus();  // return focus to the CTA
+    lastTrigger = null;
+  }
+  function onKey(e){
+    if(e.key === 'Escape'){ e.preventDefault(); closeModal(); return; }
+    if(e.key === 'Tab'){
+      var f = focusables(); if(!f.length) return;
+      var first = f[0], last = f[f.length - 1];
+      if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+      else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+    }
+  }
+  // Pricing CTAs open the modal instead of redirecting to the homepage.
+  document.querySelectorAll('.js-plan-cta').forEach(function(a){
+    a.addEventListener('click', function(e){
+      e.preventDefault();
+      openModal(a.getAttribute('data-plan'), a);
+    });
+  });
+  closeBtn.addEventListener('click', closeModal);
+  overlay.addEventListener('mousedown', function(e){ if(e.target === overlay) closeModal(); });
+  // Deep link: /pricing?plan=audit or ?plan=monitor auto-opens the modal, then cleans the param.
+  try {
+    var params = new URLSearchParams(location.search);
+    var qp = params.get('plan');
+    if(qp === 'audit' || qp === 'monitor'){
+      openModal(qp, null);
+      params.delete('plan');
+      var qs = params.toString();
+      history.replaceState(null, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
+    }
+  } catch(e){}
+})();
+</script>
 <script src="/js/layout.js" defer></script>
 <script src="/js/branding.js" defer></script>
 </body>

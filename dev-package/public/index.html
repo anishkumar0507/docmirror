@@ -785,6 +785,21 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 
   gtag('config', 'G-QS7ZLTTZLF');
 </script>
+<!-- Embed mode: when this page is loaded inside the Pricing modal iframe
+     (?embed=1), show only the visibility form (the same real form) and hide the
+     page chrome. Inert on the normal homepage — nothing changes unless ?embed=1. -->
+<script>try{if(new URLSearchParams(location.search).get('embed')==='1'){document.documentElement.classList.add('tdm-embed');}}catch(e){}</script>
+<style>
+html.tdm-embed,html.tdm-embed body{background:#fff!important}
+html.tdm-embed #dm-header,html.tdm-embed #dm-footer,html.tdm-embed .dm-nav,html.tdm-embed .dm-footer{display:none!important}
+html.tdm-embed body>section:not(#tool){display:none!important}
+html.tdm-embed #tool{padding:0!important;margin:0!important;min-height:0!important;background:transparent!important}
+/* Hide only the page hero chrome above the card. The full .tool-card is shown
+   as-is: "Check your visibility now" heading, description, example result card,
+   the four fields, privacy note and the alternate-search link. */
+html.tdm-embed #tool .hero-eyebrow,html.tdm-embed #tool>h1,html.tdm-embed #tool .hero-sub,html.tdm-embed #tool .analyzed-on,html.tdm-embed #tool .hero-stats{display:none!important}
+html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin:0!important;max-width:none!important;width:100%!important;border-radius:0!important;padding:20px 18px 26px!important}
+</style>
 </head>
 <body>
 
@@ -1971,7 +1986,7 @@ async function doAudit(p){
       showVF(d,p);
     }else{
       try{localStorage.setItem('docmirrorPreviewReport',JSON.stringify(d));}catch(e2){}
-      window.location.href='./pages/preview-report.html';
+      (window.top&&window.top!==window.self?window.top:window).location.href='/pages/preview-report.html';
     }
   }catch(e){
     clearTimeout(_tm);
@@ -2602,7 +2617,7 @@ function runFreePreview(p){
     setS(5,'spin');
     var result=calculateFreeVisibilityScore(p);
     try{localStorage.setItem('tdm_free_preview',JSON.stringify(result));}catch(e){}
-    setTimeout(function(){window.location.href='./pages/preview-report.html';},380);
+    setTimeout(function(){(window.top&&window.top!==window.self?window.top:window).location.href='/pages/preview-report.html';},380);
   },1920);
 }
 
