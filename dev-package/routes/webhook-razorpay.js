@@ -190,29 +190,39 @@ async function handler(req, res) {
 
       case 'subscription.cancelled':
       case 'subscription.completed': {
-        await supabase.from('subscriptions')
-          .update({
-            status:     eventType === 'subscription.cancelled' ? 'cancelled' : 'completed',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('razorpay_subscription_id', subId);
+        const newStatus = eventType === 'subscription.cancelled' ? 'cancelled' : 'completed';
 
-        if (userId) {
-          // Downgrade: check if user has a $19 paid report — keep 'audit', otherwise 'free'
-          const { data: paidRow } = await supabase
-            .from('paid_reports')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('status', 'delivered')
-            .limit(1)
-            .single();
+        // Capture the end of the paid cycle so access is downgraded LATER (lazy-
+        // expiry), not immediately. Cancelling auto-pay must NOT instantly kill the
+        // paid access the user already paid for.
+        const cycleEnd    = payload.current_end || payload.ended_at || payload.end_at || payload.charge_at;
+        const accessUntil = cycleEnd ? new Date(cycleEnd * 1000).toISOString() : null;
 
-          const downgradePlan = paidRow ? 'audit' : 'free';
-          await supabase.from('profiles')
-            .update({ plan: downgradePlan, updated_at: new Date().toISOString() })
-            .eq('id', userId);
-          console.log(`[rzp-webhook] user ${userId} plan → ${downgradePlan} (subscription ended)`);
+        // Only set access_until if it isn't already set (the cancel route sets it first).
+        const update = { status: newStatus, updated_at: new Date().toISOString() };
+        if (accessUntil) {
+          try {
+            const { data: existing } = await supabase.from('subscriptions')
+              .select('access_until').eq('razorpay_subscription_id', subId).limit(1);
+            if (!(existing && existing[0] && existing[0].access_until)) update.access_until = accessUntil;
+          } catch (_) { update.access_until = accessUntil; } // best effort
         }
+
+        let { error: upErr } = await supabase.from('subscriptions')
+          .update(update).eq('razorpay_subscription_id', subId);
+        if (upErr && update.access_until) {
+          // access_until column may not be migrated yet — retry without it.
+          console.warn('[rzp-webhook] subscription update warn (retry minimal):', upErr.message);
+          await supabase.from('subscriptions')
+            .update({ status: newStatus, updated_at: update.updated_at })
+            .eq('razorpay_subscription_id', subId);
+        }
+
+        // NOTE: profiles.plan is deliberately NOT downgraded here. The user keeps
+        // 'monitor' until access_until; lazy-expiry (routes/user/me.js + reconcile)
+        // performs the downgrade then. This prevents an immediate cancel from
+        // instantly killing paid access.
+        console.log(`[rzp-webhook] subscription ${newStatus} subId=${subId} access_until=${update.access_until || '(unchanged)'} — plan downgrade deferred`);
         break;
       }
 

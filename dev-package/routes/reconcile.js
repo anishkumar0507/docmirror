@@ -46,12 +46,54 @@ async function nextStageFor(supabase, auditId) {
   return pdfExists ? 'email' : 'pdf';
 }
 
+// ── Monitor access-expiry backstop ────────────────────────────────────────
+// Cancelled Monitor subscriptions keep profiles.plan = 'monitor' until
+// access_until (end of the paid cycle). The primary downgrade is lazy, on
+// dashboard read (routes/user/me.js). This sweep is the safety net for users who
+// don't log in around their expiry: downgrade any cancelled subscription whose
+// access_until has passed but whose profile is still 'monitor'.
+// Target = 'audit' if a delivered paid report exists, else 'free'.
+async function expireCancelledMonitors(supabase) {
+  const nowIso = new Date().toISOString();
+  let downgraded = 0;
+  try {
+    const { data: subs, error } = await supabase
+      .from('subscriptions')
+      .select('user_id, access_until')
+      .eq('status', 'cancelled')
+      .not('access_until', 'is', null)
+      .lte('access_until', nowIso)
+      .limit(200);
+    if (error) { console.warn('[reconcile] monitor-expiry query warn:', error.message); return 0; }
+    for (const s of (subs || [])) {
+      if (!s.user_id) continue;
+      const { data: prof } = await supabase
+        .from('profiles').select('plan').eq('id', s.user_id).limit(1).single();
+      if (!prof || prof.plan !== 'monitor') continue; // already downgraded / not monitor
+      const { data: paid } = await supabase
+        .from('paid_reports').select('id').eq('user_id', s.user_id).eq('status', 'delivered').limit(1);
+      const downgradePlan = (paid && paid.length) ? 'audit' : 'free';
+      await supabase.from('profiles')
+        .update({ plan: downgradePlan, updated_at: new Date().toISOString() })
+        .eq('id', s.user_id).eq('plan', 'monitor');
+      downgraded++;
+      console.log(`[reconcile] monitor access expired → ${downgradePlan} userId=${s.user_id}`);
+    }
+  } catch (e) {
+    console.warn('[reconcile] monitor-expiry sweep warn:', e.message);
+  }
+  return downgraded;
+}
+
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   if (!authorized(req)) return res.status(403).json({ error: 'forbidden' });
 
   const supabase = getSupabaseClient();
   if (!supabase) return res.json({ ok: false, reason: 'no_supabase' });
+
+  // Backstop: downgrade any cancelled Monitor whose paid access window has ended.
+  const expiredMonitors = await expireCancelledMonitors(supabase);
 
   const sinceIso = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000).toISOString();
 
@@ -101,7 +143,7 @@ async function handler(req, res) {
     }
   }
 
-  return res.json({ ok: true, scanned: rows?.length || 0, processed: actions.length, actions });
+  return res.json({ ok: true, scanned: rows?.length || 0, processed: actions.length, expiredMonitors, actions });
 }
 
 module.exports = handler;

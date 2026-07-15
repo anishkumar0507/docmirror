@@ -35,10 +35,50 @@ async function handler(req, res) {
       console.error('[user/me] profile upsert failed:', insertErr.message);
       return res.status(500).json({ error: 'Could not load profile' });
     }
-    return res.json(await maybeUpgradeAuditPlan(supabase, inserted, req.user));
+    return res.json(await finalizePlan(supabase, inserted, req.user));
   }
 
-  return res.json(await maybeUpgradeAuditPlan(supabase, profile, req.user));
+  return res.json(await finalizePlan(supabase, profile, req.user));
+}
+
+// Resolve the effective plan on read: first expire a cancelled Monitor whose paid
+// access window has ended, then apply the free → audit auto-upgrade.
+async function finalizePlan(supabase, profile, user) {
+  const afterExpiry = await maybeExpireMonitor(supabase, profile, user);
+  return await maybeUpgradeAuditPlan(supabase, afterExpiry, user);
+}
+
+// Lazy expiry (no reliable daily cron): if the user cancelled their Monitor
+// subscription and the already-paid billing cycle has ended (access_until <= now),
+// downgrade now. Target = 'audit' if a delivered paid report exists, else 'free' —
+// mirrors the logic that used to run in the webhook.
+async function maybeExpireMonitor(supabase, profile, user) {
+  if (!profile || profile.plan !== 'monitor') return profile;
+  try {
+    const nowIso = new Date().toISOString();
+    const { data: subs, error } = await supabase
+      .from('subscriptions')
+      .select('access_until')
+      .eq('user_id', user.id)
+      .eq('status', 'cancelled')
+      .not('access_until', 'is', null)
+      .lte('access_until', nowIso)
+      .limit(1);
+    if (error) { console.warn('[user/me] monitor-expiry query warn:', error.message); return profile; }
+    if (!subs || !subs.length) return profile; // still within the paid access window
+
+    const { data: paid } = await supabase
+      .from('paid_reports').select('id').eq('user_id', user.id).eq('status', 'delivered').limit(1);
+    const downgradePlan = (paid && paid.length) ? 'audit' : 'free';
+    await supabase.from('profiles')
+      .update({ plan: downgradePlan, updated_at: new Date().toISOString() })
+      .eq('id', user.id).eq('plan', 'monitor');
+    console.log(`[user/me] monitor access expired → ${downgradePlan} userId=${user.id}`);
+    return { ...profile, plan: downgradePlan };
+  } catch (e) {
+    console.warn('[user/me] monitor-expiry check warn:', e.message);
+  }
+  return profile;
 }
 
 // A user who paid for a $19 audit (often anonymously, then signed up later) should be

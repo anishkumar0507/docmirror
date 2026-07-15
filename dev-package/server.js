@@ -37,6 +37,7 @@ const userHistoryHandler       = require('./routes/user/history');
 const userNotificationsHandler = require('./routes/user/notifications');
 const checkoutSubHandler          = require('./routes/checkout-subscription');
 const verifySubPaymentHandler     = require('./routes/verify-subscription-payment');
+const cancelSubHandler            = require('./routes/cancel-subscription');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
 const renderPdfHandler            = require('./routes/render-pdf');
@@ -154,6 +155,7 @@ app.get('/api/weekly-update',             weeklyCheckHandler);      // alias for
 app.post('/api/weekly-update',            weeklyCheckHandler);
 app.post('/api/checkout-subscription',        checkoutSubHandler);
 app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
+app.post('/api/cancel-subscription',          cancelSubHandler);        // stop auto-pay now, keep access until cycle end
 app.post('/api/generate-report',              generateReportHandler);  // pipeline stage 1: insights
 app.post('/api/render-pdf',                   renderPdfHandler);        // pipeline stage 2: pdf
 app.post('/api/send-report-email',            sendReportEmailHandler);  // pipeline stage 3: email

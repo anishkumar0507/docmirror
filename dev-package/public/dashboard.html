@@ -672,6 +672,10 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
           <div><div class="setting-label">Plan</div><div class="setting-desc" id="settings-plan"></div></div>
           <button onclick="window.location.href='mailto:thedocmirror@gmail.com?subject=Subscription enquiry'" style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif" type="button">Manage plan</button>
         </div>
+        <div class="setting-row" id="cancel-sub-row" style="display:none">
+          <div><div class="setting-label">Cancel subscription</div><div class="setting-desc" id="cancel-sub-desc">Auto-pay stops immediately; your Monitor access continues until the end of the current billing period.</div></div>
+          <button id="cancel-sub-btn" onclick="doCancelSubscription()" style="background:none;border:1.5px solid #DC2626;border-radius:6px;padding:5px 12px;font-size:12px;font-weight:600;color:#DC2626;cursor:pointer;font-family:'DM Sans',sans-serif" type="button">Cancel subscription</button>
+        </div>
         <button onclick="doLogout()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:8px 18px;font-size:13px;font-weight:600;color:var(--slate);cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:12px;transition:all .15s" type="button" onmouseover="this.style.borderColor='#DC2626';this.style.color='#DC2626'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--slate)'">Sign out</button>
       </div>
     </section>
@@ -771,6 +775,40 @@ async function doLogout() {
   window.location.href = '/';
 }
 
+// Self-serve cancel: stops Razorpay auto-pay immediately; Monitor access continues
+// until the end of the current billing period (returned as access_until).
+function doCancelSubscription() {
+  if (!confirm('Auto-pay will stop immediately, but your Monitor access continues until the end of your current billing period.\n\nCancel your subscription?')) return;
+  var btn  = el('cancel-sub-btn');
+  var desc = el('cancel-sub-desc');
+  if (btn) { btn.disabled = true; btn.textContent = 'Cancelling…'; }
+  fetch('/api/cancel-subscription', {
+    method:  'POST',
+    headers: { 'Authorization': 'Bearer ' + (localStorage.getItem('tdm_access_token') || _token || '') }
+  })
+    .then(function(r){ return r.json().then(function(j){ return { ok: r.ok, body: j }; }); })
+    .then(function(res){
+      if (res.ok && res.body && res.body.ok) {
+        var until = null;
+        if (res.body.access_until) {
+          var d = new Date(res.body.access_until);
+          if (!isNaN(d.getTime())) until = d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        if (desc) desc.textContent = until
+          ? ('Cancelled. Your access remains active until ' + until + '.')
+          : 'Cancelled. Your access remains active until the end of your billing period.';
+        if (btn) { btn.textContent = 'Cancelled'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--slate)'; btn.style.cursor = 'default'; }
+      } else {
+        if (desc) desc.textContent = (res.body && res.body.error) || 'Could not cancel. Please try again.';
+        if (btn) { btn.disabled = false; btn.textContent = 'Cancel subscription'; }
+      }
+    })
+    .catch(function(){
+      if (desc) desc.textContent = 'Network error. Please try again.';
+      if (btn) { btn.disabled = false; btn.textContent = 'Cancel subscription'; }
+    });
+}
+
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ── MAIN INIT ────────────────────────────────────────────────────────────
@@ -839,6 +877,8 @@ function initDashboard(profile, reports) {
   // Settings
   el('settings-email').textContent = email;
   el('settings-plan').textContent  = 'Doctor Visibility Monitor — $49/month';
+  // Self-serve cancel — only for active Monitor subscribers.
+  if (_profile && _profile.plan === 'monitor') { var _cr = el('cancel-sub-row'); if (_cr) _cr.style.display = ''; }
 
   // Show app and remove auth gate BEFORE chart rendering (Chart.js needs visible canvas to measure)
   el('auth-gate').classList.remove('show');
