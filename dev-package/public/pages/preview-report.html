@@ -643,6 +643,41 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
   // Expose globally so doActualCheckout() can access without re-parsing localStorage
   window._tdmAuditData = d;
 
+  // ── Plan-aware routing ──────────────────────────────────────────────────────
+  // If the visitor arrived from a Pricing CTA (a plan was selected before the
+  // visibility form), continue straight to THAT plan's checkout instead of the
+  // generic "Choose your plan" step — so a Monitor selection is never dropped to
+  // the $19 Audit flow. Organic homepage visitors (no selected plan) fall
+  // through and see the report + plan choice exactly as before.
+  // Uses location.replace so this page is not left in history (no back-loop;
+  // Back from checkout returns to Pricing). Razorpay flow is chosen by the
+  // destination page, not by this value.
+  // Read the plan from the redirect URL (?plan=…). Only an audit that came from a
+  // Pricing CTA carries this, so organic homepage audits never auto-route even if a
+  // stale plan lingers in sessionStorage. Sync sessionStorage for the checkout page.
+  var _selPlan = null;
+  try {
+    _selPlan = (new URLSearchParams(location.search)).get('plan');
+    if (_selPlan === 'audit' || _selPlan === 'monitor') sessionStorage.setItem('tdm_selected_plan', _selPlan);
+  } catch(e){}
+  if (_selPlan === 'monitor') {
+    // Carry the audit context + email so the Monitor account reuses this baseline.
+    try {
+      var _s = JSON.stringify(d);
+      if (!localStorage.getItem('docmirrorPreviewReport')) localStorage.setItem('docmirrorPreviewReport', _s);
+      localStorage.setItem('tdm_audit_result', _s);
+      var _em = ((d && d.email) || '').trim();
+      if (_em) localStorage.setItem('tdm_checkout_email', _em);
+    } catch(_){}
+    window.location.replace('checkout-subscription.html?upgrade=1');
+    return;
+  }
+  if (_selPlan === 'audit') {
+    window.location.replace('checkout.html');
+    return;
+  }
+  // Organic homepage visitor (no selected plan) → show the report as before.
+
   document.getElementById('report-content').style.display = 'flex';
 
   // ── Normalise to a common display shape ───────────────────────────────────

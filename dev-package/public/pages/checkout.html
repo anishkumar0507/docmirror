@@ -177,6 +177,8 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
 <script>
 // $19 Visibility Audit — no login required, anonymous payment flow
+// Plan safety: this page is the Audit checkout, so keep the stored plan consistent.
+try { sessionStorage.setItem('tdm_selected_plan', 'audit'); } catch(e){}
 var auditData = null;
 
 // ── Load audit data and pre-fill form (no auth required) ─────────────────
@@ -298,6 +300,7 @@ function startPayment() {
 
         // Step 3: Payment success — verify on backend (no auth required for $19)
         handler: function(response) {
+          try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e){}  // clear plan only after successful payment
           setBtnLoading('Verifying payment…');
 
           fetch('/api/verify-payment', {

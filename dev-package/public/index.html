@@ -1960,6 +1960,15 @@ function runURL(){
 
 // ── AUDIT (real API) ───────────────────────────────────────────────────────
 var _ac=null,_tm=null;
+// Navigate to the report after an audit. Breaks out of the Pricing modal iframe
+// (top window) when embedded, and carries the selected plan (?plan=audit|monitor)
+// forward so the report continues to the correct checkout. Homepage (non-embed)
+// audits have no plan param and behave exactly as before.
+function _tdmGoReport(){
+  var _p=null; try{ _p=(new URLSearchParams(location.search)).get('plan'); }catch(e){}
+  var _u='/pages/preview-report.html'+((_p==='audit'||_p==='monitor')?('?plan='+_p):'');
+  (window.top&&window.top!==window.self?window.top:window).location.href=_u;
+}
 async function doAudit(p){
   document.getElementById('inp').style.display='none';
   document.getElementById('ls').classList.add('active');
@@ -1986,7 +1995,7 @@ async function doAudit(p){
       showVF(d,p);
     }else{
       try{localStorage.setItem('docmirrorPreviewReport',JSON.stringify(d));}catch(e2){}
-      (window.top&&window.top!==window.self?window.top:window).location.href='/pages/preview-report.html';
+      _tdmGoReport();
     }
   }catch(e){
     clearTimeout(_tm);
@@ -2617,7 +2626,7 @@ function runFreePreview(p){
     setS(5,'spin');
     var result=calculateFreeVisibilityScore(p);
     try{localStorage.setItem('tdm_free_preview',JSON.stringify(result));}catch(e){}
-    setTimeout(function(){(window.top&&window.top!==window.self?window.top:window).location.href='/pages/preview-report.html';},380);
+    setTimeout(function(){_tdmGoReport();},380);
   },1920);
 }
 

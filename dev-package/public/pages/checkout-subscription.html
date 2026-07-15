@@ -179,6 +179,8 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 </div>
 
 <script>
+// Plan safety: this page is the Monitor subscription checkout, so keep the stored plan consistent.
+try { sessionStorage.setItem('tdm_selected_plan', 'monitor'); } catch(e){}
 var _session  = null;
 var auditData = null;
 var _auditId  = null;
@@ -298,6 +300,7 @@ function startPayment() {
 
         // Step 3: Payment success — verify on backend then redirect
         handler: function(response) {
+          try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e){}  // clear plan only after successful payment
           setBtnLoading('Creating your account…');
 
           fetch('/api/verify-subscription-payment', {
