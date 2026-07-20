@@ -17,6 +17,7 @@ const {
   escapeHtml,
   getAllResources,
   getResourceBySlug,
+  getRelated,
 } = require('../lib/resources');
 
 // ── shared head + shell ────────────────────────────────────────────────────
@@ -108,6 +109,15 @@ h1{font-size:clamp(2rem,4vw,3rem);line-height:1.06;color:var(--navy);margin:0}
 .faq-item.open h3::after{content:'−'}
 .faq-item p{padding:0 1.2rem;color:var(--slate-light);margin:0;line-height:1.65;max-height:0;overflow:hidden;transition:max-height .35s ease,padding-bottom .35s ease;padding-bottom:0}
 .faq-item.open p{max-height:600px;padding-bottom:1rem}
+/* Breadcrumb trail — mirrors the BreadcrumbList schema so the Home → Resources
+   → Article hierarchy is visible to readers, not only to crawlers. */
+.res-crumbs{display:flex;align-items:center;gap:.45rem;flex-wrap:wrap;font-size:.83rem;color:var(--slate-muted);line-height:1.5}
+.res-crumbs a{color:var(--slate-light);text-decoration:none}
+.res-crumbs a:hover{color:var(--green-dark)}
+.res-crumbs [aria-current]{color:var(--navy);font-weight:500}
+/* Related guides — reuses .res-grid/.res-card from the listing, no new styling */
+.res-related{margin-top:1.5rem}
+.res-related > h2{font-size:1.3rem;color:var(--navy);margin:0 0 1rem}
 @media(max-width:768px){.cta-block{flex-direction:column;align-items:stretch;padding:28px 24px}.cta-btn{width:100%;max-width:none;justify-content:center}}
 /* Resources grid: 3 cols desktop → 2 tablet → 1 mobile; featured stacks (image above text) on mobile */
 @media(max-width:980px){.res-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -367,7 +377,22 @@ document.querySelectorAll('.faq-item h3').forEach(function(h){
   }
   const jsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
 
-  const body = `<a class="back-link" href="/resources">&larr; Back to Resources</a>
+  // Related guides — same category first, then shared tags (see getRelated).
+  // Reuses the listing card markup so the styling is identical, and gives every
+  // article outbound links to its siblings instead of dead-ending at the CTA.
+  const related = getRelated(post, 3);
+  const relatedBlock = related.length
+    ? `<section class="res-related" aria-label="Related guides">
+  <h2>Related guides</h2>
+  <div class="res-grid">${related.map(resourceCard).join('\n')}</div>
+</section>`
+    : '';
+
+  const body = `<nav class="res-crumbs" aria-label="Breadcrumb">
+  <a href="/">Home</a> <span aria-hidden="true">&rsaquo;</span>
+  <a href="/resources">Resources</a> <span aria-hidden="true">&rsaquo;</span>
+  <span aria-current="page">${escapeHtml(post.title)}</span>
+</nav>
 <div class="eyebrow">${escapeHtml(post.category)}</div>
 <h1>${escapeHtml(post.title)}</h1>
 <div class="res-meta">${metaBits(post)}<span class="res-card-dot">·</span><span>By ${escapeHtml(post.author)}</span></div>
@@ -375,6 +400,7 @@ ${hero}
 <article class="res-content">${post.html}</article>
 ${CTA_BLOCK}
 ${faqBlock}
+${relatedBlock}
 <a class="back-link" href="/resources">&larr; Back to Resources</a>`;
 
   return renderShell({
