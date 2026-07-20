@@ -33,8 +33,8 @@
 .dm-footer-logo a{color:inherit;text-decoration:none;transition:color .15s}\
 .dm-footer-logo a:hover{color:#00A878}\
 .dm-footer-brand p{color:rgba(255,255,255,.75);font-size:0.95rem;line-height:1.8;max-width:320px}\
-.dm-footer-col h3{font-size:0.82rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.16em;margin-bottom:1rem;position:relative;padding-bottom:0.75rem}\
-.dm-footer-col h3::after{content:"";position:absolute;left:0;bottom:0;width:32px;height:3px;background:#00A878;border-radius:2px}\
+.dm-footer-col h4{font-size:0.82rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.16em;margin-bottom:1rem;position:relative;padding-bottom:0.75rem}\
+.dm-footer-col h4::after{content:"";position:absolute;left:0;bottom:0;width:32px;height:3px;background:#00A878;border-radius:2px}\
 .dm-footer-links{display:flex;flex-direction:column;gap:0.85rem}\
 .dm-footer-links a{color:rgba(255,255,255,.82);text-decoration:none;font-size:0.95rem;transition:color .15s}\
 .dm-footer-links a:hover{color:#00A878}\
@@ -45,8 +45,8 @@
 .dm-footer-divider{height:1px;background:rgba(255,255,255,.12);margin:24px 0 0}\
 .dm-footer-bottom{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.95rem;text-align:center;max-width:1200px;width:100%}\
 @media(max-width:960px){.dm-footer-grid{grid-template-columns:1fr 1fr;gap:28px 24px}.dm-footer-brand{grid-column:1 / -1}}\
-@media(max-width:768px){.dm-footer{padding:36px 1rem 18px}.dm-footer-card{padding:28px 22px 18px}.dm-footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 24px}.dm-footer-brand{grid-column:1 / -1}.dm-footer-links{gap:0.65rem}.dm-footer-col h3{margin-bottom:0.8rem;padding-bottom:0.65rem}}\
-@media(max-width:420px){.dm-footer-card{padding:24px 16px 16px}.dm-footer-grid{grid-template-columns:1fr 1fr;gap:26px 16px}.dm-footer-col h3{font-size:0.78rem;letter-spacing:.12em}.dm-footer-links a{font-size:0.88rem}.dm-footer-brand p{font-size:0.88rem}}\
+@media(max-width:768px){.dm-footer{padding:36px 1rem 18px}.dm-footer-card{padding:28px 22px 18px}.dm-footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 24px}.dm-footer-brand{grid-column:1 / -1}.dm-footer-links{gap:0.65rem}.dm-footer-col h4{margin-bottom:0.8rem;padding-bottom:0.65rem}}\
+@media(max-width:420px){.dm-footer-card{padding:24px 16px 16px}.dm-footer-grid{grid-template-columns:1fr 1fr;gap:26px 16px}.dm-footer-col h4{font-size:0.78rem;letter-spacing:.12em}.dm-footer-links a{font-size:0.88rem}.dm-footer-brand p{font-size:0.88rem}}\
 ';
 
   var HEADER = '\
@@ -61,7 +61,6 @@
     <a href="/pricing">Pricing</a>\
     <a href="/about">About</a>\
     <a href="/#faq">FAQ</a>\
-    <a href="/about#contact">Contact</a>\
   </div>\
   <div class="dm-nav-right">\
     <a class="dm-nav-login" href="/pages/auth.html?tab=login">Log In</a>\
@@ -72,10 +71,10 @@
   var FOOTER = '\
 <footer class="dm-footer">\
   <div class="dm-footer-card">\
-    <nav class="dm-footer-grid" aria-label="Footer">\
+    <div class="dm-footer-grid">\
       <div class="dm-footer-col dm-footer-brand">\
         <div class="dm-footer-logo"><a href="/">The Doc Mirror</a></div>\
-        <p>The Doc Mirror is an AI visibility platform built for medical practices. It helps doctors understand how they appear on Google, ChatGPT, Gemini and Claude.</p>\
+        <p>The Doc Mirror helps doctors improve their visibility across Google, ChatGPT, Gemini and Claude.</p>\
         <div class="dm-footer-social">\
           <a class="dm-social-chip" href="https://www.facebook.com/profile.php?id=61591407977305" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>\
           <a class="dm-social-chip" href="https://x.com/thedocmirror" target="_blank" rel="noopener noreferrer" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>\
@@ -85,32 +84,34 @@
         </div>\
       </div>\
       <div class="dm-footer-col">\
-        <h3>PRODUCT</h3>\
+        <h4>PRODUCT</h4>\
         <div class="dm-footer-links">\
           <a href="/#how-it-works">How it works</a>\
           <a href="/#tool">Free audit</a>\
-          <a href="/doctor-visibility-score">Doctor Visibility Score</a>\
           <a href="/pricing">Pricing</a>\
+          <a href="/about">About</a>\
+          <a href="/#faq">FAQ</a>\
           <a href="/resources">Resources</a>\
         </div>\
       </div>\
       <div class="dm-footer-col">\
-        <h3>COMPANY</h3>\
+        <h4>COMPANY</h4>\
         <div class="dm-footer-links">\
           <a href="/about">About Us</a>\
+          <a href="/about#contact">Contact</a>\
           <a href="/privacy">Privacy</a>\
           <a href="/terms">Terms</a>\
         </div>\
       </div>\
       <div class="dm-footer-col">\
-        <h3>SUPPORT</h3>\
+        <h4>SUPPORT</h4>\
         <div class="dm-footer-links">\
           <a href="/#faq">FAQ</a>\
           <a href="/help-center">Help Center</a>\
-          <a href="/about#contact">Contact</a>\
+          <a href="/about#contact">Contact Support</a>\
         </div>\
       </div>\
-    </nav>\
+    </div>\
     <div class="dm-footer-divider"></div>\
     <div class="dm-footer-bottom">© 2026 The Doc Mirror. All rights reserved.</div>\
   </div>\
