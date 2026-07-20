@@ -30,6 +30,8 @@
 .dm-footer-grid{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:32px}\
 .dm-footer-col{display:flex;flex-direction:column;gap:1rem}\
 .dm-footer-logo{font-size:1.35rem;font-weight:800;color:#fff;letter-spacing:-.02em}\
+.dm-footer-logo a{color:inherit;text-decoration:none;transition:color .15s}\
+.dm-footer-logo a:hover{color:#00A878}\
 .dm-footer-brand p{color:rgba(255,255,255,.75);font-size:0.95rem;line-height:1.8;max-width:320px}\
 .dm-footer-col h4{font-size:0.82rem;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.16em;margin-bottom:1rem;position:relative;padding-bottom:0.75rem}\
 .dm-footer-col h4::after{content:"";position:absolute;left:0;bottom:0;width:32px;height:3px;background:#00A878;border-radius:2px}\
@@ -49,8 +51,8 @@
 
   var HEADER = '\
 <nav class="dm-nav">\
-  <a class="dm-nav-logo" href="/">\
-    <span class="dm-logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></span>\
+  <a class="dm-nav-logo" href="/" aria-label="The Doc Mirror homepage">\
+    <span class="dm-logo-mark"><svg viewBox="0 0 18 18" fill="none" aria-hidden="true" focusable="false"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></span>\
     <span class="dm-logo-word">The Doc <span>Mirror</span></span>\
   </a>\
   <div class="dm-nav-mid">\
@@ -71,8 +73,8 @@
   <div class="dm-footer-card">\
     <div class="dm-footer-grid">\
       <div class="dm-footer-col dm-footer-brand">\
-        <div class="dm-footer-logo">The Doc Mirror</div>\
-        <p>Get more patients to your practice by improving your visibility where patients are searching.</p>\
+        <div class="dm-footer-logo"><a href="/">The Doc Mirror</a></div>\
+        <p>The Doc Mirror is an AI visibility platform built for medical practices. It helps doctors understand how they appear on Google, ChatGPT, Gemini and Claude.</p>\
         <div class="dm-footer-social">\
           <a class="dm-social-chip" href="https://www.facebook.com/profile.php?id=61591407977305" target="_blank" rel="noopener noreferrer" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>\
           <a class="dm-social-chip" href="https://x.com/thedocmirror" target="_blank" rel="noopener noreferrer" aria-label="X"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>\
