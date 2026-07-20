@@ -104,23 +104,79 @@ app.get('/resources/:slug',  resourcesRoute.articleHandler);
 app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
-// Served dynamically so every Markdown resource is included automatically.
-app.get('/sitemap.xml', (_req, res) => {
-  let base;
+// Fully generated at request time — there is no static sitemap file to maintain.
+// Static pages are declared below and mirror the canonical clean URLs served by
+// CLEAN_PAGES; Markdown resources are appended automatically by
+// resourceSitemapEntries(), so a new article needs no sitemap edit.
+//
+// Only canonical, indexable, 200-returning URLs belong here. Deliberately absent:
+// /pages/*.html (301s to clean URLs), /dashboard + /pages/auth|checkout|
+// checkout-subscription|audit-history|preview-report|reset-password (private,
+// noindex), /api/*, and anchor-only nav targets like /#faq and /about#contact
+// (fragments are not separate URLs and are invalid in a sitemap).
+const SITEMAP_SITE = 'https://www.thedocmirror.com';
+const SITEMAP_STATIC = [
+  { path: '/',                        file: 'index.html',                    changefreq: 'weekly',  priority: '1.0' },
+  { path: '/resources',               file: null,                            changefreq: 'weekly',  priority: '0.9' },
+  { path: '/pricing',                 file: 'pages/pricing.html',            changefreq: 'monthly', priority: '0.8' },
+  { path: '/doctor-visibility-score', file: 'pages/doctor-visibility-score.html', changefreq: 'monthly', priority: '0.8' },
+  { path: '/about',                   file: 'pages/about.html',              changefreq: 'monthly', priority: '0.7' },
+  { path: '/help-center',             file: 'pages/help-center.html',        changefreq: 'monthly', priority: '0.6' },
+  { path: '/privacy',                 file: 'pages/privacy.html',            changefreq: 'yearly',  priority: '0.3' },
+  { path: '/terms',                   file: 'pages/terms.html',              changefreq: 'yearly',  priority: '0.3' },
+];
+
+// Real last-modified date per page, from the file on disk. Note: a git checkout
+// (including Vercel's build) does not preserve authoring mtimes, so on the
+// deployed host these resolve to the build date rather than the true edit date.
+// That is still honest and self-updating; resource articles use their
+// frontmatter date, which survives deploys exactly.
+function fileLastmod(relFile) {
+  if (!relFile) return null;
   try {
-    base = fs.readFileSync(path.join(__dirname, 'public', 'sitemap.xml'), 'utf8');
+    return fs.statSync(path.join(__dirname, 'public', relFile)).mtime.toISOString().slice(0, 10);
   } catch (_) {
-    base = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n</urlset>';
+    return null;
   }
-  const blocks = resourceSitemapEntries().map(e =>
-    '  <url>\n' +
+}
+
+function sitemapUrlBlock(e) {
+  return '  <url>\n' +
     `    <loc>${e.loc}</loc>\n` +
     (e.lastmod ? `    <lastmod>${e.lastmod}</lastmod>\n` : '') +
     `    <changefreq>${e.changefreq}</changefreq>\n` +
     `    <priority>${e.priority}</priority>\n` +
-    '  </url>'
-  ).join('\n');
-  const xml = blocks ? base.replace('</urlset>', blocks + '\n</urlset>') : base;
+    '  </url>';
+}
+
+app.get('/sitemap.xml', (_req, res) => {
+  const staticEntries = SITEMAP_STATIC.map(p => ({
+    loc: SITEMAP_SITE + p.path,
+    // /resources is a generated listing: it is as fresh as its newest article.
+    lastmod: p.path === '/resources'
+      ? (resourceSitemapEntries()[0] || {}).lastmod || fileLastmod('index.html')
+      : fileLastmod(p.file),
+    changefreq: p.changefreq,
+    priority: p.priority,
+  }));
+
+  // Educational guides (Markdown articles) sit one level below /resources.
+  const articleEntries = resourceSitemapEntries().map(e => ({
+    ...e, changefreq: 'monthly', priority: '0.8',
+  }));
+
+  // Guard against any duplicate loc sneaking in from either source.
+  const seen = new Set();
+  const entries = [...staticEntries, ...articleEntries].filter(e => {
+    if (seen.has(e.loc)) return false;
+    seen.add(e.loc);
+    return true;
+  });
+
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+    entries.map(sitemapUrlBlock).join('\n') + '\n' +
+    '</urlset>\n';
   res.set('Content-Type', 'application/xml; charset=utf-8').send(xml);
 });
 
