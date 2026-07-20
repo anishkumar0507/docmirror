@@ -9,6 +9,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "sitemap": "node scripts/generate-sitemap.js",
     "publish-resource": "node scripts/publish-resource.js",
     "import-resources": "node scripts/import-resources.js",
     "vercel-build": "echo 'Static + serverless — no build step'"
