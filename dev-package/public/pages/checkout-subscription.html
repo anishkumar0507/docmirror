@@ -142,7 +142,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
         <div class="price-note">Monthly · Cancel anytime</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount">&#x20B9;4,715</div>
+        <div class="price-amount">$49</div>
         <div class="price-note">per month</div>
       </div>
     </div>
@@ -162,7 +162,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Subscribe — &#x20B9;4,715/month
+      Subscribe — $49/month
     </button>
 
     <div class="pay-secure">
@@ -248,7 +248,7 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Subscribe — &#x20B9;4,715/month';
+    ' Subscribe — $49/month';
 }
 
 // ── Main payment flow ──────────────────────────────────────────────────────
@@ -294,7 +294,7 @@ function startPayment() {
         key:             subRes.keyId,
         subscription_id: subRes.subscriptionId,
         name:            'The Doc Mirror',
-        description:     'Doctor Visibility Monitor — ₹4,715/month',
+        description:     'Doctor Visibility Monitor — $49/month',
         prefill:         { email: email },
         theme:           { color: '#0A2540' },
 
