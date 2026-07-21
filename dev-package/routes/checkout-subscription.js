@@ -24,6 +24,11 @@ async function handler(req, res) {
     return res.status(500).json({ error: 'RAZORPAY_MONITOR_PLAN_ID not configured — create a plan in Razorpay dashboard first' });
   }
 
+  // Safe diagnostics: enough to confirm WHICH plan the running instance picked up
+  // without printing the value. If production still bills the old price, the
+  // suffix here is the fastest way to prove the env var did not roll out.
+  console.log(`[checkout-sub] monitor plan configured: ${Boolean(planId)} suffix=${planId.slice(-4)} keyMode=${keyId.startsWith('rzp_live') ? 'live' : 'test'}`);
+
   const email     = (req.body?.email || '').trim();
   const auditData = req.body?.auditData || null;
   if (!email) return res.status(400).json({ error: 'email is required' });
@@ -55,6 +60,8 @@ async function handler(req, res) {
       quantity:       1,
       customer_notify: 1,
       notes: {
+        plan:        'monitor',
+        paymentType: 'subscription',
         email,
         auditId: auditId || '',
         expected_amount_units: String(expectedUnits),
@@ -63,7 +70,7 @@ async function handler(req, res) {
     });
 
     console.log(
-      `[checkout-sub] created subscription=${sub.id} email=${email} plan=${planId} ` +
+      `[checkout-sub] created monitor subscription: ${sub.id} planSuffix=${planId.slice(-4)} ` +
       `expected=${expectedUnits} ${pricing.billingCurrency()} (account created after payment)`
     );
 
