@@ -3,6 +3,7 @@
 require('../lib/env');
 
 const Razorpay   = require('razorpay');
+const pricing    = require('../lib/pricing');
 const auditCache = require('../lib/audit-cache');
 
 // $49 Monitor subscription — ANONYMOUS at this stage.
@@ -43,15 +44,28 @@ async function handler(req, res) {
   try {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
+    // The charged amount lives on the Razorpay Plan, not here. We record what we
+    // EXPECT so a plan/price mismatch is visible in notes and logs rather than
+    // silently billing the old price.
+    const expectedUnits = pricing.monitorAmountUnits();
+
     const sub = await razorpay.subscriptions.create({
       plan_id:        planId,
       total_count:    120, // up to 10 years, cancel anytime
       quantity:       1,
       customer_notify: 1,
-      notes: { email, auditId: auditId || '' },
+      notes: {
+        email,
+        auditId: auditId || '',
+        expected_amount_units: String(expectedUnits),
+        expected_currency:     pricing.billingCurrency(),
+      },
     });
 
-    console.log(`[checkout-sub] created subscription=${sub.id} email=${email} (account created after payment)`);
+    console.log(
+      `[checkout-sub] created subscription=${sub.id} email=${email} plan=${planId} ` +
+      `expected=${expectedUnits} ${pricing.billingCurrency()} (account created after payment)`
+    );
 
     return res.json({
       subscriptionId: sub.id,

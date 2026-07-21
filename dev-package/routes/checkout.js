@@ -57,7 +57,7 @@ async function handler(req, res) {
     await paidReports.insertPending({ auditId, email, userId });
 
     // Amount + currency come from the centralized pricing config (India live:
-    // ₹1,599 in paise, INR). No test-era fallback — values are always real.
+    // ₹1,828 in paise, INR). No test-era fallback — values are always real.
     const amountUnits = pricing.reportAmountUnits();
     const currency    = pricing.billingCurrency();
     const receipt = `rpt_${Date.now()}`.slice(0, 40);

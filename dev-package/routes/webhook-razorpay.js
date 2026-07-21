@@ -23,7 +23,7 @@ function verifySignature(rawBody, signature, secret) {
 // retry, which payment.captured is allowed to re-drive.
 const CAPTURE_OWNED = new Set(['generating', 'delivered', 'generated']);
 
-// ── payment.captured (one-time ₹1,599 report) — verified-payment backstop ────
+// ── payment.captured (one-time ₹1,828 report) — verified-payment backstop ────
 // The browser normally unlocks the report via /api/verify-payment. If the user
 // closes the tab right after paying, this webhook (signature already verified
 // above) is the reliable fallback: it maps the payment → auditId via the order
@@ -124,7 +124,7 @@ async function handler(req, res) {
 
   const eventType = event.event;
 
-  // ── Payment events (one-time ₹1,599 report) ───────────────────────────────
+  // ── Payment events (one-time ₹1,828 report) ───────────────────────────────
   if (eventType === 'payment.captured' || eventType === 'payment.failed') {
     try {
       if (eventType === 'payment.captured') {
