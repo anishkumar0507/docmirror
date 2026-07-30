@@ -46,6 +46,12 @@ const reconcileHandler            = require('./routes/reconcile');
 // ── Resources: Markdown-driven blog engine ──────────────────────────────────
 const resourcesRoute              = require('./routes/resources');
 const { buildSitemapXml }         = require('./lib/sitemap');
+// Loads CMS content into memory before a resources page renders. The data layer
+// exposes synchronous functions, so the fetch has to happen in middleware
+// rather than inside the handlers — which is what keeps routes/resources.js
+// completely unchanged. Falls through silently if the CMS is unreachable; the
+// Markdown fallback covers it.
+const { warmResources }           = require('./lib/resources');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -98,8 +104,8 @@ for (const [oldPath, newPath] of Object.entries(GUIDE_REDIRECTS)) {
 // express.static so /resources (listing) and /resources/:slug (article) are
 // handled here. Deep static paths like /images/resources/* never match
 // /resources/:slug (>1 segment) and fall through to express.static.
-app.get('/resources',        resourcesRoute.listingHandler);
-app.get('/resources/:slug',  resourcesRoute.articleHandler);
+app.get('/resources',        warmResources, resourcesRoute.listingHandler);
+app.get('/resources/:slug',  warmResources, resourcesRoute.articleHandler);
 app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
@@ -107,7 +113,10 @@ app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'))
 // public/sitemap.xml. One builder, so the committed file and the URL Google
 // fetches can never disagree. Registered before express.static, so this
 // always wins over the file on disk — the served copy is never stale.
-app.get('/sitemap.xml', (_req, res) => {
+// `warmResources` here too: the sitemap is built from resourceSitemapEntries(),
+// so without it a cold instance would emit a sitemap containing only the
+// Markdown articles and silently omit every CMS post.
+app.get('/sitemap.xml', warmResources, (_req, res) => {
   res.set('Content-Type', 'application/xml; charset=utf-8').send(buildSitemapXml());
 });
 
