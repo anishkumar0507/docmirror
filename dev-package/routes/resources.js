@@ -164,8 +164,6 @@ function renderShell({ title, description, canonical, ogType, ogImage, jsonLd, b
 <meta property="og:type" content="${escapeHtml(ogType)}">
 <meta property="og:url" content="${escapeHtml(canonical)}">
 <meta property="og:image" content="${escapeHtml(ogImage)}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
 <meta property="og:site_name" content="The Doc Mirror">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(title)}">

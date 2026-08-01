@@ -56,6 +56,61 @@ function sniffImage(buf) {
   return null;
 }
 
+// Read pixel dimensions straight from the file header — no image library.
+// Returns { type, width, height }; width/height are null when unreadable
+// (e.g. SVG, which has no intrinsic raster size).
+function imageSize(buf) {
+  const type = sniffImage(buf);
+  if (type === 'png') {
+    // 8-byte signature, then a length + "IHDR" chunk carrying width/height.
+    if (buf.length >= 24 && buf.toString('ascii', 12, 16) === 'IHDR') {
+      return { type, width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+    }
+  } else if (type === 'jpg') {
+    // Walk the marker segments until a Start-Of-Frame (SOFn) marker.
+    let o = 2;
+    while (o + 9 < buf.length) {
+      if (buf[o] !== 0xff) { o++; continue; }
+      const marker = buf[o + 1];
+      // SOF0–SOF15 hold the frame size; C4 (DHT), C8 (JPG), CC (DAC) do not.
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return { type, height: buf.readUInt16BE(o + 5), width: buf.readUInt16BE(o + 7) };
+      }
+      const len = buf.readUInt16BE(o + 2); // segment length follows the marker
+      if (len < 2) break;
+      o += 2 + len;
+    }
+  } else if (type === 'gif') {
+    if (buf.length >= 10) return { type, width: buf.readUInt16LE(6), height: buf.readUInt16LE(8) };
+  } else if (type === 'webp') {
+    const tag = buf.toString('ascii', 12, 16);
+    if (tag === 'VP8 ' && buf.length >= 30) {
+      return { type, width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+    }
+    if (tag === 'VP8L' && buf.length >= 25) {
+      const b0 = buf[21], b1 = buf[22], b2 = buf[23], b3 = buf[24];
+      return {
+        type,
+        width: 1 + (((b1 & 0x3f) << 8) | b0),
+        height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)),
+      };
+    }
+    if (tag === 'VP8X' && buf.length >= 30) {
+      return {
+        type,
+        width: 1 + (buf[24] | (buf[25] << 8) | (buf[26] << 16)),
+        height: 1 + (buf[27] | (buf[28] << 8) | (buf[29] << 16)),
+      };
+    }
+  }
+  return { type, width: null, height: null };
+}
+
+// Shared social-image policy so the audit and the publisher agree.
+const OG_MIN_WIDTH  = 1200;
+const OG_MIN_HEIGHT = 630;
+const OG_MAX_BYTES  = 5 * 1024 * 1024;
+
 // Pick a collision-safe target path: <slug>.<ext>, then <slug>-1.<ext>, …
 function collisionSafeTarget(slug, ext, force) {
   const first = path.join(IMAGES_DIR, `${slug}.${ext}`);
@@ -162,11 +217,20 @@ function verify(slug, webImage) {
 
   const diskPath = path.join(ROOT, 'public', webImage.replace(/^\//, ''));
   const exists = fs.existsSync(diskPath);
-  const renderable = exists && !!sniffImage(fs.readFileSync(diskPath));
+  const buf = exists ? fs.readFileSync(diskPath) : null;
+  const renderable = !!buf && !!sniffImage(buf);
   const post = engine.getResourceBySlug(slug);
   const pathMatches = !!post && post.image === webImage;
   const listingOk = post ? views.renderListing().includes(`src="${webImage}"`) : false;
   const articleOk = post ? views.renderArticle(post).includes(`src="${webImage}"`) : false;
+
+  // Social-preview policy: big enough for a summary_large_image card, under the
+  // 5MB most platforms fetch, and not an SVG (LinkedIn/Facebook won't render it).
+  const { type, width, height } = buf ? imageSize(buf) : { type: null, width: null, height: null };
+  const bytes = buf ? buf.length : 0;
+  const bigEnough = width != null && height != null && width >= OG_MIN_WIDTH && height >= OG_MIN_HEIGHT;
+  const underMax = exists && bytes <= OG_MAX_BYTES;
+  const notSvg = type !== 'svg';
 
   const checks = [
     ['Image file exists', exists],
@@ -174,6 +238,9 @@ function verify(slug, webImage) {
     ['Frontmatter path matches image', pathMatches],
     ['Resource card displays image', listingOk],
     ['Featured article displays image', articleOk],
+    [`Social image >= ${OG_MIN_WIDTH}x${OG_MIN_HEIGHT} (is ${width || '?'}x${height || '?'})`, bigEnough],
+    [`Social image <= ${(OG_MAX_BYTES / 1048576).toFixed(0)}MB (is ${(bytes / 1048576).toFixed(2)}MB)`, underMax],
+    ['Social image is not SVG', notSvg],
   ];
   const failed = checks.filter(([, ok]) => !ok).map(([label]) => label);
   if (failed.length) throw new Error('verification failed: ' + failed.join('; '));
@@ -219,6 +286,10 @@ function main() {
   }
 }
 
-module.exports = { publishResource, verify, sniffImage, IMAGES_DIR, RESOURCES, IMAGES_WEB };
+module.exports = {
+  publishResource, verify, sniffImage, imageSize,
+  OG_MIN_WIDTH, OG_MIN_HEIGHT, OG_MAX_BYTES,
+  IMAGES_DIR, RESOURCES, IMAGES_WEB,
+};
 
 if (require.main === module) main();

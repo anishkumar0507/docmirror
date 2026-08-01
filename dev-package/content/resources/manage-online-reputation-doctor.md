@@ -4,7 +4,7 @@ description: "A practical guide for US doctors to monitor, respond, and stay HIP
 date: 2026-07-20
 author: The Doc Mirror Team
 category: Practice Growth
-image: "/images/resources/How-to-Manage-Your-Online%20Reputation-as-a-Doctor.jpeg"
+image: /images/resources/How-to-Manage-Your-Online-Reputation-as-a-Doctor.jpeg
 imageAlt: How to Manage Your Online Reputation as a Doctor
 tags: [Practice Growth, Reputation Management, Patient Reviews, Google Visibility]
 seoTitle: "How to Manage Your Online Reputation as a Doctor | The Doc Mirror"

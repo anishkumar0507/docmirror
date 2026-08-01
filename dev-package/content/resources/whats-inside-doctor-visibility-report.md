@@ -4,7 +4,7 @@ description: "A page-by-page breakdown of The Doc Mirror Full Report: 7 pillars,
 date: 2026-07-18
 author: The Doc Mirror Team
 category: Product
-image: "/images/resources/What%27s-Inside-a-Doctor.jpeg"
+image: /images/resources/Whats-Inside-a-Doctor.jpeg
 imageAlt: "What's Inside a Doctor Visibility Report? A Full Breakdown"
 tags: [Product, Visibility Report, Doctor Visibility Score, AI Visibility]
 seoTitle: "What's Inside a Doctor Visibility Report? Full Breakdown | The Doc Mirror"

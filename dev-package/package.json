@@ -11,6 +11,7 @@
     "dev": "node server.js",
     "sitemap": "node scripts/generate-sitemap.js",
     "publish-resource": "node scripts/publish-resource.js",
+    "check-og": "node scripts/check-og-images.js",
     "import-resources": "node scripts/import-resources.js",
     "vercel-build": "echo 'Static + serverless — no build step'"
   },
