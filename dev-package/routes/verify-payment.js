@@ -1,8 +1,8 @@
 'use strict';
 
-const crypto = require('crypto');
 require('../lib/env');
 
+const payments    = require('../lib/payments');
 const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const reportsStore = require('../lib/reports-store');
@@ -25,39 +25,29 @@ async function handler(req, res) {
     });
   }
 
-  // ── 1. Resolve canonical auditId from Razorpay order notes (tamper-proof) ──
-  const auditId = await auditCache.resolveAuditIdFromOrder(orderId, clientAuditId);
-  if (!auditId) {
-    return res.status(400).json({ error: 'Could not resolve auditId from payment order' });
+  // ── 1+2. Resolve canonical auditId + verify Razorpay HMAC signature ────────
+  // Both steps now live in lib/payments/razorpay.js (same resolveAuditIdFromOrder,
+  // same HMAC over `${orderId}|${paymentId}`, same "using auditId"/MISMATCH logs).
+  // Reasons are mapped back to the exact HTTP responses this route returned before.
+  const verified = await payments.get('razorpay').verifyOrder({ orderId, paymentId, signature, clientAuditId });
+  if (!verified.ok) {
+    if (verified.reason === 'auditid_unresolved') {
+      return res.status(400).json({ error: 'Could not resolve auditId from payment order' });
+    }
+    if (verified.reason === 'invalid_auditid') {
+      return res.status(400).json({
+        error:     `Invalid auditId format: "${verified.auditId}" (expected tdm_<timestamp>_<random>)`,
+        code:      'INVALID_AUDIT_ID',
+        cache_key: verified.auditId,
+      });
+    }
+    if (verified.reason === 'no_secret') {
+      return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
+    }
+    // signature_mismatch (or any other failure)
+    return res.status(400).json({ error: 'Payment signature invalid — possible tampered request' });
   }
-
-  if (!auditCache.isValidAuditId(auditId)) {
-    return res.status(400).json({
-      error:     `Invalid auditId format: "${auditId}" (expected tdm_<timestamp>_<random>)`,
-      code:      'INVALID_AUDIT_ID',
-      cache_key: auditId,
-    });
-  }
-
-  console.log(`[verify] using auditId=${auditId} (client sent ${clientAuditId})`);
-
-  // ── 2. Verify Razorpay HMAC-SHA256 signature ──────────────────────────────
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keySecret) return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
-
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${orderId}|${paymentId}`)
-    .digest('hex');
-
-  if (expected !== signature) {
-    console.error(
-      `[verify] signature MISMATCH  orderId=${orderId}  paymentId=${paymentId}`
-    );
-    return res.status(400).json({
-      error: 'Payment signature invalid — possible tampered request',
-    });
-  }
+  const auditId = verified.auditId;
 
   console.log(
     `[verify] payment verified ✓  orderId=${orderId}  auditId=${auditId}  email=${email}`

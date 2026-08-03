@@ -1,8 +1,8 @@
 'use strict';
 
-const crypto = require('crypto');
 require('../lib/env');
 
+const payments     = require('../lib/payments');
 const auditCache   = require('../lib/audit-cache');
 const reportsStore = require('../lib/reports-store');
 const { afterResponse } = require('../lib/after-response');
@@ -48,16 +48,11 @@ async function handler(req, res) {
   }
 
   // ── 1. Verify Razorpay subscription payment signature ─────────────────────
-  const keySecret = process.env.RAZORPAY_KEY_SECRET;
-  if (!keySecret) return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
-
-  const expected = crypto
-    .createHmac('sha256', keySecret)
-    .update(`${paymentId}|${subscriptionId}`)
-    .digest('hex');
-
-  if (expected !== signature) {
-    console.error(`[verify-sub] signature MISMATCH subId=${subscriptionId} paymentId=${paymentId}`);
+  // HMAC over `${paymentId}|${subscriptionId}` now lives in
+  // lib/payments/razorpay.js (same formula, same MISMATCH log).
+  const verified = await payments.get('razorpay').verifySubscription({ subscriptionId, paymentId, signature });
+  if (!verified.ok) {
+    if (verified.reason === 'no_secret') return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
     return res.status(400).json({ error: 'Payment signature invalid — possible tampered request' });
   }
 

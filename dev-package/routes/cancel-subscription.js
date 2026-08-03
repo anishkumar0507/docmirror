@@ -2,7 +2,7 @@
 
 require('../lib/env');
 
-const Razorpay = require('razorpay');
+const payments = require('../lib/payments');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { requireAuth } = require('../lib/auth-middleware');
 
@@ -39,38 +39,21 @@ async function handler(req, res) {
   }
   const razorpaySubId = sub.razorpay_subscription_id;
 
-  const razorpay = new Razorpay({
-    key_id:     process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET,
-  });
-
-  // 2. FIRST fetch the live subscription to capture the current paid-cycle end
-  //    (current_end = unix seconds = "month end").
+  // 2+3. Fetch current_end (access window) then cancel IMMEDIATELY. Both now live
+  //      in lib/payments/razorpay.js — same fetch/cancel calls, same warn/success/
+  //      already-cancelled logs. A hard cancel failure throws code 'cancel_failed',
+  //      which maps to the same 502 this route returned before.
   let accessUntil = null;
   try {
-    const live = await razorpay.subscriptions.fetch(razorpaySubId);
-    if (live && live.current_end) {
-      accessUntil = new Date(live.current_end * 1000).toISOString();
-    }
+    const result = await payments.get('razorpay').cancelSubscription(razorpaySubId, { userId });
+    accessUntil = result.accessUntil;
   } catch (e) {
-    console.warn('[cancel-subscription] Razorpay fetch warn:', e.message);
-  }
-  if (!accessUntil) accessUntil = sub.renewal_date || null; // fall back to stored renewal date
-
-  // 3. THEN cancel on Razorpay IMMEDIATELY (cancel-at-cycle-end = false → auto-pay stops now).
-  try {
-    await razorpay.subscriptions.cancel(razorpaySubId, false);
-    console.log(`[cancel-subscription] Razorpay ${razorpaySubId} cancelled (immediate) user=${userId}`);
-  } catch (e) {
-    const msg = (e && (e.error && e.error.description)) || (e && e.message) || String(e);
-    // Already cancelled/completed → treat as success and continue.
-    if (/already|cancelled|not.*active|non.?active|completed/i.test(msg)) {
-      console.log(`[cancel-subscription] Razorpay reports already cancelled (${msg}) — continuing`);
-    } else {
-      console.error('[cancel-subscription] Razorpay cancel failed:', msg);
+    if (e && e.code === 'cancel_failed') {
       return res.status(502).json({ error: 'Could not cancel with the payment provider. Please try again.' });
     }
+    throw e;
   }
+  if (!accessUntil) accessUntil = sub.renewal_date || null; // fall back to stored renewal date
 
   // 4. Update the subscription row. Do NOT downgrade profiles.plan here — the user
   //    keeps 'monitor' until access_until (lazy-expiry performs the downgrade).

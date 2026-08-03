@@ -2,8 +2,8 @@
 
 require('../lib/env');
 
-const Razorpay   = require('razorpay');
 const pricing    = require('../lib/pricing');
+const payments   = require('../lib/payments');
 const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
 
@@ -48,8 +48,6 @@ async function handler(req, res) {
   }
 
   try {
-    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-
     // The charged amount lives on the Razorpay Plan, not here. We record the
     // region-appropriate EXPECTED price so a plan/price mismatch is visible in
     // notes and logs rather than silently billing the wrong price.
@@ -69,32 +67,28 @@ async function handler(req, res) {
       );
     }
 
-    const sub = await razorpay.subscriptions.create({
-      plan_id:        planId,
-      total_count:    120, // up to 10 years, cancel anytime
-      quantity:       1,
-      customer_notify: 1,
-      notes: {
-        plan:        'monitor',
-        paymentType: 'subscription',
-        email,
-        auditId: auditId || '',
-        region:  region.tier,
-        country: region.country || '',
-        expected_amount_units: String(expectedUnits),
-        expected_currency:     expectedCurr,
-      },
+    // Subscription creation now lives in lib/payments/razorpay.js (same SDK call,
+    // same notes). planId/expected are resolved here so the not-configured guard
+    // and diagnostics log above stay unchanged.
+    const sub = await payments.get('razorpay').createSubscription({
+      email,
+      auditId,
+      regionTier:       region.tier,
+      country:          region.country || '',
+      planId,
+      expectedUnits,
+      expectedCurrency: expectedCurr,
     });
 
     console.log(
-      `[checkout-sub] created monitor subscription: ${sub.id} planSuffix=${planId.slice(-4)} ` +
+      `[checkout-sub] created monitor subscription: ${sub.subscriptionId} planSuffix=${planId.slice(-4)} ` +
       `region=${region.tier} country=${region.country || '?'} source=${region.source} ` +
       `expected=${expectedUnits} ${expectedCurr} (account created after payment)`
     );
 
     return res.json({
-      subscriptionId: sub.id,
-      shortUrl:       sub.short_url || null,
+      subscriptionId: sub.subscriptionId,
+      shortUrl:       sub.shortUrl,
       keyId,
       email,
       auditId,

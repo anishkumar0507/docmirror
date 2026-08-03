@@ -2,8 +2,8 @@
 
 require('../lib/env');
 
-const Razorpay   = require('razorpay');
 const pricing    = require('../lib/pricing');
+const payments   = require('../lib/payments');
 const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
@@ -64,7 +64,6 @@ async function handler(req, res) {
     const price       = pricing.priceFor(region.tier, 'report');
     const amountUnits = price.amount;
     const currency    = price.currency;
-    const receipt = `rpt_${Date.now()}`.slice(0, 40);
 
     // Razorpay remains the ONLY provider this phase. A non-INR tier will resolve
     // to a currency this India account may not support; warn loudly but still
@@ -81,22 +80,25 @@ async function handler(req, res) {
       `source=${region.source} amount=${amountUnits} currency=${currency}`
     );
 
-    const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
-    const order    = await razorpay.orders.create({
-      amount:   amountUnits,
+    // Razorpay order creation now lives in lib/payments/razorpay.js (same SDK
+    // call, same notes). Kept explicit ('razorpay') so behaviour is unchanged;
+    // region-based provider routing arrives with Cashfree.
+    const order = await payments.get('razorpay').createOrder({
+      amountUnits,
       currency,
-      receipt,
-      notes:    { auditId, email, region: region.tier, country: region.country || '' },
+      auditId,
+      email,
+      customer: { region: region.tier, country: region.country || '' },
     });
 
     console.log(
-      `[checkout] Razorpay order=${order.id} auditId=${auditId} ` +
-      `receipt=${receipt} email=${email}`
+      `[checkout] Razorpay order=${order.orderId} auditId=${auditId} ` +
+      `receipt=${order.receipt} email=${email}`
     );
 
     return res.json({
-      orderId:    order.id,
-      amount:     order.amount,
+      orderId:    order.orderId,
+      amount:     order.amountUnits,
       currency:   order.currency,
       keyId,
       auditId,
