@@ -1,7 +1,7 @@
 ---
 title: How to Write Medical FAQ Content That AI Assistants Quote
 description: "How to write a medical FAQ for AI so ChatGPT, Gemini, Claude, and Perplexity quote your answers directly, with real patient Q&As and FAQ schema inside."
-date: 2026-07-30T14:00:00Z
+date: 2026-08-03
 author: The Doc Mirror Team
 category: AI Visibility
 image: /images/resources/10-medical-faq-content-ai.jpeg

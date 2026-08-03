@@ -1,7 +1,7 @@
 ---
 title: "Why Isn't Your Medical Practice Ranking on Google? 7 Common Reasons"
 description: "7 common reasons a medical practice does not rank on Google, from an unverified profile to thin reviews, each with how to check and fix it."
-date: 2026-07-30T10:00:00Z
+date: 2026-07-31
 author: The Doc Mirror Team
 category: Google Visibility
 image: /images/resources/Why-Isn't-Your-Medical.jpeg

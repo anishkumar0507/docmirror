@@ -1,7 +1,7 @@
 ---
 title: Do Patient Reviews Affect Whether AI Recommends Your Clinic?
 description: "Do patient reviews affect whether AI recommends your clinic? The honest answer. Reviews shape Google's local pack, but AI naming leans more on data."
-date: 2026-07-30T12:00:00Z
+date: 2026-08-01
 author: The Doc Mirror Team
 category: AI Visibility
 image: /images/resources/Do-Patient-Reviews-Affect.png
