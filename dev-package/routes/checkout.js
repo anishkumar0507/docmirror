@@ -4,6 +4,7 @@ require('../lib/env');
 
 const Razorpay   = require('razorpay');
 const pricing    = require('../lib/pricing');
+const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const { verifyAuditCacheTable, getSupabaseClient } = require('../lib/supabase-client');
@@ -56,18 +57,36 @@ async function handler(req, res) {
 
     await paidReports.insertPending({ auditId, email, userId });
 
-    // Amount + currency come from the centralized pricing config (India live:
-    // ₹1,828 in paise, INR). No test-era fallback — values are always real.
-    const amountUnits = pricing.reportAmountUnits();
-    const currency    = pricing.billingCurrency();
+    // Amount + currency now depend on the buyer's region so the displayed price
+    // always equals the charged price (fixes US-card 3DS failures). Amount is in
+    // minor units (paise/cents) — exactly what Razorpay wants.
+    const region      = resolveRegion(req);
+    const price       = pricing.priceFor(region.tier, 'report');
+    const amountUnits = price.amount;
+    const currency    = price.currency;
     const receipt = `rpt_${Date.now()}`.slice(0, 40);
+
+    // Razorpay remains the ONLY provider this phase. A non-INR tier will resolve
+    // to a currency this India account may not support; warn loudly but still
+    // attempt — provider routing to Cashfree comes in the next phase.
+    if (currency !== 'INR') {
+      console.warn(
+        `[checkout] region=${region.tier} country=${region.country || '?'} resolves to ` +
+        `${currency}, which Razorpay (India) may reject — attempting anyway (provider routing pending)`
+      );
+    }
+
+    console.log(
+      `[checkout] pricing region=${region.tier} country=${region.country || '?'} ` +
+      `source=${region.source} amount=${amountUnits} currency=${currency}`
+    );
 
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
     const order    = await razorpay.orders.create({
       amount:   amountUnits,
       currency,
       receipt,
-      notes:    { auditId, email },
+      notes:    { auditId, email, region: region.tier, country: region.country || '' },
     });
 
     console.log(
@@ -81,6 +100,7 @@ async function handler(req, res) {
       currency:   order.currency,
       keyId,
       auditId,
+      region:     region.tier,
       doctorName: auditData.doctorName || '',
     });
 

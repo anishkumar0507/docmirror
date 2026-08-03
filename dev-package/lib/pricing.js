@@ -1,36 +1,51 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Centralized pricing config — single source of truth for prices.
+// Region-aware pricing — single source of truth for prices AND currency.
 //
-// DISPLAY prices are MARKETING ONLY (the USD figures shown on the website
-// pricing cards). BILLING amounts are what Razorpay actually charges (INR,
-// India live mode). They are intentionally DECOUPLED: until international (USD)
-// payments are enabled, the site DISPLAYS USD but CHARGES INR via Razorpay.
+// The old model DISPLAYED USD but CHARGED INR, which fails US-card 3DS (the
+// issuer sees a foreign merchant charging INR). The fix is structural: price
+// and currency are now BOTH derived from the buyer's region tier, so the amount
+// shown always equals the amount charged.
 //
-// To switch regions later (India → INR  /  International → USD) change ONLY this
-// file — no UI component and no route logic needs to change.
+// AMOUNTS ARE STORED IN MINOR UNITS EVERYWHERE (paise for INR, cents for USD).
+// Provider modules are responsible for converting to whatever unit their API
+// wants: Razorpay takes MINOR units (paise), Cashfree takes MAJOR units
+// (rupees/dollars). Never pre-convert here — hand provider code the minor value.
+//
+// Change prices without a redeploy via env overrides (see envAmount/envDisplay).
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Display price (marketing) — must match the pricing cards on the website.
-const DISPLAY_REPORT_PRICE  = '$19';
-const DISPLAY_MONITOR_PRICE = '$49/month';
+// Per-tier pricing. provider.oneTime / provider.subscription name the payment
+// provider that SHOULD handle each product for that tier. This phase does NOT
+// wire new providers — Razorpay stays the only live provider — but the mapping
+// is declared now so the next phase can route on it.
+const TIERS = {
+  // India — charged in INR via Razorpay (live mode today).
+  IN: {
+    currency: 'INR', symbol: '₹',
+    report:  { amount: 182800, display: '₹1,828' },        // one-time report (paise)
+    monitor: { amount: 471500, display: '₹4,715/month' },  // subscription (paise)
+    provider: { oneTime: 'razorpay', subscription: 'razorpay' },
+  },
+  // US + Canada — charged in USD.
+  US: {
+    currency: 'USD', symbol: '$',
+    report:  { amount: 1900, display: '$19' },        // cents
+    monitor: { amount: 4900, display: '$49/month' },  // cents
+    provider: { oneTime: 'cashfree_intl', subscription: 'cashfree_intl' },
+  },
+  // Rest-of-world (non-EU, see lib/region.js). Same as US FOR NOW, but kept a
+  // SEPARATE tier on purpose so it can diverge later without touching US.
+  INTL: {
+    currency: 'USD', symbol: '$',
+    report:  { amount: 1900, display: '$19' },
+    monitor: { amount: 4900, display: '$49/month' },
+    provider: { oneTime: 'cashfree_intl', subscription: 'cashfree_intl' },
+  },
+};
 
-// Actual India billing (Razorpay live, INR).
-const REPORT_AMOUNT_INR  = 1828;  // one-time Doctor Visibility Report ($19 plan)
-// Monitor subscription / month ($49 plan). NOTE: this figure is for display,
-// metadata and reconciliation only — the amount Razorpay actually charges is
-// fixed on the Razorpay Plan referenced by RAZORPAY_MONITOR_PLAN_ID. Razorpay
-// does not allow editing a plan's price, so changing this constant WITHOUT
-// creating a new plan and updating that env var will NOT change what customers
-// are billed.
-const MONITOR_AMOUNT_INR = 4715;
-
-// India-only live mode. Do NOT use the USD flow right now.
-const BILLING_CURRENCY = 'INR';
-
-// Razorpay charges in the smallest currency unit (paise for INR).
-function toMinorUnits(rupees) { return Math.round(rupees * 100); }
+const PRODUCTS = ['report', 'monitor'];
 
 /** First positive integer among the given env var names, else null. */
 function envUnits(...names) {
@@ -41,41 +56,95 @@ function envUnits(...names) {
   return null;
 }
 
-/**
- * One-time report (Starter, $19) order amount in the smallest currency unit
- * (paise). This IS the amount charged — it is sent to razorpay.orders.create.
- *
- * Precedence: RAZORPAY_STARTER_AMOUNT_UNITS, then the legacy
- * RAZORPAY_AMOUNT_UNITS (kept so an existing deployment does not break mid
- * rollout), then REPORT_AMOUNT_INR. Never falls back to a test value.
- */
-function reportAmountUnits() {
-  return envUnits('RAZORPAY_STARTER_AMOUNT_UNITS', 'RAZORPAY_AMOUNT_UNITS')
-    || toMinorUnits(REPORT_AMOUNT_INR);
+// Env override for a charged amount (minor units). A generic per-tier name works
+// for every tier; the legacy Razorpay/India names are preserved so an existing
+// deployment mid-rollout keeps working without renaming env vars.
+function envAmount(tier, product) {
+  const generic = envUnits(`PRICE_${tier}_${product.toUpperCase()}_UNITS`);
+  if (generic) return generic;
+  if (tier === 'IN' && product === 'report')  return envUnits('RAZORPAY_STARTER_AMOUNT_UNITS', 'RAZORPAY_AMOUNT_UNITS');
+  if (tier === 'IN' && product === 'monitor') return envUnits('RAZORPAY_MONITOR_AMOUNT_UNITS');
+  return null;
+}
+
+// Optional env override for the display string, so an emergency price change can
+// keep the shown text in sync with the charged amount without a redeploy.
+function envDisplay(tier, product) {
+  return process.env[`PRICE_${tier}_${product.toUpperCase()}_DISPLAY`] || null;
+}
+
+function assertTier(tier) {
+  if (!TIERS[tier]) throw new Error(`unknown pricing tier: ${tier}`);
 }
 
 /**
- * Monitor ($49) subscription amount in paise.
- *
- * This is NOT sent to Razorpay — a subscription is billed at whatever price is
- * baked into its Plan. Use it for display, notes/metadata and reconciliation,
- * and keep it in sync with the live plan.
+ * Price for one product in one tier.
+ * @returns {{ amount:number, display:string, currency:string, symbol:string }}
+ *   amount is in MINOR units (paise/cents) — hand this straight to Razorpay.
  */
-function monitorAmountUnits() {
-  return envUnits('RAZORPAY_MONITOR_AMOUNT_UNITS') || toMinorUnits(MONITOR_AMOUNT_INR);
+function priceFor(tier, product) {
+  assertTier(tier);
+  if (!PRODUCTS.includes(product)) throw new Error(`unknown product: ${product}`);
+  const t = TIERS[tier];
+  return {
+    amount:   envAmount(tier, product)  || t[product].amount,
+    display:  envDisplay(tier, product) || t[product].display,
+    currency: t.currency,
+    symbol:   t.symbol,
+  };
 }
 
-/** Billing currency (env override wins; defaults to INR for India live mode). */
-function billingCurrency() {
-  return process.env.RAZORPAY_CURRENCY || BILLING_CURRENCY;
+/**
+ * Which provider handles this product for this tier.
+ * @param {string} kind 'oneTime' (report) | 'subscription' (monitor)
+ */
+function providerFor(tier, kind) {
+  assertTier(tier);
+  const p = TIERS[tier].provider[kind];
+  if (!p) throw new Error(`unknown provider kind: ${kind}`);
+  return p;
 }
+
+/**
+ * Everything the frontend needs to render prices for a tier. `bare` is the
+ * symbol+amount without any "/month" suffix, for UIs that render the period
+ * separately.
+ */
+function displayPrices(tier) {
+  assertTier(tier);
+  const report  = priceFor(tier, 'report');
+  const monitor = priceFor(tier, 'monitor');
+  return {
+    tier,
+    currency: TIERS[tier].currency,
+    symbol:   TIERS[tier].symbol,
+    report:  { amount: report.amount,  display: report.display,  bare: report.display.split('/')[0] },
+    monitor: { amount: monitor.amount, display: monitor.display, bare: monitor.display.split('/')[0] },
+  };
+}
+
+// ── Backward-compat shims ────────────────────────────────────────────────────
+// Existing callers (routes/checkout.js, routes/checkout-subscription.js) used
+// the old India-only exports. Keep them working, resolved against the IN tier,
+// so nothing breaks in this commit. New code should use priceFor()/providerFor().
+function toMinorUnits(rupees) { return Math.round(rupees * 100); }
+function reportAmountUnits()  { return priceFor('IN', 'report').amount; }
+function monitorAmountUnits() { return priceFor('IN', 'monitor').amount; }
+function billingCurrency()    { return process.env.RAZORPAY_CURRENCY || TIERS.IN.currency; }
 
 module.exports = {
-  DISPLAY_REPORT_PRICE,
-  DISPLAY_MONITOR_PRICE,
-  REPORT_AMOUNT_INR,
-  MONITOR_AMOUNT_INR,
-  BILLING_CURRENCY,
+  // new region-aware API
+  TIERS,
+  priceFor,
+  providerFor,
+  displayPrices,
+  envUnits,
+  // backward-compatible shims (India tier)
+  DISPLAY_REPORT_PRICE:  TIERS.IN.report.display,
+  DISPLAY_MONITOR_PRICE: TIERS.IN.monitor.display,
+  REPORT_AMOUNT_INR:     TIERS.IN.report.amount / 100,
+  MONITOR_AMOUNT_INR:    TIERS.IN.monitor.amount / 100,
+  BILLING_CURRENCY:      TIERS.IN.currency,
   toMinorUnits,
   reportAmountUnits,
   monitorAmountUnits,

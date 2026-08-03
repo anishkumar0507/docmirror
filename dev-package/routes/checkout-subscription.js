@@ -4,6 +4,7 @@ require('../lib/env');
 
 const Razorpay   = require('razorpay');
 const pricing    = require('../lib/pricing');
+const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
 
 // $49 Monitor subscription — ANONYMOUS at this stage.
@@ -49,10 +50,24 @@ async function handler(req, res) {
   try {
     const razorpay = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-    // The charged amount lives on the Razorpay Plan, not here. We record what we
-    // EXPECT so a plan/price mismatch is visible in notes and logs rather than
-    // silently billing the old price.
-    const expectedUnits = pricing.monitorAmountUnits();
+    // The charged amount lives on the Razorpay Plan, not here. We record the
+    // region-appropriate EXPECTED price so a plan/price mismatch is visible in
+    // notes and logs rather than silently billing the wrong price.
+    const region        = resolveRegion(req);
+    const expected      = pricing.priceFor(region.tier, 'monitor');
+    const expectedUnits = expected.amount;
+    const expectedCurr  = expected.currency;
+
+    // Razorpay remains the ONLY provider this phase. The live plan is priced in
+    // INR, so a non-IN buyer's expected currency will not match what the plan
+    // charges. Warn clearly but still create the subscription — routing a non-IN
+    // subscriber to Cashfree is the next phase.
+    if (expectedCurr !== 'INR') {
+      console.warn(
+        `[checkout-sub] region=${region.tier} country=${region.country || '?'} expects ` +
+        `${expectedCurr}, but the Razorpay plan charges INR — attempting anyway (provider routing pending)`
+      );
+    }
 
     const sub = await razorpay.subscriptions.create({
       plan_id:        planId,
@@ -64,14 +79,17 @@ async function handler(req, res) {
         paymentType: 'subscription',
         email,
         auditId: auditId || '',
+        region:  region.tier,
+        country: region.country || '',
         expected_amount_units: String(expectedUnits),
-        expected_currency:     pricing.billingCurrency(),
+        expected_currency:     expectedCurr,
       },
     });
 
     console.log(
       `[checkout-sub] created monitor subscription: ${sub.id} planSuffix=${planId.slice(-4)} ` +
-      `expected=${expectedUnits} ${pricing.billingCurrency()} (account created after payment)`
+      `region=${region.tier} country=${region.country || '?'} source=${region.source} ` +
+      `expected=${expectedUnits} ${expectedCurr} (account created after payment)`
     );
 
     return res.json({
@@ -80,6 +98,8 @@ async function handler(req, res) {
       keyId,
       email,
       auditId,
+      region:   region.tier,
+      currency: expectedCurr,
     });
 
   } catch (err) {

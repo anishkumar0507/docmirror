@@ -142,9 +142,17 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
         <div class="price-note">Monthly · Cancel anytime</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount">$49</div>
+        <div class="price-amount"><span data-price="monitor">$49</span></div>
         <div class="price-note">per month</div>
       </div>
+    </div>
+    <!-- Currency toggle: lets the buyer override geo-detected region. NOTE: the
+         Razorpay Monitor plan is INR-priced, so a non-IN choice changes the
+         DISPLAY and is recorded in the order notes; actual provider routing to a
+         USD plan comes in the next phase. -->
+    <div id="currency-toggle" role="group" aria-label="Currency" style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px">
+      <button type="button" data-region="US" onclick="setCurrency('US')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">USD $</button>
+      <button type="button" data-region="IN" onclick="setCurrency('IN')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">INR ₹</button>
     </div>
   </div>
 
@@ -162,7 +170,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Subscribe — $49/month
+      Subscribe — <span data-price="monitor">$49</span>/month
     </button>
 
     <div class="pay-secure">
@@ -248,8 +256,30 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Subscribe — $49/month';
+    ' Subscribe — <span data-price="monitor">$49</span>/month';
+  if (window.TDMPricing && window.TDM_PRICING) window.TDMPricing.apply(window.TDM_PRICING.prices);
 }
+
+// Currency toggle → override region, re-fetch prices, reflect active state.
+function setCurrency(tier) {
+  if (!window.TDMPricing) return;
+  window.TDMPricing.setRegion(tier).then(function(){
+    var btns = document.querySelectorAll('#currency-toggle button');
+    for (var i = 0; i < btns.length; i++) {
+      var active = btns[i].getAttribute('data-region') === tier;
+      btns[i].style.background   = active ? '#0A2540' : '#fff';
+      btns[i].style.color        = active ? '#fff'    : '#0A2540';
+      btns[i].style.borderColor  = active ? '#0A2540' : '#d5dce5';
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var r = window.TDMPricing && window.TDMPricing.region();
+    if (r === 'IN' || r === 'US') setCurrency(r);
+  }, 400);
+});
 
 // ── Main payment flow ──────────────────────────────────────────────────────
 function startPayment() {
@@ -278,7 +308,9 @@ function startPayment() {
   fetch('/api/checkout-subscription', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email: email, auditData: auditData || null })
+    // region is recorded on the subscription notes/logs; the charged amount still
+    // comes from the Razorpay plan until provider routing lands next phase.
+    body:    JSON.stringify({ email: email, auditData: auditData || null, region: (window.TDMPricing ? window.TDMPricing.region() : '') })
   })
   .then(function(r) { return r.json(); })
   .then(function(subRes) {
@@ -294,7 +326,7 @@ function startPayment() {
         key:             subRes.keyId,
         subscription_id: subRes.subscriptionId,
         name:            'The Doc Mirror',
-        description:     'Doctor Visibility Monitor — $49/month',
+        description:     'Doctor Visibility Monitor — ' + ((window.TDM_PRICING && window.TDM_PRICING.prices && window.TDM_PRICING.prices.monitor.display) || '$49/month'),
         prefill:         { email: email },
         theme:           { color: '#0A2540' },
 
@@ -399,5 +431,6 @@ document.getElementById('email-input').addEventListener('keydown', function(e) {
 </script>
 
 <script src="/js/branding.js" defer></script>
+<script src="/js/pricing-display.js" defer></script>
 </body>
 </html>

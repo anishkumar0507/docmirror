@@ -142,9 +142,15 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
         <div class="price-note">One-time · No subscription</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount">$19</div>
+        <div class="price-amount"><span data-price="report">$19</span></div>
         <div class="price-note">Instant PDF delivery</div>
       </div>
+    </div>
+    <!-- Currency toggle: lets the buyer override geo-detected region. The chosen
+         region is sent to /api/checkout so display currency == charge currency. -->
+    <div id="currency-toggle" role="group" aria-label="Currency" style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px">
+      <button type="button" data-region="US" onclick="setCurrency('US')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">USD $</button>
+      <button type="button" data-region="IN" onclick="setCurrency('IN')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">INR ₹</button>
     </div>
   </div>
 
@@ -159,7 +165,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <button class="pay-btn" id="pay-btn" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Unlock Full Report — $19
+      Unlock Full Report — <span data-price="report">$19</span>
     </button>
 
     <div class="pay-secure">
@@ -249,8 +255,32 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Unlock Full Report — $19';
+    ' Unlock Full Report — <span data-price="report">$19</span>';
+  // Re-fill the freshly rebuilt price span with the current region's price.
+  if (window.TDMPricing && window.TDM_PRICING) window.TDMPricing.apply(window.TDM_PRICING.prices);
 }
+
+// Currency toggle → override region, re-fetch prices, reflect active state.
+function setCurrency(tier) {
+  if (!window.TDMPricing) return;
+  window.TDMPricing.setRegion(tier).then(function(){
+    var btns = document.querySelectorAll('#currency-toggle button');
+    for (var i = 0; i < btns.length; i++) {
+      var active = btns[i].getAttribute('data-region') === tier;
+      btns[i].style.background   = active ? '#0A2540' : '#fff';
+      btns[i].style.color        = active ? '#fff'    : '#0A2540';
+      btns[i].style.borderColor  = active ? '#0A2540' : '#d5dce5';
+    }
+  });
+}
+
+// Reflect the geo-resolved region on the toggle once prices first load.
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var r = window.TDMPricing && window.TDMPricing.region();
+    if (r === 'IN' || r === 'US') setCurrency(r);
+  }, 400);
+});
 
 // ── Main payment flow ──────────────────────────────────────────────────────
 function startPayment() {
@@ -278,7 +308,9 @@ function startPayment() {
   fetch('/api/checkout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ email: email, auditData: auditData })
+    // region carries the buyer's chosen/detected tier so the order is created in
+    // the currency actually shown on this page.
+    body:    JSON.stringify({ email: email, auditData: auditData, region: (window.TDMPricing ? window.TDMPricing.region() : '') })
   })
   .then(function(r) { return r.json(); })
   .then(function(orderRes) {
@@ -445,5 +477,6 @@ document.getElementById('email-input').addEventListener('keydown', function(e) {
 </script>
 
 <script src="/js/branding.js" defer></script>
+<script src="/js/pricing-display.js" defer></script>
 </body>
 </html>
