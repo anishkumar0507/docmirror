@@ -416,6 +416,8 @@ a { color: var(--green-dark); }
 .adm-actionbar .adm-spacer { margin-right: auto; font-size: .78rem; color: var(--slate-muted); align-self: center; }
 .adm-btn--warn { background: #fff; color: #8a5a00; border: 1px solid #e8cf95; }
 .adm-btn--warn:hover:not(:disabled) { background: #fdf3e0; }
+.adm-btn--danger { background: #fff; color: var(--danger); border: 1px solid rgba(192, 57, 43, .3); }
+.adm-btn--danger:hover:not(:disabled) { background: var(--danger-light); }
 .adm-btn--sm { padding: 8px 14px; font-size: .85rem; }
 
 /* ── action row ─────────────────────────────────────────────────────────── */

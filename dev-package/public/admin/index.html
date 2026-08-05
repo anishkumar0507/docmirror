@@ -144,12 +144,12 @@
     var html =
       '<div class="adm-table-wrap"><table class="adm-table">' +
       '<thead><tr>' +
-      '<th>Title</th><th>Status</th><th>Category</th><th>Publish date</th><th>Last updated</th>' +
+      '<th>Title</th><th>Status</th><th>Category</th><th>Publish date</th><th>Last updated</th><th>Actions</th>' +
       '</tr></thead><tbody>';
 
     rows.forEach(function (r) {
       html +=
-        '<tr>' +
+        '<tr data-row-id="' + esc(r.id) + '">' +
         '<td><a class="adm-table-title" href="/admin/blogs/' + esc(r.id) + '/edit" style="text-decoration:none">' +
         esc(r.title || '(untitled)') + '</a>' +
         '<div class="adm-table-slug">/resources/' + esc(r.slug || '') + '</div></td>' +
@@ -157,10 +157,40 @@
         '<td>' + esc(r.category || '—') + '</td>' +
         '<td>' + fmtDate(r.published_at) + '</td>' +
         '<td>' + fmtDate(r.updated_at) + '</td>' +
+        '<td style="white-space:nowrap">' +
+        '<a class="adm-x" href="/admin/blogs/' + esc(r.id) + '/edit" style="text-decoration:none">Edit</a> ' +
+        '<button type="button" class="adm-x" data-del-id="' + esc(r.id) + '"' +
+        ' data-del-title="' + esc(r.title || '') + '"' +
+        ' data-del-live="' + (r.is_public ? '1' : '') + '">Delete</button>' +
+        '</td>' +
         '</tr>';
     });
 
     box.innerHTML = html + '</tbody></table></div>';
+  }
+
+  // Permanent, so it asks first — and asks harder when the post is live, because
+  // deleting one 404s a URL that may already be indexed or linked.
+  async function deletePost(id, title, isLive) {
+    var warning = isLive
+      ? 'Delete "' + title + '"?\n\nThis post is LIVE. Deleting it will 404 its public URL ' +
+        'for anyone who has it bookmarked or linked.\n\nArchive removes it from the site and ' +
+        'can be undone — delete cannot.'
+      : 'Delete "' + title + '"?\n\nThis cannot be undone.';
+    if (!window.confirm(warning)) return;
+
+    try {
+      var r = await AdminAuth.apiRaw('/api/admin/posts/' + id + (isLive ? '?confirm=live' : ''), { method: 'DELETE' });
+      if (r.status === 409 && r.body && r.body.requires_confirm) {
+        // The server saw it as live even though the row looked like a draft here.
+        if (!window.confirm(r.body.error + '\n\nDelete anyway?')) return;
+        r = await AdminAuth.apiRaw('/api/admin/posts/' + id + '?confirm=live', { method: 'DELETE' });
+      }
+      if (!r.ok) throw new Error((r.body && r.body.error) || 'Could not delete.');
+      await loadDashboard();
+    } catch (e) {
+      showError(e.message);
+    }
   }
 
   function showError(msg) {
@@ -188,6 +218,12 @@
     renderCounts(r.body.counts);
     renderRecent(r.body.recent || []);
   }
+
+  document.getElementById('recent-body').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-del-id]');
+    if (!b) return;
+    deletePost(b.dataset.delId, b.dataset.delTitle || '(untitled)', !!b.dataset.delLive);
+  });
 
   AdminAuth.guard(function (admin) {
     AdminShell.mount({

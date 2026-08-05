@@ -14,10 +14,15 @@
 const fs = require('fs');
 const path = require('path');
 const { buildSitemapXml, buildSitemapEntries } = require('../lib/sitemap');
+const { refresh } = require('../lib/resources');
 
-const OUT = path.join(__dirname, '..', 'public', 'sitemap.xml');
-
+// The Resources collection is now a hybrid of the Markdown files and the CMS,
+// and the CMS half arrives over the network. Await it before building, or this
+// file would list only the .md articles while the live /sitemap.xml — which is
+// generated per request and always wins — listed both.
+async function main() {
 try {
+  await refresh();
   const xml = buildSitemapXml();
   const entries = buildSitemapEntries();
 
@@ -33,5 +38,8 @@ try {
   console.log('  Submit that URL in Google Search Console (not the file).\n');
 } catch (err) {
   console.error('\n  Failed to write sitemap.xml:', err.message, '\n');
-  process.exit(1);
+  process.exitCode = 1;
 }
+}
+
+main();

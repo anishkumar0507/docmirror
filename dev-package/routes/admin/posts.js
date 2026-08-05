@@ -669,8 +669,67 @@ async function update(req, res) {
   return res.json({ post: Object.assign({}, data, readToggles(data)) });
 }
 
+/**
+ * DELETE /api/admin/posts/:id
+ *
+ * Permanent. There is no soft-delete column and no undo — Archive is the
+ * reversible option, and the UI says so.
+ *
+ * A post that is live right now needs an explicit `?confirm=live`. Deleting one
+ * removes a URL that is indexed, may be linked from other articles, and may sit
+ * in someone's bookmarks; that deserves a second, deliberate step rather than
+ * the same click that removes an untouched draft.
+ *
+ * Uploaded images are deliberately NOT removed. blog_media is a shared library
+ * and the same image may be the hero of another article.
+ */
+async function remove(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
+
+  const supabase = db(res); if (!supabase) return;
+
+  const loaded = await withSupabaseRetry(
+    () => supabase.from('blog_posts')
+      .select('id, title, slug, status, published_at')
+      .eq('id', req.params.id).maybeSingle(),
+    { label: 'admin-posts-delete-load', attempts: 2 }
+  );
+  if (loaded.error) return fail(res, 'delete/load', loaded.error);
+  if (!loaded.data) return res.status(404).json({ error: 'Blog not found' });
+
+  const post = loaded.data;
+  const isLive = ['published', 'scheduled'].includes(post.status) &&
+    post.published_at && Date.parse(post.published_at) <= Date.now();
+
+  if (isLive && String(req.query.confirm || '') !== 'live') {
+    return res.status(409).json({
+      error: `"${post.title}" is live at /resources/${post.slug}. Deleting it will 404 that ` +
+             'URL for anyone who has it bookmarked or linked. Archive removes it from the ' +
+             'site and is reversible — delete only if you are sure.',
+      requires_confirm: 'live',
+      slug: post.slug,
+    });
+  }
+
+  const { error } = await withSupabaseRetry(
+    () => supabase.from('blog_posts').delete().eq('id', post.id),
+    { label: 'admin-posts-delete', attempts: 2 }
+  );
+  if (error) return fail(res, 'delete', error);
+
+  console.warn(
+    `[admin/posts] DELETED id=${post.id} slug=${post.slug} status=${post.status} ` +
+    `wasLive=${isLive} by=${req.admin.email}`
+  );
+
+  return res.json({
+    deleted: { id: post.id, title: post.title, slug: post.slug, status: post.status, wasLive: isLive },
+  });
+}
+
 module.exports = {
-  list, get, create, update, slugCheck, relatedSearch, resolveRelated,
+  list, get, create, update, remove, slugCheck, relatedSearch, resolveRelated,
   // exported for tests and for the editor's mirrored checklist
   buildFields, resolveStatus, missingForPublish, sanitiseMarkdown,
   zonedWallClockToUtc, PUBLISH_REQUIRED, SLUG_RE,

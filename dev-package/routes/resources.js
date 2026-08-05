@@ -388,6 +388,20 @@ document.querySelectorAll('.faq-item h3').forEach(function(h){
   // Related guides — same category first, then shared tags (see getRelated).
   // Reuses the listing card markup so the styling is identical, and gives every
   // article outbound links to its siblings instead of dead-ending at the CTA.
+  // Tag chips — CMS articles only. The 24 Markdown articles parse tags but have
+  // never rendered them, and changing 24 indexed pages is not part of this step.
+  // Deliberately reuses .res-meta and .res-card-cat rather than adding a rule:
+  // PAGE_CSS is inlined into every page, so a new selector would alter the bytes
+  // of the Markdown articles too.
+  // The leading newline lives INSIDE the block, so an article without tags
+  // emits nothing at all here — not an empty line. That is what keeps a
+  // Markdown article's HTML byte-for-byte what it was before this step.
+  const tagsBlock = (post._source === 'cms' && Array.isArray(post.tags) && post.tags.length)
+    ? `\n<div class="res-meta" aria-label="Tags">${
+        post.tags.map(t => `<span class="res-card-cat">${escapeHtml(t)}</span>`).join('')
+      }</div>`
+    : '';
+
   const related = getRelated(post, 3);
   const relatedBlock = related.length
     ? `<section class="res-related" aria-label="Related guides">
@@ -405,7 +419,7 @@ document.querySelectorAll('.faq-item h3').forEach(function(h){
 <h1>${escapeHtml(post.title)}</h1>
 <div class="res-meta">${metaBits(post)}<span class="res-card-dot">·</span><span>By ${escapeHtml(post.author)}</span></div>
 ${hero}
-<article class="res-content">${post.html}</article>
+<article class="res-content">${post.html}</article>${tagsBlock}
 ${CTA_BLOCK}
 ${faqBlock}
 ${relatedBlock}

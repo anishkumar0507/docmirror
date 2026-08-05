@@ -661,6 +661,7 @@
       }
       setStatusChip(post.status);
       applySlugLock(post);
+      syncDeleteButton();
       markClean('Saved · ' + new Date().toLocaleTimeString());
 
       var word = action === 'publish' ? 'published' : action === 'schedule' ? 'scheduled'
@@ -676,6 +677,13 @@
     }
   }
 
+  // Nothing to delete until the post exists, so the button only appears once it
+  // has an id — either loaded for editing, or created by the first save.
+  function syncDeleteButton() {
+    var b = $('btn-delete');
+    if (b) b.hidden = !state.id;
+  }
+
   function applySlugLock(post) {
     var live = post.published_at && Date.parse(post.published_at) <= Date.now();
     state.slugLocked = !!live;
@@ -684,6 +692,36 @@
     if (state.slugLocked) {
       $('slug-hint').className = 'adm-hint';
       $('slug-hint').textContent = 'Locked — this article has been published, so its URL cannot change.';
+    }
+  }
+
+  // Permanent — there is no undo and no soft-delete column. Archive is the
+  // reversible option, which is why the confirmation says so out loud, and says
+  // it more firmly when the post is already public.
+  async function deleteBlog() {
+    if (!state.id) return;
+    var title = $('f-title').value.trim() || '(untitled)';
+    var isLive = state.slugLocked;          // set when published_at has passed
+
+    var msg = isLive
+      ? 'Delete "' + title + '"?\n\nThis post is LIVE. Deleting it will 404 its public URL ' +
+        'for anyone who has it bookmarked or linked.\n\nArchive removes it from the site and ' +
+        'can be undone — delete cannot.'
+      : 'Delete "' + title + '"?\n\nThis cannot be undone.';
+    if (!window.confirm(msg)) return;
+
+    try {
+      var r = await AdminAuth.apiRaw('/api/admin/posts/' + state.id + (isLive ? '?confirm=live' : ''),
+        { method: 'DELETE' });
+      if (r.status === 409 && r.body && r.body.requires_confirm) {
+        if (!window.confirm(r.body.error + '\n\nDelete anyway?')) return;
+        r = await AdminAuth.apiRaw('/api/admin/posts/' + state.id + '?confirm=live', { method: 'DELETE' });
+      }
+      if (!r.ok) throw new Error((r.body && r.body.error) || 'Could not delete.');
+      state.dirty = false;                  // do not warn about unsaved changes on the way out
+      window.location.href = '/admin';
+    } catch (e) {
+      flash(e.message, 'error');
     }
   }
 
@@ -794,6 +832,7 @@
     updateCanonical();
     updateReadTime();
     updateSchemaHint();
+    syncDeleteButton();
     counter('f-seotitle', 'seo-title-count', 60);
     counter('f-metadesc', 'meta-desc-count', 160);
     renderChecklist();
@@ -936,6 +975,7 @@
       save('schedule');
     });
     $('btn-archive').addEventListener('click', function () { save('archive'); });
+    $('btn-delete').addEventListener('click', deleteBlog);
 
     window.addEventListener('beforeunload', function (e) {
       if (state.dirty) { e.preventDefault(); e.returnValue = ''; }

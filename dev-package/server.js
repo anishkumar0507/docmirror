@@ -216,6 +216,7 @@ app.get('/api/admin/posts',                 adminPosts.list);
 app.get('/api/admin/posts/:id',             adminPosts.get);
 app.post('/api/admin/posts',                adminPosts.create);
 app.patch('/api/admin/posts/:id',           adminPosts.update);
+app.delete('/api/admin/posts/:id',          adminPosts.remove);   // permanent; live posts need ?confirm=live
 
 // Media. The upload takes the raw image bytes rather than multipart, so no new
 // dependency is needed; express.json() above ignores an image Content-Type, so

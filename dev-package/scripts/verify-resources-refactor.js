@@ -181,13 +181,20 @@ function checkPreservedImplementation() {
   const onDisk = fs.readFileSync(mdPath);
   check('lib/resources-markdown.js exists', fs.existsSync(mdPath));
 
-  // The pre-refactor lib/resources.js, straight out of git. Line endings are
-  // normalised because this repo is checked out with core.autocrlf=true: the
-  // working tree has CRLF, the stored blob has LF. Content is what is being
-  // compared, so both sides are normalised to LF.
+  // The pre-refactor lib/resources.js, straight out of git.
+  //
+  // Pinned to the commit BEFORE the refactor rather than HEAD: once the split
+  // was committed, HEAD:lib/resources.js became the orchestrator, so comparing
+  // against HEAD would compare this file to the wrong thing and fail for a
+  // reason that has nothing to do with the Markdown implementation.
+  //
+  // Line endings are normalised because this repo is checked out with
+  // core.autocrlf=true — the working tree has CRLF, the stored blob has LF.
+  // Content is what is being compared.
+  const PRE_REFACTOR_REF = '57cfb75';
   let fromGit = null;
   try {
-    fromGit = execFileSync('git', ['show', 'HEAD:dev-package/lib/resources.js'],
+    fromGit = execFileSync('git', ['show', `${PRE_REFACTOR_REF}:dev-package/lib/resources.js`],
       { cwd: REPO_ROOT, maxBuffer: 8 * 1024 * 1024 });
   } catch (err) {
     console.log(`  ~ skipped git comparison (${err.message.split('\n')[0]})`);
@@ -197,7 +204,7 @@ function checkPreservedImplementation() {
     const a = lf(onDisk);
     const b = lf(fromGit);
     const ok = Buffer.compare(a, b) === 0;
-    check('resources-markdown.js is byte-identical to HEAD:lib/resources.js', ok,
+    check(`resources-markdown.js is byte-identical to ${PRE_REFACTOR_REF}:lib/resources.js`, ok,
       ok ? '' : `sha256 ${sha256(a).slice(0, 16)} vs ${sha256(b).slice(0, 16)}`);
     if (ok) console.log(`    sha256(LF-normalised) = ${sha256(a)}`);
   }
@@ -219,9 +226,15 @@ function checkOrchestratorContract() {
   check('exports every original name', PUBLIC_API.every((k) => k in orch),
     PUBLIC_API.filter((k) => !(k in orch)).join(', '));
   check('exports warmResources', typeof orch.warmResources === 'function');
-  check('exports nothing else',
-    Object.keys(orch).every((k) => PUBLIC_API.includes(k) || k === 'warmResources'),
-    Object.keys(orch).filter((k) => !PUBLIC_API.includes(k) && k !== 'warmResources').join(', '));
+  // The orchestrator may add source-management helpers on top of the frozen
+  // read API. `refresh` is what warmResources drives; `cmsStatus` is read-only
+  // diagnostics. Neither is a content reader, so neither can change what a page
+  // renders — but the list is explicit so a genuinely unexpected export still
+  // fails this check.
+  const ALLOWED_EXTRAS = ['warmResources', 'refresh', 'cmsStatus'];
+  check('exports nothing beyond the frozen API plus known helpers',
+    Object.keys(orch).every((k) => PUBLIC_API.includes(k) || ALLOWED_EXTRAS.includes(k)),
+    Object.keys(orch).filter((k) => !PUBLIC_API.includes(k) && !ALLOWED_EXTRAS.includes(k)).join(', '));
 
   // Same references, so importers such as scripts/publish-resource.js are unaffected.
   check('SITE is unchanged', orch.SITE === md.SITE, `${orch.SITE} vs ${md.SITE}`);

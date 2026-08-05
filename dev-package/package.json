@@ -15,6 +15,7 @@
     "import-resources": "node scripts/import-resources.js",
     "verify-resources": "node scripts/verify-resources-refactor.js",
     "verify-migrations": "node scripts/verify-blog-migrations.js",
+    "verify-hybrid": "node scripts/verify-resources-hybrid.js",
     "vercel-build": "echo 'Static + serverless — no build step'"
   },
   "dependencies": {

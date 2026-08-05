@@ -17,7 +17,13 @@
    ────────────────────────────────────────────────────────────────────────── */
 
 const { marked } = require('marked');
-const { SITE, slugify } = require('./resources');
+// Imported from the Markdown layer, not from lib/resources.js. The orchestrator
+// now loads lib/resources-db.js, which loads this file — going back through the
+// orchestrator would close that loop and leave SITE/slugify undefined at the
+// moment this module is evaluated. resources-markdown.js is a leaf: it depends
+// on nothing inside the resources layer, so there is no cycle. Both names are
+// the same objects the orchestrator re-exports.
+const { SITE, slugify } = require('./resources-markdown');
 
 // The base path resource URLs are built from. Kept as a constant rather than
 // read from config: these URLs are indexed, and a stray env var must never be
@@ -144,13 +150,27 @@ function mapRow(row) {
     faq:             normaliseFaq(row.faq),
     html:            renderMarkdown(md),
 
-    // Per-article structured-data switches (migration 022). An OPTIONAL 18th
-    // key: Markdown posts never carry it, and routes/resources.js treats its
-    // absence as "both on", so a .md article's output is untouched.
+    // ── Optional keys, present only on CMS posts ────────────────────────────
+    // Markdown posts carry none of these. Every consumer treats absence as the
+    // historical behaviour, which is what keeps a .md article's output
+    // byte-for-byte unchanged.
+
+    // Structured-data switches (migration 022). Absent → both on.
     schema: {
       article: row.enable_article_schema !== false,
       faq:     row.enable_faq_schema !== false,
     },
+
+    // Manual "Related in this series" selection. Absent or empty → the
+    // automatic same-category/shared-tag algorithm runs, as it always has.
+    relatedSlugs: Array.isArray(row.related_slugs)
+      ? row.related_slugs.map(String).filter(Boolean)
+      : [],
+
+    // Provenance. Used for two things and nothing else: rendering tag chips on
+    // CMS articles only (the 24 Markdown articles keep their current design,
+    // per the CMS-only-tags decision), and diagnostics.
+    _source: 'cms',
   };
 }
 
