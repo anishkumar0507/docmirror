@@ -361,8 +361,18 @@ document.querySelectorAll('.faq-item h3').forEach(function(h){
       { '@type': 'ListItem', position: 3, name: post.title, item: post.canonical },
     ],
   };
-  const graph = [article, breadcrumb];
-  if (post.faq.length) {
+  // Optional per-article structured-data switches, set in the CMS editor.
+  // Markdown articles carry no `schema` key at all, so both read as enabled and
+  // their JSON-LD is byte-for-byte what it has always been. Only the JSON-LD is
+  // affected — the visible FAQ accordion still follows post.faq, and title,
+  // description, canonical, Open Graph and Twitter tags are never touched.
+  const wantArticleSchema = !post.schema || post.schema.article !== false;
+  const wantFaqSchema     = !post.schema || post.schema.faq     !== false;
+
+  const graph = [];
+  if (wantArticleSchema) graph.push(article);
+  graph.push(breadcrumb);
+  if (wantFaqSchema && post.faq.length) {
     graph.push({
       '@type': 'FAQPage',
       '@id': `${post.canonical}#faq`,

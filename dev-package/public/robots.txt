@@ -4,6 +4,8 @@ Allow: /
 # Private / non-content surfaces only. CSS, JS, images and fonts are all
 # crawlable so Google can render pages exactly as a patient sees them.
 Disallow: /api/
+Disallow: /admin
+Disallow: /admin/
 Disallow: /dashboard
 Disallow: /dashboard.html
 Disallow: /pdf-report-template.html

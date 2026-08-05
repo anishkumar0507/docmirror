@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Private surface: never index, never follow, never show a search snippet. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Admin Sign In — The Doc Mirror</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="adm-login-wrap">
+  <div class="adm-card">
+    <div class="adm-card-head">
+      <div class="adm-logo">
+        <span class="adm-logo-mark"><svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="white" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></span>
+        <span class="adm-logo-word">The Doc <span>Mirror</span></span>
+        <span class="adm-logo-tag">Admin</span>
+      </div>
+      <div>
+        <h1>Sign in to the CMS</h1>
+        <p class="adm-card-sub">Administrator accounts only.</p>
+      </div>
+    </div>
+
+    <div id="msg" class="adm-msg"></div>
+
+    <form id="login-form" autocomplete="on">
+      <div class="adm-field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" autocomplete="username"
+               required placeholder="you@thedocmirror.com">
+      </div>
+      <div class="adm-field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="current-password"
+               required placeholder="••••••••">
+      </div>
+      <button id="submit-btn" class="adm-btn adm-btn--block" type="submit">Sign in</button>
+    </form>
+  </div>
+</div>
+
+<script src="/admin/admin-auth.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var form   = document.getElementById('login-form');
+  var btn    = document.getElementById('submit-btn');
+  var msgEl  = document.getElementById('msg');
+  var email  = document.getElementById('email');
+  var pass   = document.getElementById('password');
+
+  // Only ever redirect to a path inside the admin area on this origin. A
+  // ?return_to=https://evil.example or ?return_to=//evil.example would
+  // otherwise turn the login page into an open redirect.
+  function safeReturnTo() {
+    var raw = new URLSearchParams(window.location.search).get('return_to') || '';
+    if (!raw.startsWith('/admin') || raw.startsWith('//')) return '/admin';
+    return raw;
+  }
+
+  function showMsg(text, kind) {
+    if (!text) { msgEl.className = 'adm-msg'; msgEl.textContent = ''; return; }
+    msgEl.className = 'adm-msg show adm-msg--' + (kind || 'error');
+    msgEl.innerHTML = text;
+  }
+
+  function setLoading(on, label) {
+    btn.disabled = on;
+    email.disabled = on;
+    pass.disabled = on;
+    btn.textContent = on ? (label || 'Signing in…') : 'Sign in';
+  }
+
+  // Confirms admin access with the SERVER before sending anyone to /admin.
+  // Signing in successfully is not the same as being an admin, so a non-admin
+  // is told so here rather than bouncing off the dashboard gate a moment later.
+  async function completeSignIn() {
+    var r = await AdminAuth.apiRaw('/api/admin/me');
+
+    if (r.status === 200) {
+      window.location.href = safeReturnTo();
+      return true;
+    }
+
+    if (r.status === 403) {
+      showMsg(
+        'This account is signed in but is <strong>not an administrator</strong>. ' +
+        'Ask an existing admin to grant access, or ' +
+        '<a href="#" id="signout-link">sign out</a>.'
+      );
+      var link = document.getElementById('signout-link');
+      if (link) link.addEventListener('click', function (e) {
+        e.preventDefault();
+        AdminAuth.clearTokens();
+        window.location.reload();
+      });
+      return false;
+    }
+
+    if (r.status === 401) { showMsg('Your session expired. Please sign in again.'); return false; }
+
+    showMsg((r.body && r.body.error) || 'Could not verify admin access. Please try again.');
+    return false;
+  }
+
+  // If an admin is already signed in, skip the form entirely.
+  async function checkExisting() {
+    setLoading(true, 'Checking…');
+    try {
+      var session = await AdminAuth.restore();
+      if (session) {
+        var done = await completeSignIn();
+        if (done) return;                 // navigating away
+      }
+    } catch (_) { /* show the form */ }
+    setLoading(false);
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    showMsg('');
+
+    var em = email.value.trim();
+    var pw = pass.value;
+    if (!em) { showMsg('Email is required.'); return; }
+    if (!pw) { showMsg('Password is required.'); return; }
+
+    setLoading(true);
+    try {
+      var sb = await AdminAuth.getClient();
+      if (!sb) { showMsg('Authentication is not configured on this server.'); setLoading(false); return; }
+
+      var res = await sb.auth.signInWithPassword({ email: em, password: pw });
+
+      if (res.error || !res.data || !res.data.session) {
+        var m = (res.error && res.error.message) || '';
+        // Distinguish a wrong password from the service being unreachable, so a
+        // Supabase stall does not make a valid admin doubt their credentials.
+        var transient = /fetch failed|timeout|abort|network|socket|503|429|temporarily/i.test(m);
+        showMsg(transient
+          ? 'The sign-in service is busy right now — please try again in a moment.'
+          : 'Invalid email or password.');
+        setLoading(false);
+        return;
+      }
+
+      AdminAuth.storeTokens(res.data.session);
+      await AdminAuth.restore();          // pick the session up inside AdminAuth
+      var ok = await completeSignIn();
+      if (!ok) setLoading(false);         // stay on the page with the message shown
+
+    } catch (err) {
+      showMsg('Network error. Please try again.');
+      setLoading(false);
+    }
+  });
+
+  checkExisting();
+})();
+</script>
+
+</body>
+</html>

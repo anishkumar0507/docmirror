@@ -13,6 +13,8 @@
     "publish-resource": "node scripts/publish-resource.js",
     "check-og": "node scripts/check-og-images.js",
     "import-resources": "node scripts/import-resources.js",
+    "verify-resources": "node scripts/verify-resources-refactor.js",
+    "verify-migrations": "node scripts/verify-blog-migrations.js",
     "vercel-build": "echo 'Static + serverless — no build step'"
   },
   "dependencies": {

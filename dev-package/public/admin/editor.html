@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Add Blog — The Doc Mirror Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div id="adm-gate" class="adm-gate">
+  <div class="adm-spinner"></div>
+  <p class="adm-gate-msg">Checking admin access…</p>
+</div>
+
+<div class="adm-app">
+  <aside class="adm-side" id="adm-side"></aside>
+
+  <div class="adm-content">
+    <header class="adm-bar" id="adm-bar"></header>
+
+    <div class="adm-body">
+
+      <!-- Publish checklist — mirrors the server's PUBLISH_REQUIRED list. The
+           server refuses to publish regardless of what this shows. -->
+      <div id="checklist" class="adm-checklist"></div>
+      <div id="msg" class="adm-msg"></div>
+
+      <div class="adm-editor">
+
+        <!-- ── LEFT COLUMN ────────────────────────────────────────────── -->
+        <div class="adm-col">
+
+          <section class="adm-panel adm-fieldset">
+            <div>
+              <label class="adm-lbl" for="f-title">Blog Title</label>
+              <input id="f-title" class="adm-in" type="text" placeholder="Enter the blog title" maxlength="200">
+            </div>
+
+            <div>
+              <label class="adm-lbl" for="f-slug">Slug <small>auto-generated from the title, editable</small></label>
+              <input id="f-slug" class="adm-in" type="text" placeholder="blog-url-slug" spellcheck="false">
+              <div id="slug-hint" class="adm-hint"></div>
+            </div>
+
+            <div>
+              <label class="adm-lbl" for="f-excerpt">Excerpt <small>short summary / listing card text</small></label>
+              <textarea id="f-excerpt" class="adm-ta" placeholder="One or two sentence summary." maxlength="400"></textarea>
+              <div class="adm-hint">Leave blank and it will be generated from the opening of the article.</div>
+            </div>
+          </section>
+
+          <section>
+            <label class="adm-lbl" style="margin-bottom:.45rem">Content</label>
+            <div class="adm-ed-toolbar" id="ed-toolbar" role="toolbar" aria-label="Formatting">
+              <button type="button" data-cmd="h1" title="Heading 1">H1</button>
+              <button type="button" data-cmd="h2" title="Heading 2">H2</button>
+              <button type="button" data-cmd="h3" title="Heading 3">H3</button>
+              <button type="button" data-cmd="p"  title="Normal paragraph">P</button>
+              <span class="adm-ed-sep"></span>
+              <button type="button" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+              <button type="button" data-cmd="underline" title="Underline (Ctrl+U)"><u>U</u></button>
+              <button type="button" data-cmd="strike" title="Strikethrough"><s>S</s></button>
+              <span class="adm-ed-sep"></span>
+              <button type="button" data-cmd="ul" title="Bullet list">&bull;&nbsp;List</button>
+              <button type="button" data-cmd="ol" title="Numbered list">1.&nbsp;List</button>
+              <button type="button" data-cmd="quote" title="Blockquote">&ldquo;&rdquo;</button>
+              <button type="button" data-cmd="code" title="Code block">&lt;/&gt;</button>
+              <button type="button" data-cmd="hr" title="Divider">&mdash;</button>
+              <span class="adm-ed-sep"></span>
+              <button type="button" data-cmd="link" title="Insert link">Link</button>
+              <button type="button" data-cmd="unlink" title="Remove link">Unlink</button>
+              <button type="button" data-cmd="image" title="Insert image">Image</button>
+              <button type="button" data-cmd="table" title="Insert table">Table</button>
+              <span class="adm-ed-sep"></span>
+              <button type="button" data-cmd="undo" title="Undo">&#8630;</button>
+              <button type="button" data-cmd="redo" title="Redo">&#8631;</button>
+            </div>
+            <div id="editor" class="adm-ed" contenteditable="true" spellcheck="true"
+                 data-placeholder="Start writing…"></div>
+            <div class="adm-hint" id="ed-stats">Headings, lists, links and images are saved as structured content.</div>
+          </section>
+
+          <section class="adm-panel">
+            <div class="adm-panel-head">
+              <h2>FAQ <small style="font-weight:400;color:var(--slate-muted);font-size:.8rem">(optional)</small></h2>
+              <span class="adm-counter" id="faq-count">0 questions</span>
+            </div>
+            <p class="adm-hint" id="faq-empty" style="margin-bottom:.7rem">
+              No FAQ. Leave it empty and the section is omitted entirely from the public page.
+            </p>
+            <div class="adm-repeat" id="faq-list"></div>
+            <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="faq-add" style="margin-top:.7rem">+ Add Question</button>
+          </section>
+
+          <section class="adm-panel">
+            <div class="adm-panel-head">
+              <h2>Related in this series <small style="font-weight:400;color:var(--slate-muted);font-size:.8rem">(optional)</small></h2>
+              <span class="adm-counter" id="rel-count">0 selected</span>
+            </div>
+            <div class="adm-suggest">
+              <input id="rel-search" class="adm-in" type="text" autocomplete="off"
+                     placeholder="Search all blogs by name — or click to browse everything">
+              <div class="adm-suggest-list" id="rel-results"></div>
+            </div>
+            <div class="adm-hint" id="rel-hint">
+              Covers every existing Resources article and every CMS blog, including
+              scheduled ones. New blogs appear here automatically.
+            </div>
+
+            <div style="display:flex;gap:.5rem;margin-top:.6rem">
+              <input id="rel-url" class="adm-in" type="text" autocomplete="off"
+                     placeholder="…or paste a URL / slug (e.g. /resources/geo-for-doctors)">
+              <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="rel-url-add">+ Add</button>
+            </div>
+            <div class="adm-hint" id="rel-url-hint"></div>
+
+            <div class="adm-pill-row" id="rel-list" style="margin-top:.8rem"></div>
+          </section>
+
+        </div>
+
+        <!-- ── RIGHT RAIL ─────────────────────────────────────────────── -->
+        <div class="adm-rail">
+
+          <section class="adm-panel adm-fieldset">
+            <div>
+              <span class="adm-lbl">Current Status</span>
+              <span class="adm-chip adm-chip--draft" id="f-status">Draft</span>
+            </div>
+            <div class="adm-row">
+              <div>
+                <label class="adm-lbl" for="f-date">Publish Date</label>
+                <input id="f-date" class="adm-in" type="date">
+              </div>
+              <div>
+                <label class="adm-lbl" for="f-time">Publish Time</label>
+                <input id="f-time" class="adm-in" type="time">
+              </div>
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-tz">Timezone</label>
+              <select id="f-tz" class="adm-sel"></select>
+              <div class="adm-hint" id="tz-hint"></div>
+            </div>
+          </section>
+
+          <section class="adm-panel adm-fieldset">
+            <div>
+              <label class="adm-lbl" for="f-category">Category</label>
+              <select id="f-category" class="adm-sel"></select>
+              <div class="adm-hint" id="cat-hint"></div>
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-tags">Tags <small>comma separated</small></label>
+              <input id="f-tags" class="adm-in" type="text" placeholder="AI Visibility, Google, Local SEO">
+              <div class="adm-pill-row" id="tag-preview" style="margin-top:.45rem"></div>
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-author">Author</label>
+              <input id="f-author" class="adm-in" type="text" list="author-list">
+              <datalist id="author-list"></datalist>
+            </div>
+          </section>
+
+          <section class="adm-panel adm-fieldset">
+            <div class="adm-panel-head" style="margin-bottom:0">
+              <h2 style="font-size:.92rem">Featured Image</h2>
+              <button type="button" class="adm-x" id="img-library">Library / Upload</button>
+            </div>
+            <input id="f-image" class="adm-in" type="text" placeholder="Choose or upload an image" spellcheck="false">
+            <div class="adm-img-drop" id="img-drop">
+              <span id="img-drop-label">Click to upload, or drag an image here</span>
+            </div>
+            <div class="adm-hint" id="img-hint"></div>
+            <div>
+              <label class="adm-lbl" for="f-alt">Featured Image ALT Text</label>
+              <input id="f-alt" class="adm-in" type="text" placeholder="Describe the image for screen readers">
+            </div>
+          </section>
+
+          <section class="adm-panel adm-fieldset">
+            <div>
+              <label class="adm-lbl" for="f-seotitle">SEO Title <span class="adm-counter" id="seo-title-count">0/60</span></label>
+              <input id="f-seotitle" class="adm-in" type="text" maxlength="120">
+              <div class="adm-hint">Shown as the clickable headline in Google. Defaults to the blog title.</div>
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-metadesc">Meta Description <span class="adm-counter" id="meta-desc-count">0/160</span></label>
+              <textarea id="f-metadesc" class="adm-ta" maxlength="320"></textarea>
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-readtime">Read Time <small>auto, editable</small></label>
+              <input id="f-readtime" class="adm-in" type="number" min="1" max="120">
+            </div>
+            <div>
+              <label class="adm-lbl" for="f-canonical">Canonical URL <small>auto from the slug</small></label>
+              <input id="f-canonical" class="adm-in" type="text" readonly>
+            </div>
+          </section>
+
+          <section class="adm-panel adm-fieldset">
+            <div class="adm-panel-head" style="margin-bottom:0">
+              <h2 style="font-size:.92rem">Structured Data</h2>
+            </div>
+            <label class="adm-check">
+              <input type="checkbox" id="f-schema-article" checked>
+              <span>
+                <strong>Enable Article Schema</strong>
+                <small>BlogPosting JSON-LD — tells Google this page is an article, with its author, date and image.</small>
+              </span>
+            </label>
+            <label class="adm-check">
+              <input type="checkbox" id="f-schema-faq" checked>
+              <span>
+                <strong>Enable FAQ Schema</strong>
+                <small>FAQPage JSON-LD. Only emitted when the article actually has questions — turn this off to keep the FAQ visible on the page without declaring FAQ structured data.</small>
+              </span>
+            </label>
+            <div class="adm-hint" id="schema-hint"></div>
+          </section>
+
+        </div>
+      </div>
+
+      <div class="adm-actionbar">
+        <span class="adm-spacer" id="save-state"></span>
+        <button type="button" class="adm-btn adm-btn--ghost" id="btn-draft">Save Draft</button>
+        <button type="button" class="adm-btn adm-btn--warn" id="btn-schedule">Schedule</button>
+        <button type="button" class="adm-btn adm-btn--ghost" id="btn-archive">Archive</button>
+        <button type="button" class="adm-btn" id="btn-publish">Publish Now</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── media library / upload ───────────────────────────────────────────── -->
+<div class="adm-modal" id="media-modal">
+  <div class="adm-modal-box">
+    <div class="adm-modal-head">
+      <h3 id="media-title">Media Library</h3>
+      <div style="display:flex;gap:.5rem">
+        <button type="button" class="adm-btn adm-btn--sm" id="media-upload-btn">Upload image</button>
+        <button type="button" class="adm-x" id="media-close">Close</button>
+      </div>
+    </div>
+    <div class="adm-modal-body">
+      <div id="media-msg" class="adm-msg"></div>
+      <div class="adm-media-grid" id="media-grid"></div>
+      <p class="adm-hint" id="media-empty" style="display:none">
+        Nothing uploaded yet. Use <strong>Upload image</strong> — PNG, JPG, WebP or GIF, up to 5 MB.
+      </p>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="file-input" accept="image/png,image/jpeg,image/webp,image/gif" style="display:none">
+
+<script src="/admin/admin-auth.js"></script>
+<script src="/admin/admin-shell.js"></script>
+<script src="/admin/editor.js"></script>
+
+</body>
+</html>

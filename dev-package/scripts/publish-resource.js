@@ -211,6 +211,7 @@ function publishResource(mdPathArg, imgPathArg, opts = {}) {
 // and both the listing + article render it. Throws if anything fails.
 function verify(slug, webImage) {
   delete require.cache[require.resolve('../lib/resources')];
+  delete require.cache[require.resolve('../lib/resources-markdown')];
   delete require.cache[require.resolve('../routes/resources')];
   const engine = require('../lib/resources');
   const views  = require('../routes/resources');

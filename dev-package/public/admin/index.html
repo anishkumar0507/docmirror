@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Private surface: never index, never follow, never show a search snippet. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Dashboard — The Doc Mirror Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<!--
+  The gate covers the whole viewport until the SERVER has confirmed admin
+  access, so no page content can flash for a non-admin. It is a UX guarantee,
+  not a security one: this page ships no data. Every number below arrives from
+  /api/admin/stats, which answers 401/403 to anyone who is not an admin.
+-->
+<div id="adm-gate" class="adm-gate">
+  <div class="adm-spinner"></div>
+  <p class="adm-gate-msg">Checking admin access…</p>
+</div>
+
+<div class="adm-app">
+  <aside class="adm-side" id="adm-side"></aside>
+
+  <div class="adm-content">
+    <header class="adm-bar" id="adm-bar"></header>
+
+    <div class="adm-body">
+      <div id="stats-error" class="adm-msg"></div>
+
+      <section class="adm-stats" aria-label="Content summary">
+        <div class="adm-stat">
+          <span class="adm-stat-label">Total Blogs</span>
+          <span class="adm-stat-value" id="c-total">—</span>
+          <span class="adm-stat-note">CMS posts only</span>
+        </div>
+        <div class="adm-stat adm-stat--accent">
+          <span class="adm-stat-label">Published</span>
+          <span class="adm-stat-value" id="c-published">—</span>
+          <span class="adm-stat-note">Live on the site now</span>
+        </div>
+        <div class="adm-stat">
+          <span class="adm-stat-label">Scheduled</span>
+          <span class="adm-stat-value" id="c-scheduled">—</span>
+          <span class="adm-stat-note">Publish automatically later</span>
+        </div>
+        <div class="adm-stat">
+          <span class="adm-stat-label">Drafts</span>
+          <span class="adm-stat-value" id="c-drafts">—</span>
+          <span class="adm-stat-note">Never public</span>
+        </div>
+        <div class="adm-stat">
+          <span class="adm-stat-label">Archived</span>
+          <span class="adm-stat-value" id="c-archived">—</span>
+          <span class="adm-stat-note">Removed from the site</span>
+        </div>
+      </section>
+
+      <section class="adm-panel">
+        <div class="adm-panel-head">
+          <h2>Recent Blogs</h2>
+          <a href="/admin/blogs">Manage all →</a>
+        </div>
+        <div id="recent-body">
+          <p class="adm-skeleton">Loading…</p>
+        </div>
+      </section>
+
+      <section class="adm-panel">
+        <h2>How publishing works</h2>
+        <p class="adm-lede">
+          A post goes live the moment its publish time passes — no deploy, no manual step.
+          <strong>Drafts</strong> and <strong>archived</strong> posts are never public, and a
+          <strong>scheduled</strong> post stays hidden until its date and time arrive.
+          The existing Resources articles are unaffected and continue to appear alongside CMS posts.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/admin-auth.js"></script>
+<script src="/admin/admin-shell.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var esc = AdminAuth.escapeHtml;
+
+  // published_at is a timestamptz, so it is an instant, not a wall-clock date.
+  // Shown in the admin's own timezone (what a human expects when reading
+  // "publishes at"), with the exact UTC instant in the tooltip so there is
+  // never ambiguity about what was actually stored.
+  function fmtDate(iso) {
+    if (!iso) return '<span class="adm-table-date">—</span>';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '<span class="adm-table-date">—</span>';
+    var text = d.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+    return '<span class="adm-table-date" title="' + esc(iso) + ' (UTC)">' + esc(text) + '</span>';
+  }
+
+  function chip(effective, raw) {
+    var label = effective.charAt(0).toUpperCase() + effective.slice(1);
+    // A row still marked 'scheduled' whose time has passed is public now. Say so
+    // rather than showing a status that contradicts what patients can see.
+    var title = (raw !== effective)
+      ? 'Stored status: ' + raw + ' — now shown as ' + effective + ' because its publish time has passed'
+      : '';
+    return '<span class="adm-chip adm-chip--' + esc(effective) + '"' +
+           (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(label) + '</span>';
+  }
+
+  function renderCounts(c) {
+    document.getElementById('c-total').textContent     = c.total;
+    document.getElementById('c-published').textContent = c.published;
+    document.getElementById('c-scheduled').textContent = c.scheduled;
+    document.getElementById('c-drafts').textContent    = c.drafts;
+    document.getElementById('c-archived').textContent  = c.archived;
+  }
+
+  function renderRecent(rows) {
+    var box = document.getElementById('recent-body');
+
+    if (!rows.length) {
+      box.innerHTML =
+        '<div class="adm-empty">' +
+        '<strong>No CMS blogs yet</strong>' +
+        '<p>Your existing Resources articles are still live and untouched. ' +
+        'Create your first CMS post to see it here.</p>' +
+        '<a class="adm-action adm-action--primary" href="/admin/blogs/new">+ Add Blog</a>' +
+        '</div>';
+      return;
+    }
+
+    var html =
+      '<div class="adm-table-wrap"><table class="adm-table">' +
+      '<thead><tr>' +
+      '<th>Title</th><th>Status</th><th>Category</th><th>Publish date</th><th>Last updated</th>' +
+      '</tr></thead><tbody>';
+
+    rows.forEach(function (r) {
+      html +=
+        '<tr>' +
+        '<td><a class="adm-table-title" href="/admin/blogs/' + esc(r.id) + '/edit" style="text-decoration:none">' +
+        esc(r.title || '(untitled)') + '</a>' +
+        '<div class="adm-table-slug">/resources/' + esc(r.slug || '') + '</div></td>' +
+        '<td>' + chip(r.effective_status, r.status) + '</td>' +
+        '<td>' + esc(r.category || '—') + '</td>' +
+        '<td>' + fmtDate(r.published_at) + '</td>' +
+        '<td>' + fmtDate(r.updated_at) + '</td>' +
+        '</tr>';
+    });
+
+    box.innerHTML = html + '</tbody></table></div>';
+  }
+
+  function showError(msg) {
+    var el = document.getElementById('stats-error');
+    el.className = 'adm-msg show adm-msg--error';
+    el.innerHTML = esc(msg) +
+      ' <a href="#" onclick="window.location.reload();return false;">Retry</a>';
+    document.getElementById('recent-body').innerHTML =
+      '<p class="adm-skeleton">Could not load recent blogs.</p>';
+  }
+
+  async function loadDashboard() {
+    var r = await AdminAuth.apiRaw('/api/admin/stats');
+
+    if (r.status === 401 || r.status === 403) {
+      // The session died or admin access was revoked between the gate and now.
+      window.location.href = '/admin/login';
+      return;
+    }
+    if (!r.ok || !r.body) {
+      showError((r.body && r.body.error) || 'Could not load dashboard data.');
+      return;
+    }
+
+    renderCounts(r.body.counts);
+    renderRecent(r.body.recent || []);
+  }
+
+  AdminAuth.guard(function (admin) {
+    AdminShell.mount({
+      active: 'dashboard',
+      title: 'Dashboard',
+      actions: '<a class="adm-btn adm-btn--sm" href="/admin/blogs/new" style="text-decoration:none">+ Add Blog</a>',
+    });
+    AdminShell.setEmail(admin.email || admin.id);
+    loadDashboard();
+  });
+})();
+</script>
+
+</body>
+</html>

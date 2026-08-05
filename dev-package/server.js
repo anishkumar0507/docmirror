@@ -46,6 +46,17 @@ const reconcileHandler            = require('./routes/reconcile');
 // ── Resources: Markdown-driven blog engine ──────────────────────────────────
 const resourcesRoute              = require('./routes/resources');
 const { buildSitemapXml }         = require('./lib/sitemap');
+const { warmResources }           = require('./lib/resources');
+
+// ── Admin CMS ───────────────────────────────────────────────────────────────
+const { requireAuth }             = require('./lib/auth-middleware');
+const { requireAdmin }            = require('./lib/admin-auth');
+const adminMeHandler              = require('./routes/admin/me');
+const adminStatsHandler           = require('./routes/admin/stats');
+const adminOptionsHandler         = require('./routes/admin/options');
+const adminPosts                  = require('./routes/admin/posts');
+const adminMedia                  = require('./routes/admin/media');
+const adminPreviewHandler         = require('./routes/admin/preview');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -98,8 +109,13 @@ for (const [oldPath, newPath] of Object.entries(GUIDE_REDIRECTS)) {
 // express.static so /resources (listing) and /resources/:slug (article) are
 // handled here. Deep static paths like /images/resources/* never match
 // /resources/:slug (>1 segment) and fall through to express.static.
-app.get('/resources',        resourcesRoute.listingHandler);
-app.get('/resources/:slug',  resourcesRoute.articleHandler);
+//
+// warmResources loads the content source before the handler runs. The handlers
+// and lib/sitemap.js read content synchronously while building HTML, so any
+// source that needs I/O has to be ready first. With the Markdown source it
+// calls next() straight through — no added latency, no behaviour change.
+app.get('/resources',        warmResources, resourcesRoute.listingHandler);
+app.get('/resources/:slug',  warmResources, resourcesRoute.articleHandler);
 app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
@@ -107,8 +123,38 @@ app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'))
 // public/sitemap.xml. One builder, so the committed file and the URL Google
 // fetches can never disagree. Registered before express.static, so this
 // always wins over the file on disk — the served copy is never stale.
-app.get('/sitemap.xml', (_req, res) => {
+app.get('/sitemap.xml', warmResources, (_req, res) => {
   res.set('Content-Type', 'application/xml; charset=utf-8').send(buildSitemapXml());
+});
+
+// ── Admin CMS pages ──────────────────────────────────────────────────────────
+// Served at clean URLs, before express.static, the same way the resources routes
+// are. These files carry NO data and NO keys — every field on them is filled by
+// an authenticated /api/admin/* call that answers 401/403 to a non-admin — so
+// the HTML being publicly fetchable (exactly like /dashboard.html already is)
+// discloses nothing. Both pages are noindex, and robots.txt disallows /admin.
+// coming-soon.html is a gated placeholder so the dashboard's navigation leads
+// somewhere real instead of falling through to the public catch-all. Each entry
+// is repointed at its own page as that build step lands.
+const ADMIN_PAGES = {
+  '/admin':            'index.html',
+  '/admin/login':      'login.html',
+  '/admin/blogs/new':  'editor.html',
+  '/admin/blogs':      'coming-soon.html',
+  '/admin/media':      'coming-soon.html',
+  '/admin/categories': 'coming-soon.html',
+};
+for (const [cleanPath, file] of Object.entries(ADMIN_PAGES)) {
+  app.get(cleanPath, (_req, res) => {
+    res.set('X-Robots-Tag', 'noindex, nofollow');
+    res.sendFile(path.join(__dirname, 'public', 'admin', file));
+  });
+}
+// Editing an existing blog uses the same page; the editor reads the id from the
+// URL and loads it through /api/admin/posts/:id.
+app.get('/admin/blogs/:id/edit', (_req, res) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.sendFile(path.join(__dirname, 'public', 'admin', 'editor.html'));
 });
 
 // ── Static site ────────────────────────────────────────────────────────────
@@ -148,6 +194,41 @@ app.post('/api/render-pdf',                   renderPdfHandler);        // pipel
 app.post('/api/send-report-email',            sendReportEmailHandler);  // pipeline stage 3: email
 app.get('/api/reconcile',                     reconcileHandler);        // safety-net (Vercel cron)
 app.post('/api/reconcile',                    reconcileHandler);
+
+// ── Admin CMS API ───────────────────────────────────────────────────────────
+// One choke point for the whole admin surface: this app.use runs before EVERY
+// /api/admin/* route regardless of method or path, so a route added later
+// cannot forget its guard. requireAuth validates the Supabase session;
+// requireAdmin re-reads profiles.role from the database on every request using
+// the service-role client. Nothing about the role is taken from the browser.
+app.use('/api/admin', requireAuth, requireAdmin);
+
+app.get('/api/admin/me',      adminMeHandler);
+app.get('/api/admin/stats',   adminStatsHandler);   // dashboard counts + recent posts
+app.get('/api/admin/options', adminOptionsHandler); // categories, authors, timezones, limits
+
+// blog_posts CRUD. The two literal paths are registered BEFORE '/:id' — Express
+// matches in order, so otherwise "slug-check" would be read as an id.
+app.get('/api/admin/posts/slug-check',      adminPosts.slugCheck);
+app.get('/api/admin/posts/related-search',  adminPosts.relatedSearch);
+app.get('/api/admin/posts/resolve-related', adminPosts.resolveRelated);
+app.get('/api/admin/posts',                 adminPosts.list);
+app.get('/api/admin/posts/:id',             adminPosts.get);
+app.post('/api/admin/posts',                adminPosts.create);
+app.patch('/api/admin/posts/:id',           adminPosts.update);
+
+// Media. The upload takes the raw image bytes rather than multipart, so no new
+// dependency is needed; express.json() above ignores an image Content-Type, so
+// the body arrives here untouched. The 6 MB cap leaves headroom over the
+// bucket's 5 MB limit so an oversized file is rejected with a clear message
+// instead of a truncated body.
+app.get('/api/admin/media', adminMedia.list);
+app.post('/api/admin/media/upload',
+  express.raw({ type: adminMedia.ALLOWED_MIME, limit: '6mb' }),
+  adminMedia.upload);
+
+// Draft preview, rendered by the real public article renderer.
+app.post('/api/admin/preview', adminPreviewHandler);
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

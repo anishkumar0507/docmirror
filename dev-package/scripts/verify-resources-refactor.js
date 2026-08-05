@@ -1,0 +1,538 @@
+#!/usr/bin/env node
+'use strict';
+
+/* ──────────────────────────────────────────────────────────────────────────
+   The Doc Mirror — Resources refactor verification
+
+   Proves that splitting lib/resources.js into
+
+       lib/resources.js            (orchestrator — owns WHERE content comes from)
+       lib/resources-markdown.js   (the original Markdown implementation)
+
+   changed nothing a visitor, Googlebot or the sitemap can observe.
+
+   Usage:
+     node scripts/verify-resources-refactor.js
+     node scripts/verify-resources-refactor.js --baseline <dir>
+     node scripts/verify-resources-refactor.js --save-baseline <dir>
+     node scripts/verify-resources-refactor.js --port 4321
+
+   --save-baseline writes the three public responses to <dir>. Run it on a
+   known-good checkout, then --baseline <dir> byte-compares against it later.
+   Without a baseline the script still proves equivalence, by rendering the
+   real views twice — once bound to the orchestrator, once bound directly to
+   the preserved Markdown implementation — and byte-comparing the two.
+
+   Exit 0 = no public regression.
+   ────────────────────────────────────────────────────────────────────────── */
+
+const fs      = require('fs');
+const path    = require('path');
+const http    = require('http');
+const crypto  = require('crypto');
+const { spawn, execFileSync } = require('child_process');
+
+const ROOT      = path.join(__dirname, '..');
+const REPO_ROOT = path.join(ROOT, '..');
+const RESOURCES_DIR = path.join(ROOT, 'content', 'resources');
+
+// The article used for the detail-page comparison, and the slugs that
+// server.js 301-redirects into — those must never stop resolving.
+const ARTICLE_SLUG   = 'doctor-profile-costing-you-patients';
+const REDIRECT_SLUGS = [
+  'ai-visibility-for-doctors',
+  'how-doctors-rank-in-chatgpt',
+  'google-visibility-guide',
+];
+
+// The exact object shape routes/resources.js and lib/sitemap.js consume.
+const POST_KEYS = [
+  'slug', 'url', 'canonical', 'title', 'seoTitle', 'metaDescription',
+  'description', 'excerpt', 'date', 'author', 'category', 'tags',
+  'image', 'imageAlt', 'readingTime', 'faq', 'html',
+];
+
+const PUBLIC_API = [
+  'SITE', 'escapeHtml', 'slugify', 'getAllResources',
+  'getResourceBySlug', 'getRelated', 'resourceSitemapEntries',
+];
+
+// ── tiny harness ───────────────────────────────────────────────────────────
+
+let passed = 0;
+const failures = [];
+
+function check(label, ok, detail) {
+  if (ok) {
+    passed++;
+    console.log(`  ✓ ${label}`);
+  } else {
+    failures.push(label + (detail ? ` — ${detail}` : ''));
+    console.log(`  ✗ ${label}${detail ? ` — ${detail}` : ''}`);
+  }
+}
+
+function group(title) {
+  console.log(`\n${title}`);
+}
+
+const sha256 = (buf) => crypto.createHash('sha256').update(buf).digest('hex');
+const lf     = (buf) => Buffer.from(buf.toString('utf8').replace(/\r\n/g, '\n'), 'utf8');
+
+// Where two strings first diverge — turns "not identical" into something fixable.
+function firstDiff(a, b) {
+  const n = Math.min(a.length, b.length);
+  for (let i = 0; i < n; i++) {
+    if (a[i] !== b[i]) {
+      return `at char ${i}: ${JSON.stringify(a.slice(Math.max(0, i - 40), i + 40))} vs ` +
+             `${JSON.stringify(b.slice(Math.max(0, i - 40), i + 40))}`;
+    }
+  }
+  return `identical for ${n} chars, then lengths differ (${a.length} vs ${b.length})`;
+}
+
+function sameJson(label, a, b) {
+  const ja = JSON.stringify(a);
+  const jb = JSON.stringify(b);
+  check(label, ja === jb, ja === jb ? '' : firstDiff(ja, jb));
+}
+
+function sameBytes(label, a, b) {
+  const ok = Buffer.compare(a, b) === 0;
+  check(label, ok, ok ? '' : `${a.length} vs ${b.length} bytes; ${firstDiff(a.toString('utf8'), b.toString('utf8'))}`);
+}
+
+// ── args ───────────────────────────────────────────────────────────────────
+
+function parseArgs(argv) {
+  const opts = { port: 4321, baseline: null, saveBaseline: null };
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--port')           opts.port = parseInt(argv[++i], 10);
+    else if (argv[i] === '--baseline')      opts.baseline = argv[++i];
+    else if (argv[i] === '--save-baseline') opts.saveBaseline = argv[++i];
+  }
+  return opts;
+}
+
+// ── module loading helpers ─────────────────────────────────────────────────
+
+// Loads routes/resources.js (or lib/sitemap.js) bound to a chosen content
+// engine, by seeding require.cache for '../lib/resources' before the module is
+// required. That is what lets the SAME renderer be driven by the orchestrator
+// and by the preserved Markdown implementation, so the two HTML outputs can be
+// compared byte for byte instead of merely inspected.
+function loadWithEngine(modulePath, engineExports) {
+  const enginePath = require.resolve('../lib/resources');
+  const targetPath = require.resolve(modulePath);
+  const savedEngine = require.cache[enginePath];
+
+  require.cache[enginePath] = {
+    id: enginePath, filename: enginePath, path: path.dirname(enginePath),
+    loaded: true, children: [], paths: [], exports: engineExports,
+  };
+  delete require.cache[targetPath];
+
+  try {
+    return require(modulePath);
+  } finally {
+    delete require.cache[targetPath];
+    if (savedEngine) require.cache[enginePath] = savedEngine;
+    else delete require.cache[enginePath];
+  }
+}
+
+// ── HTTP helpers ───────────────────────────────────────────────────────────
+
+function get(port, urlPath) {
+  return new Promise((resolve, reject) => {
+    const req = http.get({ host: '127.0.0.1', port, path: urlPath }, (res) => {
+      const chunks = [];
+      res.on('data', (c) => chunks.push(c));
+      res.on('end', () => resolve({
+        status: res.statusCode,
+        headers: res.headers,
+        body: Buffer.concat(chunks),
+      }));
+    });
+    req.on('error', reject);
+    req.setTimeout(15000, () => req.destroy(new Error('request timed out')));
+  });
+}
+
+async function waitForServer(port, child, timeoutMs = 30000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (child.exitCode !== null) throw new Error(`server exited early with code ${child.exitCode}`);
+    try {
+      const r = await get(port, '/resources');
+      if (r.status === 200) return;
+    } catch (_) { /* not listening yet */ }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`server did not become ready on port ${port} within ${timeoutMs}ms`);
+}
+
+// ── checks ─────────────────────────────────────────────────────────────────
+
+function checkPreservedImplementation() {
+  group('1. The Markdown implementation was preserved, not rewritten');
+
+  const mdPath = path.join(ROOT, 'lib', 'resources-markdown.js');
+  const onDisk = fs.readFileSync(mdPath);
+  check('lib/resources-markdown.js exists', fs.existsSync(mdPath));
+
+  // The pre-refactor lib/resources.js, straight out of git. Line endings are
+  // normalised because this repo is checked out with core.autocrlf=true: the
+  // working tree has CRLF, the stored blob has LF. Content is what is being
+  // compared, so both sides are normalised to LF.
+  let fromGit = null;
+  try {
+    fromGit = execFileSync('git', ['show', 'HEAD:dev-package/lib/resources.js'],
+      { cwd: REPO_ROOT, maxBuffer: 8 * 1024 * 1024 });
+  } catch (err) {
+    console.log(`  ~ skipped git comparison (${err.message.split('\n')[0]})`);
+  }
+
+  if (fromGit) {
+    const a = lf(onDisk);
+    const b = lf(fromGit);
+    const ok = Buffer.compare(a, b) === 0;
+    check('resources-markdown.js is byte-identical to HEAD:lib/resources.js', ok,
+      ok ? '' : `sha256 ${sha256(a).slice(0, 16)} vs ${sha256(b).slice(0, 16)}`);
+    if (ok) console.log(`    sha256(LF-normalised) = ${sha256(a)}`);
+  }
+
+  const md = require('../lib/resources-markdown');
+  check('resources-markdown.js still exports the original public API',
+    PUBLIC_API.every((k) => k in md),
+    PUBLIC_API.filter((k) => !(k in md)).join(', '));
+  check('resources-markdown.js does NOT export warmResources (it is source-agnostic)',
+    !('warmResources' in md));
+}
+
+function checkOrchestratorContract() {
+  group('2. The orchestrator honours the frozen public API');
+
+  const orch = require('../lib/resources');
+  const md   = require('../lib/resources-markdown');
+
+  check('exports every original name', PUBLIC_API.every((k) => k in orch),
+    PUBLIC_API.filter((k) => !(k in orch)).join(', '));
+  check('exports warmResources', typeof orch.warmResources === 'function');
+  check('exports nothing else',
+    Object.keys(orch).every((k) => PUBLIC_API.includes(k) || k === 'warmResources'),
+    Object.keys(orch).filter((k) => !PUBLIC_API.includes(k) && k !== 'warmResources').join(', '));
+
+  // Same references, so importers such as scripts/publish-resource.js are unaffected.
+  check('SITE is unchanged', orch.SITE === md.SITE, `${orch.SITE} vs ${md.SITE}`);
+  check('escapeHtml is the same function', orch.escapeHtml === md.escapeHtml);
+  check('slugify is the same function', orch.slugify === md.slugify);
+
+  // If a read function ever became async, routes/resources.js would render a
+  // Promise into the page. Guard both the declaration and the returned value.
+  const sampleArg = {
+    getAllResources:        undefined,
+    getResourceBySlug:      ARTICLE_SLUG,
+    getRelated:             md.getResourceBySlug(ARTICLE_SLUG),
+    resourceSitemapEntries: undefined,
+  };
+  for (const [name, arg] of Object.entries(sampleArg)) {
+    const notAsyncFn = orch[name].constructor.name === 'Function';
+    const result = orch[name](arg);
+    const notThenable = !result || typeof result.then !== 'function';
+    check(`${name}() is synchronous`, notAsyncFn && notThenable,
+      notAsyncFn ? 'returned a thenable' : 'declared async');
+  }
+
+  check('getAllResources arity is unchanged (0)', orch.getAllResources.length === md.getAllResources.length);
+  check('getResourceBySlug arity is unchanged (1)', orch.getResourceBySlug.length === md.getResourceBySlug.length);
+  check('getRelated arity is unchanged (1)', orch.getRelated.length === md.getRelated.length);
+
+  group('3. warmResources is a transparent pass-through');
+
+  let called = 0;
+  let synchronous = false;
+  orch.warmResources({}, {}, () => { called++; synchronous = true; });
+  check('warmResources calls next() exactly once', called === 1, `called ${called}×`);
+  check('warmResources calls next() synchronously (no added latency)', synchronous);
+}
+
+function checkDataEquivalence() {
+  group('4. The orchestrator returns exactly what the Markdown layer returns');
+
+  const orch = require('../lib/resources');
+  const md   = require('../lib/resources-markdown');
+
+  const a = orch.getAllResources();
+  const b = md.getAllResources();
+
+  check('same number of posts', a.length === b.length, `${a.length} vs ${b.length}`);
+  sameJson('getAllResources() is deep-equal (every field of every post)', a, b);
+
+  check('every post has exactly the 17 expected keys',
+    a.every((p) => JSON.stringify(Object.keys(p)) === JSON.stringify(POST_KEYS)),
+    (a.find((p) => JSON.stringify(Object.keys(p)) !== JSON.stringify(POST_KEYS)) || {}).slug);
+
+  // Ordering is load-bearing: the newest post becomes the featured card.
+  const sortedDesc = a.every((p, i) => i === 0 || a[i - 1].date.sortKey >= p.date.sortKey);
+  check('article ordering is newest-first', sortedDesc);
+  sameJson('article order is identical', a.map((p) => p.slug), b.map((p) => p.slug));
+
+  sameJson('titles are identical', a.map((p) => p.title), b.map((p) => p.title));
+  sameJson('canonical URLs are identical', a.map((p) => p.canonical), b.map((p) => p.canonical));
+  sameJson('SEO metadata is identical',
+    a.map((p) => [p.seoTitle, p.metaDescription, p.description, p.excerpt]),
+    b.map((p) => [p.seoTitle, p.metaDescription, p.description, p.excerpt]));
+  sameJson('FAQ data is identical', a.map((p) => p.faq), b.map((p) => p.faq));
+  sameJson('images and alt text are identical',
+    a.map((p) => [p.image, p.imageAlt]), b.map((p) => [p.image, p.imageAlt]));
+
+  sameJson('getResourceBySlug() is identical for every slug',
+    a.map((p) => orch.getResourceBySlug(p.slug)),
+    b.map((p) => md.getResourceBySlug(p.slug)));
+  check('getResourceBySlug() still returns null for an unknown slug',
+    orch.getResourceBySlug('definitely-not-a-real-slug-xyz') === null);
+
+  sameJson('getRelated() is identical for every post',
+    a.map((p) => orch.getRelated(p, 3).map((r) => r.slug)),
+    b.map((p) => md.getRelated(p, 3).map((r) => r.slug)));
+  check('getRelated() default limit is still 3',
+    a.length > 3 ? orch.getRelated(a[0]).length === 3 : true);
+
+  sameJson('resourceSitemapEntries() is identical',
+    orch.resourceSitemapEntries(), md.resourceSitemapEntries());
+}
+
+function checkRenderedOutput() {
+  group('5. The real renderer produces byte-identical HTML either way');
+
+  const orch = require('../lib/resources');
+  const md   = require('../lib/resources-markdown');
+
+  const viewsNew  = loadWithEngine('../routes/resources', orch);
+  const viewsOrig = loadWithEngine('../routes/resources', md);
+
+  const listingNew  = viewsNew.renderListing();
+  const listingOrig = viewsOrig.renderListing();
+  sameBytes('/resources HTML is byte-identical',
+    Buffer.from(listingNew, 'utf8'), Buffer.from(listingOrig, 'utf8'));
+
+  const post = orch.getResourceBySlug(ARTICLE_SLUG);
+  check(`article "${ARTICLE_SLUG}" exists`, !!post);
+  if (post) {
+    const articleNew  = viewsNew.renderArticle(post);
+    const articleOrig = viewsOrig.renderArticle(md.getResourceBySlug(ARTICLE_SLUG));
+    sameBytes(`/resources/${ARTICLE_SLUG} HTML is byte-identical`,
+      Buffer.from(articleNew, 'utf8'), Buffer.from(articleOrig, 'utf8'));
+  }
+
+  // Every article, not just the sample one — a divergence in one post's
+  // Markdown, FAQ or related block would otherwise slip through.
+  let allMatch = true;
+  let firstBad = '';
+  for (const p of orch.getAllResources()) {
+    const x = viewsNew.renderArticle(p);
+    const y = viewsOrig.renderArticle(md.getResourceBySlug(p.slug));
+    if (x !== y) { allMatch = false; firstBad = p.slug; break; }
+  }
+  check(`all ${orch.getAllResources().length} article pages render byte-identically`, allMatch, firstBad);
+
+  const sitemapNew  = loadWithEngine('../lib/sitemap', orch).buildSitemapXml();
+  const sitemapOrig = loadWithEngine('../lib/sitemap', md).buildSitemapXml();
+  sameBytes('/sitemap.xml is byte-identical',
+    Buffer.from(sitemapNew, 'utf8'), Buffer.from(sitemapOrig, 'utf8'));
+
+  return { listing: listingNew, sitemap: sitemapNew };
+}
+
+// SEO surfaces, asserted on the real HTML rather than inferred from the data.
+function checkSeoSurfaces(html, label, expected) {
+  group(`6. SEO markup — ${label}`);
+
+  const has = (re) => re.test(html);
+  check('<title>', has(/<title>[^<]+<\/title>/));
+  check('meta description', has(/<meta name="description" content="[^"]+"/));
+  check('canonical URL', html.includes(`<link rel="canonical" href="${expected.canonical}">`),
+    expected.canonical);
+  check('Open Graph (title, description, type, url, image, site_name)',
+    ['og:title', 'og:description', 'og:type', 'og:url', 'og:image', 'og:site_name']
+      .every((p) => html.includes(`property="${p}"`)));
+  check('Twitter card metadata',
+    ['twitter:card', 'twitter:title', 'twitter:description', 'twitter:image']
+      .every((p) => html.includes(`name="${p}"`)));
+
+  const ld = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  check('JSON-LD block present', !!ld);
+  if (ld) {
+    let parsed = null;
+    try { parsed = JSON.parse(ld[1]); } catch (_) { /* reported below */ }
+    check('JSON-LD parses', !!parsed);
+    if (parsed) {
+      const types = (parsed['@graph'] || []).map((n) => n['@type']);
+      check(`JSON-LD @graph contains ${expected.types.join(' + ')}`,
+        expected.types.every((t) => types.includes(t)), types.join(', '));
+    }
+  }
+}
+
+async function checkLiveServer(opts, rendered) {
+  group('8. The running server serves exactly that');
+
+  const port = opts.port;
+  const child = spawn(process.execPath, ['server.js'], {
+    cwd: ROOT,
+    env: { ...process.env, PORT: String(port) },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child.stdout.resume();
+  child.stderr.resume();
+
+  const responses = {};
+  try {
+    await waitForServer(port, child);
+
+    const paths = {
+      'resources.html': '/resources',
+      'article.html':   `/resources/${ARTICLE_SLUG}`,
+      'sitemap.xml':    '/sitemap.xml',
+    };
+
+    for (const [name, urlPath] of Object.entries(paths)) {
+      const r = await get(port, urlPath);
+      responses[name] = r;
+      check(`GET ${urlPath} → 200`, r.status === 200, `got ${r.status}`);
+    }
+
+    check('GET /resources content-type is HTML',
+      /text\/html/.test(responses['resources.html'].headers['content-type'] || ''));
+    check('GET /sitemap.xml content-type is XML',
+      /xml/.test(responses['sitemap.xml'].headers['content-type'] || ''));
+
+    sameBytes('served /resources matches the rendered listing',
+      responses['resources.html'].body, Buffer.from(rendered.listing, 'utf8'));
+    sameBytes('served /sitemap.xml matches the built sitemap',
+      responses['sitemap.xml'].body, Buffer.from(rendered.sitemap, 'utf8'));
+
+    // warmResources sits in front of these three routes; every article must
+    // still resolve through it.
+    let allOk = true;
+    let firstBad = '';
+    for (const p of require('../lib/resources').getAllResources()) {
+      const r = await get(port, p.url);
+      if (r.status !== 200) { allOk = false; firstBad = `${p.url} → ${r.status}`; break; }
+    }
+    check('every article URL returns 200 through warmResources', allOk, firstBad);
+  } finally {
+    child.kill();
+  }
+
+  return responses;
+}
+
+function checkBaseline(opts, responses) {
+  if (opts.saveBaseline) {
+    fs.mkdirSync(opts.saveBaseline, { recursive: true });
+    for (const [name, r] of Object.entries(responses)) {
+      fs.writeFileSync(path.join(opts.saveBaseline, name), r.body);
+    }
+    console.log(`\n  baseline written to ${opts.saveBaseline}`);
+    return;
+  }
+  if (!opts.baseline) return;
+
+  group('9. Byte-comparison against the pre-refactor baseline');
+  for (const [name, r] of Object.entries(responses)) {
+    const file = path.join(opts.baseline, name);
+    if (!fs.existsSync(file)) { check(`baseline ${name} present`, false, file); continue; }
+    const before = fs.readFileSync(file);
+    sameBytes(`${name} is byte-identical to the baseline`, r.body, before);
+    if (Buffer.compare(before, r.body) === 0) {
+      console.log(`    ${before.length} bytes · sha256 ${sha256(before).slice(0, 32)}…`);
+    }
+  }
+}
+
+function checkContentAvailability() {
+  group('7. Every existing Markdown resource is still available');
+
+  const orch = require('../lib/resources');
+  const files = fs.readdirSync(RESOURCES_DIR).filter((f) =>
+    /\.md$/i.test(f) && f.toLowerCase() !== 'readme.md' && !f.startsWith('_') && !f.startsWith('.'));
+
+  const posts = orch.getAllResources();
+  check(`all ${files.length} Markdown files are published`, posts.length === files.length,
+    `${files.length} files vs ${posts.length} posts`);
+
+  const missing = files
+    .map((f) => orch.slugify(f))
+    .filter((slug) => !orch.getResourceBySlug(slug));
+  check('every Markdown file resolves by slug', missing.length === 0, missing.join(', '));
+
+  for (const slug of [...REDIRECT_SLUGS, ARTICLE_SLUG]) {
+    check(`load-bearing slug "${slug}" still resolves`, !!orch.getResourceBySlug(slug));
+  }
+
+  const sitemapSlugs = orch.resourceSitemapEntries().map((e) => e.loc);
+  check('every post appears in the sitemap',
+    posts.every((p) => sitemapSlugs.includes(p.canonical)),
+    posts.filter((p) => !sitemapSlugs.includes(p.canonical)).map((p) => p.slug).join(', '));
+
+  const withFaq = posts.filter((p) => p.faq.length);
+  console.log(`    ${posts.length} posts · ${withFaq.length} with FAQ · ` +
+              `${posts.filter((p) => p.image).length} with a hero image`);
+}
+
+// ── main ───────────────────────────────────────────────────────────────────
+
+async function main() {
+  const opts = parseArgs(process.argv.slice(2));
+
+  console.log('\nResources refactor verification — orchestrator vs preserved Markdown layer');
+
+  checkPreservedImplementation();
+  checkOrchestratorContract();
+  checkDataEquivalence();
+  const rendered = checkRenderedOutput();
+
+  const orch = require('../lib/resources');
+  checkSeoSurfaces(rendered.listing, '/resources', {
+    canonical: `${orch.SITE}/resources`,
+    types: ['BreadcrumbList', 'ItemList'],
+  });
+
+  const post = orch.getResourceBySlug(ARTICLE_SLUG);
+  if (post) {
+    const html = loadWithEngine('../routes/resources', orch).renderArticle(post);
+    checkSeoSurfaces(html, `/resources/${ARTICLE_SLUG}`, {
+      canonical: post.canonical,
+      types: post.faq.length
+        ? ['BlogPosting', 'BreadcrumbList', 'FAQPage']
+        : ['BlogPosting', 'BreadcrumbList'],
+    });
+    check('FAQ accordion renders only when the post has FAQ entries',
+      post.faq.length ? html.includes('class="faq-section"') : !html.includes('class="faq-section"'));
+    check('related-guides block renders with the listing card markup',
+      html.includes('class="res-related"') && html.includes('class="res-card"'));
+  }
+
+  checkContentAvailability();
+
+  const responses = await checkLiveServer(opts, rendered);
+  checkBaseline(opts, responses);
+
+  console.log(`\n${'─'.repeat(72)}`);
+  if (failures.length) {
+    console.log(`${passed} passed, ${failures.length} FAILED\n`);
+    failures.forEach((f) => console.log(`  ✗ ${f}`));
+    console.log('');
+    process.exitCode = 1;
+  } else {
+    console.log(`${passed} passed, 0 failed — no public regression\n`);
+    process.exitCode = 0;
+  }
+}
+
+main().catch((err) => {
+  console.error('\nverification crashed:', err);
+  process.exitCode = 2;
+});
