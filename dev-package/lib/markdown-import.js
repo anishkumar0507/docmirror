@@ -32,6 +32,65 @@ const MAX_RELATED = 6;
 // rather than in frontmatter.
 const FAQ_HEADING_RE = /^(faq|faqs|frequently asked questions?|common questions?|questions? and answers?)\b/i;
 
+/* ── recovering from the one YAML mistake everybody makes ──────────────────
+   `title: AEO vs SEO vs GEO: What Every Doctor Needs to Know` is not valid
+   YAML — the second colon reads as the start of a nested mapping, and the whole
+   frontmatter block fails to parse. It is by far the most common way a
+   hand-written .md file breaks here, because a colon in a headline is normal
+   English and nothing about it looks wrong.
+
+   So when parsing fails, the frontmatter is retried with unquoted values that
+   contain a colon wrapped in quotes. This runs ONLY after a genuine failure, so
+   a valid file is never touched, and the author is told their file has a YAML
+   problem worth fixing at the source. */
+
+/** Quotes `key: value` lines whose value contains a colon and is not already quoted. */
+function quoteRiskyScalars(frontmatter) {
+  return frontmatter.split('\n').map((line) => {
+    const m = line.match(/^(\s*(?:-\s+)?)([A-Za-z0-9_][A-Za-z0-9_ -]*):[ \t]+(.+?)[ \t]*$/);
+    if (!m) return line;
+
+    const prefix = m[1];
+    const key = m[2];
+    const value = m[3];
+
+    if (!/:\s/.test(value)) return line;              // no inner colon — already fine
+    if (/^["'[{|>&*!#]/.test(value)) return line;     // quoted, a list, or a block scalar
+
+    return `${prefix}${key}: "${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+  }).join('\n');
+}
+
+// Passing an options object makes gray-matter skip its module-level cache.
+// That matters twice over: the cache is keyed by the whole file and grows
+// without bound in a long-lived server, and it made repeated parses of the same
+// text return different answers depending on what had been parsed before —
+// which is no way to decide whether someone's file is valid.
+const MATTER_OPTS = { language: 'yaml' };
+
+/**
+ * matter(), with one retry that repairs unquoted colons.
+ * Returns { parsed, repaired } — `repaired` is true when the retry was needed.
+ */
+function parseFrontmatter(raw) {
+  try {
+    return { parsed: matter(raw, MATTER_OPTS), repaired: false };
+  } catch (firstError) {
+    const m = String(raw).match(/^(﻿?---\r?\n)([\s\S]*?)(\r?\n---\r?\n?)/);
+    if (!m) throw firstError;
+
+    const repairedBody = quoteRiskyScalars(m[2]);
+    if (repairedBody === m[2]) throw firstError;       // nothing to fix — this is a different problem
+
+    const repairedRaw = m[1] + repairedBody + m[3] + String(raw).slice(m[0].length);
+    try {
+      return { parsed: matter(repairedRaw, MATTER_OPTS), repaired: true };
+    } catch (_) {
+      throw firstError;                                // report the original, clearer message
+    }
+  }
+}
+
 /** Only site-relative paths and real web URLs survive; anything else is dropped. */
 function safeUrl(value) {
   const v = String(value == null ? '' : value).trim();
@@ -168,9 +227,18 @@ function splitDate(raw) {
 function parseMarkdownImport(raw, opts) {
   const filename = String((opts && opts.filename) || '').trim();
   const notes = [];
-  const parsed = matter(String(raw || ''));
+
+  const { parsed, repaired } = parseFrontmatter(String(raw || ''));
   const data = parsed.data || {};
   let body = String(parsed.content || '').replace(/^\n+/, '');
+
+  if (repaired) {
+    notes.push(
+      'The frontmatter had a value containing a colon that was not quoted — a title like ' +
+      '"AEO vs SEO: what changed" breaks YAML. It was read anyway, but wrap such values in ' +
+      'double quotes in the file so it parses cleanly next time.'
+    );
+  }
 
   if (!Object.keys(data).length) {
     notes.push('No frontmatter found — the title was taken from the first heading and the rest is left for you to fill in.');
@@ -283,6 +351,8 @@ function parseMarkdownImport(raw, opts) {
 
 module.exports = {
   parseMarkdownImport,
+  parseFrontmatter,
+  quoteRiskyScalars,
   faqFromBody,
   relatedFromBody,
   splitDate,

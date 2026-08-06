@@ -238,10 +238,76 @@ function checkEdgeCases() {
     typeof html.fields.content_md === 'string');
 }
 
-// ── 6. The rendered preview matches the live renderer ───────────────────────
+// ── 6. Unquoted colons in the frontmatter ───────────────────────────────────
+
+function checkColonRecovery() {
+  group('6. A frontmatter value with an unquoted colon still imports');
+
+  // The exact shape that failed in the admin: a headline with a colon in it,
+  // which is normal English and invalid YAML.
+  const md = [
+    '---',
+    'title: AEO vs SEO vs GEO: What Every Doctor Needs to Know',
+    'category: AI Visibility',
+    'description: A short summary: with a colon too',
+    '---',
+    '',
+    'Intro paragraph.',
+    '',
+    '## A section',
+    '',
+    'Body text.',
+  ].join('\n');
+
+  let r = null, threw = false;
+  try { r = parseMarkdownImport(md, { filename: 'aeo-vs-seo-vs-geo-doctors.md' }); }
+  catch (_) { threw = true; }
+
+  check('it no longer throws', !threw);
+  if (threw) return;
+
+  check('the whole title survives, colon included',
+    r.fields.title === 'AEO vs SEO vs GEO: What Every Doctor Needs to Know', r.fields.title);
+  check('the other fields parse too', r.fields.category === 'AI Visibility', r.fields.category);
+  check('a second colonised value also survives',
+    r.fields.excerpt === 'A short summary: with a colon too', r.fields.excerpt);
+  check('the slug still comes from the filename',
+    r.fields.slug === 'aeo-vs-seo-vs-geo-doctors', r.fields.slug);
+  check('the body is untouched', /## A section/.test(r.fields.content_md));
+  check('the author is told to quote it in the file',
+    r.notes.some((n) => /not quoted/.test(n)), r.notes.join(' | '));
+
+  // A colon inside a list item — FAQ questions hit this constantly.
+  const faqColon = parseMarkdownImport([
+    '---', 'title: x', 'faq:',
+    '  - question: What is AEO: really?',
+    '    answer: An answer.',
+    '---', '', 'body',
+  ].join('\n'), {});
+  check('a colon inside an FAQ question also recovers',
+    faqColon.fields.faq.length === 1 && faqColon.fields.faq[0].question === 'What is AEO: really?',
+    JSON.stringify(faqColon.fields.faq));
+
+  // Repair must never touch a file that was already valid.
+  const valid = ['---', 'title: "Already quoted: fine"', 'category: Guide', '---', '', 'body'].join('\n');
+  const vr = parseMarkdownImport(valid, {});
+  check('a valid file is not "repaired"', !vr.notes.some((n) => /not quoted/.test(n)));
+  check('and its quoted title is read correctly',
+    vr.fields.title === 'Already quoted: fine', vr.fields.title);
+
+  // Genuinely broken YAML must still fail loudly rather than be half-guessed.
+  // An unterminated quoted string cannot be repaired by quoting, and the repair
+  // pass deliberately skips values that already start with a quote.
+  let stillThrows = false;
+  try { parseMarkdownImport(['---', 'title: "unterminated', 'category: Guide', '---', '', 'b'].join('\n'), {}); }
+  catch (_) { stillThrows = true; }
+  check('YAML that is broken some other way still errors', stillThrows);
+}
+
+// ── 7. The rendered preview matches the live renderer ───────────────────────
 
 function checkRenderedHtml() {
-  group('6. The HTML handed to the visual editor');
+  group('7. The HTML handed to the visual editor');
 
   const files = fs.readdirSync(DIR).filter((f) => /\.md$/i.test(f) && f.toLowerCase() !== 'readme.md');
   const raw = fs.readFileSync(path.join(DIR, files[0]), 'utf8');
@@ -263,6 +329,7 @@ checkRelated();
 checkBodyFaq();
 checkNoFrontmatter();
 checkEdgeCases();
+checkColonRecovery();
 checkRenderedHtml();
 
 console.log(`\n${'─'.repeat(72)}`);
