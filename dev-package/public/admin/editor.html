@@ -242,6 +242,43 @@
   </div>
 </div>
 
+<!-- ── import a Markdown file ───────────────────────────────────────────── -->
+<div class="adm-modal" id="import-modal">
+  <div class="adm-modal-box">
+    <div class="adm-modal-head">
+      <h3>Import a Markdown file</h3>
+      <button type="button" class="adm-x" id="import-close">Close</button>
+    </div>
+    <div class="adm-modal-body">
+      <div id="import-msg" class="adm-msg"></div>
+
+      <p class="adm-hint" style="margin-bottom:.9rem">
+        Everything the file says is filled in for you — title, excerpt, category, tags,
+        author, image, SEO fields, FAQ and the article body. Anything the file does not
+        contain is left blank for you to complete. Nothing is saved until you choose
+        Save Draft, Schedule or Publish.
+      </p>
+
+      <button type="button" class="adm-btn adm-btn--sm" id="import-file-btn">Choose a .md file</button>
+      <span class="adm-hint" id="import-file-name" style="margin-left:.6rem"></span>
+
+      <div style="margin-top:1rem">
+        <label class="adm-lbl" for="import-text">…or paste the Markdown here</label>
+        <textarea id="import-text" class="adm-ta" spellcheck="false"
+                  style="min-height:220px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.82rem"
+                  placeholder="---&#10;title: My article&#10;category: AI Visibility&#10;---&#10;&#10;Intro paragraph…"></textarea>
+      </div>
+
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:1rem">
+        <button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="import-cancel">Cancel</button>
+        <button type="button" class="adm-btn adm-btn--sm" id="import-run">Import</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="import-file" accept=".md,.markdown,.txt,text/markdown,text/plain" style="display:none">
+
 <!-- ── media library / upload ───────────────────────────────────────────── -->
 <div class="adm-modal" id="media-modal">
   <div class="adm-modal-box">

@@ -57,6 +57,7 @@ const adminOptionsHandler         = require('./routes/admin/options');
 const adminPosts                  = require('./routes/admin/posts');
 const adminMedia                  = require('./routes/admin/media');
 const adminPreviewHandler         = require('./routes/admin/preview');
+const adminImportHandler          = require('./routes/admin/import');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -230,6 +231,10 @@ app.post('/api/admin/media/upload',
 
 // Draft preview, rendered by the real public article renderer.
 app.post('/api/admin/preview', adminPreviewHandler);
+
+// Markdown import: parses a .md file into editor fields. Reads only — the
+// author reviews what came back before anything is saved.
+app.post('/api/admin/import/markdown', adminImportHandler);
 
 app.get('/dashboard', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));

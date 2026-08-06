@@ -836,6 +836,112 @@
     }
   }
 
+  /* ── import a Markdown file ──────────────────────────────────────────────
+     Fills the form from a .md file. Purely a parse — every value comes from
+     something the file actually says, and a field the file omits is left blank
+     rather than guessed. Nothing is written until the author saves. */
+
+  function openImport() {
+    $('import-modal').classList.add('show');
+    $('import-msg').className = 'adm-msg';
+    $('import-file-name').textContent = '';
+    state.importFilename = '';
+  }
+  function closeImport() { $('import-modal').classList.remove('show'); }
+
+  function applyImport(r) {
+    var f = r.fields;
+
+    // Only overwrite what the file actually provided, so importing into a
+    // half-written post cannot silently wipe what is already typed.
+    function setIf(id, value) {
+      if (value !== undefined && value !== null && String(value).trim() !== '') $(id).value = value;
+    }
+
+    setIf('f-title', f.title);
+    setIf('f-slug', f.slug);
+    setIf('f-excerpt', f.excerpt);
+    setIf('f-author', f.author);
+    setIf('f-tags', (f.tags || []).join(', '));
+    setIf('f-image', f.featured_image);
+    setIf('f-alt', f.image_alt);
+    setIf('f-seotitle', f.seo_title);
+    setIf('f-metadesc', f.meta_description);
+    setIf('f-date', f.publish_date);
+    setIf('f-time', f.publish_time);
+
+    // The category has to exist in the dropdown; a name that is not a category
+    // yet is reported rather than silently dropped.
+    if (f.category) {
+      var opt = Array.prototype.find.call($('f-category').options, function (o) {
+        return o.value.toLowerCase() === String(f.category).toLowerCase();
+      });
+      if (opt) $('f-category').value = opt.value;
+      else r.notes.push('Category "' + f.category + '" is not in the category list — choose one, or add it under Categories.');
+    }
+
+    if (f.read_time_minutes) { $('f-readtime').value = f.read_time_minutes; $('f-readtime').dataset.touched = '1'; }
+    if (r.contentHtml) $('editor').innerHTML = r.contentHtml;
+
+    if (f.faq && f.faq.length) { state.faq = f.faq.slice(); renderFaq(); }
+    if (f.related_slugs && f.related_slugs.length) {
+      state.related = f.related_slugs.map(function (s) {
+        return { slug: s, title: s, source: '', url: '/resources/' + s };
+      });
+      renderRelated();
+      hydrateRelatedTitles();
+    }
+
+    state.slugTouched = true;
+    renderTags();
+    renderFeaturedPreview();
+    updateCanonical();
+    updateReadTime();
+    updateSchemaHint();
+    checkSlug();
+    markDirty();
+
+    var lines = [];
+    lines.push('<strong>Imported “' + esc(f.title) + '”.</strong>');
+    if (r.filled.length) lines.push('Filled: ' + esc(r.filled.join(', ')) + '.');
+    if (r.empty.length) lines.push('Left blank for you: <strong>' + esc(r.empty.join(', ')) + '</strong>.');
+    (r.notes || []).forEach(function (n) { lines.push(esc(n)); });
+
+    var el = $('msg');
+    el.className = 'adm-msg show adm-msg--info';
+    el.innerHTML = lines.join('<br>');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  async function runImport() {
+    var text = $('import-text').value;
+    var msg = $('import-msg');
+    if (!text.trim()) {
+      msg.className = 'adm-msg show adm-msg--error';
+      msg.textContent = 'Choose a .md file or paste its contents first.';
+      return;
+    }
+
+    if (state.dirty && !window.confirm(
+      'Importing will replace the fields this file provides.\n\nContinue?')) return;
+
+    msg.className = 'adm-msg show adm-msg--info';
+    msg.textContent = 'Reading…';
+    try {
+      // The filename decides the URL when the file carries no `slug:`, matching
+      // how the existing Markdown articles are addressed.
+      var r = await AdminAuth.api('/api/admin/import/markdown', {
+        method: 'POST',
+        body: JSON.stringify({ markdown: text, filename: state.importFilename || '' }),
+      });
+      closeImport();
+      applyImport(r);
+    } catch (e) {
+      msg.className = 'adm-msg show adm-msg--error';
+      msg.innerHTML = esc(e.message) + (e.body && e.body.hint ? '<br>' + esc(e.body.hint) : '');
+    }
+  }
+
   async function preview() {
     var payload = collect('preview');
     var win = window.open('', '_blank');
@@ -916,6 +1022,7 @@
       title: state.id ? 'Edit Blog' : 'Add Blog',
       actions:
         '<span class="adm-dirty" id="top-dirty">Unsaved changes</span>' +
+        '<button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="btn-import">Import .md</button>' +
         '<button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="btn-preview">Preview</button>' +
         '<a class="adm-btn adm-btn--ghost adm-btn--sm" href="/admin/blogs" style="text-decoration:none">Back</a>',
     });
@@ -1082,6 +1189,30 @@
     });
     document.addEventListener('click', function (e) {
       if (!e.target.closest('.adm-suggest')) $('rel-results').className = 'adm-suggest-list';
+    });
+
+    // Import
+    $('btn-import').addEventListener('click', openImport);
+    $('import-close').addEventListener('click', closeImport);
+    $('import-cancel').addEventListener('click', closeImport);
+    $('import-run').addEventListener('click', runImport);
+    $('import-modal').addEventListener('click', function (e) {
+      if (e.target === $('import-modal')) closeImport();
+    });
+    $('import-file-btn').addEventListener('click', function () { $('import-file').click(); });
+    $('import-file').addEventListener('change', function (e) {
+      var file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      $('import-file-name').textContent = file.name;
+      state.importFilename = file.name;
+      var reader = new FileReader();
+      reader.onload = function () { $('import-text').value = String(reader.result || ''); };
+      reader.onerror = function () {
+        $('import-msg').className = 'adm-msg show adm-msg--error';
+        $('import-msg').textContent = 'Could not read that file.';
+      };
+      reader.readAsText(file);
     });
 
     // Media
