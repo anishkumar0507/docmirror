@@ -44,6 +44,9 @@
 .dm-social-chip:hover{background:rgba(0,168,120,.18);color:#00A878}\
 .dm-footer-divider{height:1px;background:rgba(255,255,255,.12);margin:24px 0 0}\
 .dm-footer-bottom{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.95rem;text-align:center;max-width:1200px;width:100%}\
+.dm-footer-legal{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.85rem;text-align:center;max-width:1200px;width:100%}\
+.dm-footer-legal + .dm-footer-bottom{padding-top:8px}\
+[data-company-row][hidden]{display:none}\
 @media(max-width:960px){.dm-footer-grid{grid-template-columns:1fr 1fr;gap:28px 24px}.dm-footer-brand{grid-column:1 / -1}}\
 @media(max-width:768px){.dm-footer{padding:36px 1rem 18px}.dm-footer-card{padding:28px 22px 18px}.dm-footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 24px}.dm-footer-brand{grid-column:1 / -1}.dm-footer-links{gap:0.65rem}.dm-footer-col h4{margin-bottom:0.8rem;padding-bottom:0.65rem}}\
 @media(max-width:420px){.dm-footer-card{padding:24px 16px 16px}.dm-footer-grid{grid-template-columns:1fr 1fr;gap:26px 16px}.dm-footer-col h4{font-size:0.78rem;letter-spacing:.12em}.dm-footer-links a{font-size:0.88rem}.dm-footer-brand p{font-size:0.88rem}}\
@@ -98,7 +101,7 @@
         <h4>COMPANY</h4>\
         <div class="dm-footer-links">\
           <a href="/about">About Us</a>\
-          <a href="/about#contact">Contact</a>\
+          <a href="/contact">Contact</a>\
           <a href="/privacy">Privacy</a>\
           <a href="/terms">Terms</a>\
         </div>\
@@ -108,14 +111,46 @@
         <div class="dm-footer-links">\
           <a href="/#faq">FAQ</a>\
           <a href="/help-center">Help Center</a>\
-          <a href="/about#contact">Contact Support</a>\
+          <a href="/contact">Contact Support</a>\
         </div>\
       </div>\
     </div>\
     <div class="dm-footer-divider"></div>\
-    <div class="dm-footer-bottom">© 2026 The Doc Mirror. All rights reserved.</div>\
+    <div class="dm-footer-legal" data-company-row hidden>The Doc Mirror is a product of <span data-company="legalEntity"></span>.</div>\
+    <div class="dm-footer-bottom">© 2026 <span data-company="legalEntityDisplay">The Doc Mirror</span>. All rights reserved.</div>\
   </div>\
 </footer>';
+
+  // Fill every [data-company="key"] element on the page (footer + homepage +
+  // contact + policy pages) from lib/company.js, surfaced via /api/client-config.
+  // Single source of truth — nothing hardcodes the entity name. An empty value
+  // (e.g. address/phone not filled in yet) hides its [data-company-row] wrapper
+  // entirely rather than rendering an empty line.
+  function fillCompany(company) {
+    if (!company) return;
+    var els = document.querySelectorAll('[data-company]');
+    for (var i = 0; i < els.length; i++) {
+      var el  = els[i];
+      var val = company[el.getAttribute('data-company')];
+      var row = el.closest('[data-company-row]');
+      if (val) {
+        el.textContent = val;
+        if (el.hasAttribute('data-company-mailto')) el.setAttribute('href', 'mailto:' + val);
+        if (el.hasAttribute('data-company-tel'))    el.setAttribute('href', 'tel:' + val.replace(/\s+/g, ''));
+        if (row) row.hidden = false;
+      } else if (row) {
+        row.hidden = true;   // omit empty address/phone rows entirely
+      }
+    }
+  }
+
+  function loadCompany() {
+    if (!document.querySelector('[data-company]')) return; // nothing to fill on this page
+    fetch('/api/client-config', { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) { fillCompany(cfg && cfg.company); })
+      .catch(function () { /* leave brand fallback in place on failure */ });
+  }
 
   function mount() {
     if (!document.getElementById('dm-layout-css')) {
@@ -128,6 +163,7 @@
     if (h) h.innerHTML = HEADER;
     var f = document.getElementById('dm-footer');
     if (f) f.innerHTML = FOOTER;
+    loadCompany(); // fill footer + page-level [data-company] spans
   }
 
   if (document.readyState === 'loading') {

@@ -83,6 +83,7 @@ const CLEAN_PAGES = {
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
   '/about':                         'about.html',
+  '/contact':                       'contact.html',
   '/pricing':                       'pricing.html',
   '/help-center':                   'help-center.html',
 };

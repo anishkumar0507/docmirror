@@ -4,6 +4,7 @@ require('../lib/env');
 
 const { resolveRegion } = require('../lib/region');
 const pricing = require('../lib/pricing');
+const company = require('../lib/company');
 
 function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -22,6 +23,16 @@ function handler(req, res) {
     country:   country || null,
     geoSource: source,
     prices:    pricing.displayPrices(tier),
+    // Owning legal entity (single source of truth: lib/company.js). The browser
+    // fills [data-company] elements + the footer from this; empty address/phone
+    // are carried as empty strings and MUST be omitted by the consumer.
+    company: {
+      legalEntity:        company.LEGAL_ENTITY,
+      legalEntityDisplay: company.LEGAL_ENTITY_DISPLAY,
+      supportEmail:       company.SUPPORT_EMAIL,
+      registeredAddress:  company.REGISTERED_ADDRESS,
+      supportPhone:       company.SUPPORT_PHONE,
+    },
   });
 }
 
