@@ -5,7 +5,7 @@
    The Doc Mirror — hybrid Resources verification (Step I)
 
    Proves that merging the CMS into the public Resources section:
-     • leaves the 24 Markdown articles byte-for-byte unchanged
+     • leaves every existing Markdown article byte-for-byte unchanged
      • never exposes a draft, an archived post or a future scheduled post
      • sorts both sources together chronologically
      • lets a Markdown article keep its URL when a CMS slug collides
@@ -30,6 +30,11 @@ const markdown  = require('../lib/resources-markdown');
 const views     = require('../routes/resources');
 const { buildSitemapXml, buildSitemapEntries } = require('../lib/sitemap');
 const { mapRow, isPublic } = require('../lib/blog-post-mapper');
+
+// Derived, never hardcoded. The article count changes every time someone
+// publishes a .md file, and a test that has to be hand-edited for that is a
+// test that eventually gets edited without being read.
+const MD_COUNT = markdown.getAllResources().length;
 
 let passed = 0;
 const failures = [];
@@ -82,7 +87,7 @@ function checkMarkdownUntouched() {
 
   db._reset();
   const mdOnly = resources.getAllResources();
-  check('all 24 Markdown articles present with no CMS posts', mdOnly.length === 24, String(mdOnly.length));
+  check(`all ${MD_COUNT} Markdown articles present with no CMS posts`, mdOnly.length === MD_COUNT, String(mdOnly.length));
   check('order matches the Markdown layer exactly',
     JSON.stringify(mdOnly.map((p) => p.slug)) === JSON.stringify(markdown.getAllResources().map((p) => p.slug)));
 
@@ -150,7 +155,7 @@ function checkMerge() {
   db._setPostsForTest([above, between]);
 
   const all = resources.getAllResources();
-  check('both CMS posts joined the collection', all.length === 26, String(all.length));
+  check('both CMS posts joined the collection', all.length === MD_COUNT + 2, String(all.length));
 
   const order = all.map((p) => p.slug);
   check('the newest CMS post is first', order[0] === 'cms-newest', order.slice(0, 3).join(', '));
@@ -362,7 +367,7 @@ function checkSitemap() {
 
   db._reset();
   const mdEntries = buildSitemapEntries().filter((e) => e.loc.includes('/resources/'));
-  check('Markdown-only sitemap lists 24 articles', mdEntries.length === 24, String(mdEntries.length));
+  check(`Markdown-only sitemap lists ${MD_COUNT} articles`, mdEntries.length === MD_COUNT, String(mdEntries.length));
 
   db._setPostsForTest([
     mapRow(row({ slug: 'cms-live', published_at: iso(-1 * HOUR) })),
@@ -371,10 +376,10 @@ function checkSitemap() {
   const xml = buildSitemapXml();
   const entries = buildSitemapEntries().filter((e) => e.loc.includes('/resources/'));
 
-  check('eligible CMS articles are added', entries.length === 26, String(entries.length));
+  check('eligible CMS articles are added', entries.length === MD_COUNT + 2, String(entries.length));
   check('a published CMS article is in the XML', xml.includes('/resources/cms-live'));
   check('a due scheduled CMS article is in the XML', xml.includes('/resources/cms-due-scheduled'));
-  check('all 24 Markdown URLs are still there',
+  check(`all ${MD_COUNT} Markdown URLs are still there`,
     markdown.getAllResources().every((p) => xml.includes(p.canonical)));
   check('every loc appears exactly once',
     (() => { const locs = buildSitemapEntries().map((e) => e.loc); return new Set(locs).size === locs.length; })());
@@ -414,7 +419,7 @@ async function checkFallback() {
   check('no CMS posts are served after a failure', db.getPosts().length === 0);
 
   const all = resources.getAllResources();
-  check('the 24 Markdown articles still render', all.length === 24, String(all.length));
+  check(`the ${MD_COUNT} Markdown articles still render`, all.length === MD_COUNT, String(all.length));
 
   let listingOk = true, articleOk = true;
   try { views.renderListing(); } catch (_) { listingOk = false; }
@@ -488,8 +493,8 @@ async function checkRealDrafts() {
   const listing = views.renderListing();
   check('neither draft appears on the listing',
     !listing.includes('doc-mirror-cms-test-blog') && !listing.includes('cms-test-draft-step-e'));
-  check('the public collection is still exactly the 24 Markdown articles',
-    all.length === 24, String(all.length));
+  check(`the public collection is still exactly the ${MD_COUNT} Markdown articles`,
+    all.length === MD_COUNT, String(all.length));
 }
 
 // ── main ────────────────────────────────────────────────────────────────────
