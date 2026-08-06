@@ -20,8 +20,21 @@
   var esc = AdminAuth.escapeHtml;
   var $ = function (id) { return document.getElementById(id); };
 
+  /**
+   * The post id lives in the PATH — /admin/blogs/<id>/edit — because that is
+   * the route server.js serves and the URL the dashboard links to. Reading it
+   * from a query string instead is what made "Edit" open a blank new post: the
+   * id came back null, so the editor believed it was creating rather than
+   * editing. The ?id= form is still accepted so any older bookmark keeps working.
+   */
+  function readPostId() {
+    var m = location.pathname.match(/^\/admin\/blogs\/([^/]+)\/edit\/?$/);
+    if (m && m[1]) return decodeURIComponent(m[1]);
+    return new URLSearchParams(location.search).get('id') || null;
+  }
+
   var state = {
-    id: new URLSearchParams(location.search).get('id') || null,
+    id: readPostId(),
     options: null,
     faq: [],
     related: [],          // [{slug, title, source}]
@@ -187,9 +200,78 @@
 
   /* ── toolbar ─────────────────────────────────────────────────────────── */
 
+  /* ── selection handling ────────────────────────────────────────────────
+     A contenteditable loses its selection the moment focus leaves it, and two
+     things in this toolbar do exactly that: clicking a button, and opening a
+     prompt() or the media modal. Without the range remembered, execCommand has
+     nothing to act on — which is why "make this text a link" appeared to do
+     nothing at all.
+
+     So the caret is tracked continuously while typing or clicking inside the
+     editor, and restored before any command runs. Toolbar buttons additionally
+     cancel their own mousedown, so a click never steals focus in the first
+     place and the highlight stays visible. */
+
+  var savedRange = null;
+
+  function inEditor(node) {
+    var ed = $('editor');
+    return !!node && (node === ed || ed.contains(node.nodeType === 3 ? node.parentNode : node));
+  }
+
+  function rememberSelection() {
+    var sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return;
+    var r = sel.getRangeAt(0);
+    if (inEditor(r.commonAncestorContainer)) savedRange = r.cloneRange();
+  }
+
+  /** Puts the caret back where the author left it. Returns the live range. */
+  function restoreSelection() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount && inEditor(sel.getRangeAt(0).commonAncestorContainer)) {
+      return sel.getRangeAt(0);            // still in the editor — nothing to do
+    }
+    if (!savedRange) { $('editor').focus(); return null; }
+    $('editor').focus();
+    sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+    return savedRange;
+  }
+
+  /** The <a> the caret currently sits in, if any — so a link can be edited. */
+  function linkAtSelection() {
+    var r = savedRange || (window.getSelection().rangeCount ? window.getSelection().getRangeAt(0) : null);
+    if (!r) return null;
+    var node = r.startContainer;
+    if (node.nodeType === 3) node = node.parentNode;
+    while (node && node !== $('editor')) {
+      if (node.tagName && node.tagName.toLowerCase() === 'a') return node;
+      node = node.parentNode;
+    }
+    return null;
+  }
+
+  /**
+   * Accepts what people actually type. "example.com/page" is a URL to a human,
+   * so it gets https:// rather than an error message. Anything that is not a
+   * safe scheme still returns '' and is refused.
+   */
+  function normaliseUrl(raw) {
+    var v = String(raw || '').trim();
+    if (!v) return '';
+    if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/|$|\?|#)/i.test(v) && !/^[a-z][a-z0-9+.-]*:/i.test(v)) {
+      v = 'https://' + v;
+    }
+    return safeHref(v);
+  }
+
   function exec(cmd, value) {
+    restoreSelection();
     document.execCommand(cmd, false, value === undefined ? null : value);
     $('editor').focus();
+    rememberSelection();
     markDirty();
   }
 
@@ -211,19 +293,48 @@
       case 'unlink': exec('unlink'); break;
 
       case 'link': {
-        var sel = window.getSelection();
-        var selected = sel && sel.toString();
-        var text = selected || window.prompt('Link text');
-        if (!text) return;
-        var url = window.prompt('Link URL — a full https:// address, or a site path like /resources/some-article');
-        if (!url) return;
-        if (!safeHref(url)) { flash('That link type is not allowed. Use https://, mailto: or a /site path.', 'error'); return; }
-        if (selected) exec('createLink', url);
-        else exec('insertHTML', '<a href="' + esc(url) + '">' + esc(text) + '</a>');
+        // Captured BEFORE any prompt opens — the dialog blurs the editor and
+        // the live selection is gone by the time it closes.
+        rememberSelection();
+        var selectedText = savedRange ? savedRange.toString() : '';
+        var existing = linkAtSelection();
+
+        var url = window.prompt(
+          existing
+            ? 'Edit this link'
+            : 'Link URL — a full address like https://example.com, or a page on this site like /resources/geo-for-doctors',
+          existing ? existing.getAttribute('href') : 'https://'
+        );
+        if (url === null) return;                       // cancelled
+
+        var href = normaliseUrl(url);
+        if (!href) {
+          flash('That link is not allowed. Use a web address, mailto:, or a path on this site starting with /.', 'error');
+          return;
+        }
+
+        // Caret inside an existing link and nothing highlighted → change its
+        // target rather than nesting a second <a> inside it.
+        if (existing && !selectedText) {
+          existing.setAttribute('href', href);
+          markDirty();
+          return;
+        }
+
+        if (selectedText) {
+          exec('createLink', href);                     // exec restores the range first
+        } else {
+          var text = window.prompt('Text to show for this link', '');
+          if (!text) return;
+          exec('insertHTML', '<a href="' + esc(href) + '">' + esc(text) + '</a>');
+        }
         break;
       }
 
       case 'image':
+        // Same reason as the link case: the modal blurs the editor, so the
+        // insertion point has to be captured before it opens.
+        rememberSelection();
         openMedia('content');
         break;
 
@@ -820,7 +931,18 @@
       try {
         var r = await AdminAuth.api('/api/admin/posts/' + state.id);
         fillPost(r.post, r.content_html);
-      } catch (e) { flash('Could not load this blog: ' + e.message, 'error'); }
+      } catch (e) {
+        if (e.status === 404) {
+          // Forget the id, or the next save would PATCH a row that is gone.
+          state.id = null;
+          syncDeleteButton();
+          flash('That blog no longer exists — it may have been deleted. ' +
+                'Anything you write here will be saved as a new post.', 'error');
+          $('editor').innerHTML = STARTER_HTML;
+        } else {
+          flash('Could not load this blog: ' + e.message, 'error');
+        }
+      }
     } else {
       $('editor').innerHTML = STARTER_HTML;
     }
@@ -843,12 +965,36 @@
   /* ── wiring ──────────────────────────────────────────────────────────── */
 
   function wire() {
+    // Cancelling mousedown stops the button taking focus, so the text stays
+    // highlighted and the caret stays put while the command runs. Without this,
+    // pressing any toolbar button collapses the selection before it is used.
+    $('ed-toolbar').addEventListener('mousedown', function (e) {
+      if (e.target.closest('button[data-cmd]')) e.preventDefault();
+    });
     $('ed-toolbar').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-cmd]');
       if (b) { e.preventDefault(); handleCommand(b.dataset.cmd); }
     });
 
     var ed = $('editor');
+
+    // Track the caret continuously so it can be restored after a prompt or the
+    // media modal takes focus away.
+    ['keyup', 'mouseup', 'input', 'focus'].forEach(function (evt) {
+      ed.addEventListener(evt, rememberSelection);
+    });
+    document.addEventListener('selectionchange', function () {
+      if (document.activeElement === ed) rememberSelection();
+    });
+
+    // Ctrl/Cmd+K is the shortcut people expect for "make this a link".
+    ed.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        handleCommand('link');
+      }
+    });
+
     ed.addEventListener('input', markDirty);
     // Paste as plain text: pasted Word/web markup is the fastest way to get
     // junk into content_md, and the toolbar can re-apply real formatting.
