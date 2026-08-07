@@ -57,6 +57,7 @@ const adminStatsHandler           = require('./routes/admin/stats');
 const adminOptionsHandler         = require('./routes/admin/options');
 const adminPosts                  = require('./routes/admin/posts');
 const adminMedia                  = require('./routes/admin/media');
+const adminCategories             = require('./routes/admin/categories');
 const adminPreviewHandler         = require('./routes/admin/preview');
 const adminImportHandler          = require('./routes/admin/import');
 
@@ -131,10 +132,16 @@ app.get('/blog', (_req, res) => res.redirect(301, '/resources'));
 app.get('/blog/:slug', warmResources, resourcesRoute.blogRedirectHandler);
 
 // ── Sitemap ──────────────────────────────────────────────────────────────────
-// Built by lib/sitemap.js, which is also what `npm run sitemap` writes to
-// public/sitemap.xml. One builder, so the committed file and the URL Google
-// fetches can never disagree. Registered before express.static, so this
-// always wins over the file on disk — the served copy is never stale.
+// Built per request by lib/sitemap.js, so a CMS post appears the moment it goes
+// live — same read-time rule as the article pages themselves. No deploy, no
+// cron, no regeneration step.
+//
+// There must be NO public/sitemap.xml. Registering this route before
+// express.static is enough locally, but NOT on Vercel: static files in public/
+// are served by the CDN before the function is ever invoked, so a file there
+// silently shadows this route and freezes the sitemap at whatever was last
+// committed. That is exactly what happened — scripts/generate-sitemap.js now
+// writes outside public/ so it cannot come back.
 app.get('/sitemap.xml', warmResources, (_req, res) => {
   res.set('Content-Type', 'application/xml; charset=utf-8').send(buildSitemapXml());
 });
@@ -145,16 +152,13 @@ app.get('/sitemap.xml', warmResources, (_req, res) => {
 // an authenticated /api/admin/* call that answers 401/403 to a non-admin — so
 // the HTML being publicly fetchable (exactly like /dashboard.html already is)
 // discloses nothing. Both pages are noindex, and robots.txt disallows /admin.
-// coming-soon.html is a gated placeholder so the dashboard's navigation leads
-// somewhere real instead of falling through to the public catch-all. Each entry
-// is repointed at its own page as that build step lands.
 const ADMIN_PAGES = {
   '/admin':            'index.html',
   '/admin/login':      'login.html',
   '/admin/blogs/new':  'editor.html',
-  '/admin/blogs':      'coming-soon.html',
-  '/admin/media':      'coming-soon.html',
-  '/admin/categories': 'coming-soon.html',
+  '/admin/blogs':      'blogs.html',
+  '/admin/media':      'media.html',
+  '/admin/categories': 'categories.html',
 };
 for (const [cleanPath, file] of Object.entries(ADMIN_PAGES)) {
   app.get(cleanPath, (_req, res) => {
@@ -231,6 +235,12 @@ app.post('/api/admin/posts',                adminPosts.create);
 app.patch('/api/admin/posts/:id',           adminPosts.update);
 app.delete('/api/admin/posts/:id',          adminPosts.remove);   // permanent; live posts need ?confirm=live
 
+// Status-only transition, for the Publish / Unpublish / Archive buttons on the
+// blog list. Kept apart from PATCH deliberately: PATCH rebuilds every field from
+// its payload, so driving it from a list — which carries a row, not a whole post
+// — would blank everything the list did not send.
+app.post('/api/admin/posts/:id/status',     adminPosts.setStatus);
+
 // Media. The upload takes the raw image bytes rather than multipart, so no new
 // dependency is needed; express.json() above ignores an image Content-Type, so
 // the body arrives here untouched. The 6 MB cap leaves headroom over the
@@ -240,6 +250,15 @@ app.get('/api/admin/media', adminMedia.list);
 app.post('/api/admin/media/upload',
   express.raw({ type: adminMedia.ALLOWED_MIME, limit: '6mb' }),
   adminMedia.upload);
+app.delete('/api/admin/media/:id', adminMedia.remove);  // in-use images need ?confirm=in-use
+
+// Categories. Renaming cascades to blog_posts.category, which is TEXT rather
+// than a foreign key — without the cascade the articles would keep the old name
+// and quietly drop out of the category.
+app.get('/api/admin/categories',        adminCategories.list);
+app.post('/api/admin/categories',       adminCategories.create);
+app.patch('/api/admin/categories/:id',  adminCategories.update);
+app.delete('/api/admin/categories/:id', adminCategories.remove);  // in-use needs ?confirm=in-use
 
 // Draft preview, rendered by the real public article renderer.
 app.post('/api/admin/preview', adminPreviewHandler);
