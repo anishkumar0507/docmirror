@@ -39,6 +39,9 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .nav-mid a:hover{color:var(--navy)}
 .nav-cta{background:var(--navy);color:#fff;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s;white-space:nowrap}
 .nav-cta:hover{background:var(--green);color:#fff}
+.nav-right{display:flex;align-items:center;gap:.75rem;flex-shrink:0}
+.nav-dash{display:none;color:var(--green);border:1.5px solid var(--green);padding:6.5px 16px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+.nav-dash:hover{background:var(--green);color:#fff}
 @media(max-width:640px){.nav-mid{display:none}}
 
 /* ── HERO ── */
@@ -254,8 +257,19 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
     <a href="../index.html#about">About</a>
     <a href="../index.html#faq">FAQ</a>
   </div>
-  <a class="nav-cta" href="../index.html#tool">Check my listing free</a>
+  <div class="nav-right">
+    <a class="nav-dash" id="nav-dash" href="/dashboard.html">Dashboard</a>
+    <a class="nav-cta" href="../index.html#tool">Check my listing free</a>
+  </div>
 </nav>
+<script>
+  // Show the Dashboard link only when a session exists. Display only — the
+  // dashboard itself re-verifies the token server-side and bounces to login if
+  // the session is stale.
+  (function () {
+    try { if (localStorage.getItem('tdm_access_token')) { var d = document.getElementById('nav-dash'); if (d) d.style.display = 'inline-block'; } } catch (e) {}
+  })();
+</script>
 
 <!-- Hero — populated by JS -->
 <div class="report-hero" id="report-hero">
