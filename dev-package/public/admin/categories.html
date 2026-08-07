@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Private surface: never index, never follow, never show a search snippet. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Categories — The Doc Mirror Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div id="adm-gate" class="adm-gate">
+  <div class="adm-spinner"></div>
+  <p class="adm-gate-msg">Checking admin access…</p>
+</div>
+
+<div class="adm-app">
+  <aside class="adm-side" id="adm-side"></aside>
+
+  <div class="adm-content">
+    <header class="adm-bar" id="adm-bar"></header>
+
+    <div class="adm-body">
+      <div id="msg" class="adm-msg"></div>
+
+      <section class="adm-panel">
+        <div class="adm-panel-head"><h2>Add a category</h2></div>
+        <form class="adm-cat-form" id="add-form">
+          <div>
+            <label class="adm-lbl" for="new-name">Name</label>
+            <input class="adm-in" id="new-name" placeholder="e.g. Patient Acquisition" maxlength="80" required>
+          </div>
+          <div>
+            <label class="adm-lbl" for="new-desc">Description <small>optional</small></label>
+            <input class="adm-in" id="new-desc" placeholder="What belongs in this category">
+          </div>
+          <button type="submit" class="adm-btn adm-btn--sm" id="add-btn">Add</button>
+        </form>
+        <p class="adm-hint" id="add-hint"></p>
+      </section>
+
+      <section class="adm-panel">
+        <div class="adm-panel-head">
+          <h2>Categories</h2>
+          <a href="/admin/blogs">Manage blogs →</a>
+        </div>
+        <div id="list"><p class="adm-skeleton">Loading categories…</p></div>
+      </section>
+
+      <section class="adm-panel" id="orphans-panel" hidden>
+        <div class="adm-panel-head"><h2>Used by articles, but not in the list</h2></div>
+        <p class="adm-lede">
+          These names appear on existing blogs but have no category row, so they are not offered in the
+          editor's dropdown. Add one to bring it back into the list — the articles already using it are
+          matched by name, so nothing about them changes.
+        </p>
+        <div id="orphans"></div>
+      </section>
+
+      <section class="adm-panel">
+        <h2>How renaming works</h2>
+        <p class="adm-lede">
+          An article stores its category as <strong>text</strong>, not a link — which is why a published
+          post can never be broken by something that happens on this screen. The trade-off is that a
+          rename has to be carried across, so renaming a category here also updates every article using
+          it, and tells you how many were changed. Deleting a category leaves its articles exactly as
+          they are; it only removes the name from the editor's dropdown.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/admin-auth.js"></script>
+<script src="/admin/admin-shell.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var esc = AdminAuth.escapeHtml;
+  var state = { categories: [], orphans: [], editing: null };
+
+  function showMsg(text, kind) {
+    var el = document.getElementById('msg');
+    if (!text) { el.className = 'adm-msg'; el.textContent = ''; return; }
+    el.className = 'adm-msg show adm-msg--' + (kind || 'error');
+    el.textContent = text;
+    if (kind === 'info') window.setTimeout(function () {
+      if (el.textContent === text) { el.className = 'adm-msg'; el.textContent = ''; }
+    }, 5000);
+  }
+
+  function usage(c) {
+    if (!c.posts) return 'No articles yet';
+    var live = c.live_posts
+      ? ', ' + c.live_posts + ' live'
+      : '';
+    return c.posts + (c.posts === 1 ? ' article' : ' articles') + live;
+  }
+
+  function render() {
+    var box = document.getElementById('list');
+
+    if (!state.categories.length) {
+      box.innerHTML =
+        '<div class="adm-empty"><strong>No categories yet</strong>' +
+        '<p>Add one above. Until then the editor falls back to the schema default, “Guide”.</p></div>';
+      return;
+    }
+
+    box.innerHTML = state.categories.map(function (c) {
+      if (state.editing === c.id) {
+        return '<div class="adm-cat-row" data-id="' + esc(c.id) + '">' +
+          '<div>' +
+          '<input class="adm-in" id="edit-name" value="' + esc(c.name) + '" maxlength="80">' +
+          '<input class="adm-in" id="edit-desc" style="margin-top:.4rem" placeholder="Description (optional)" value="' +
+          esc(c.description || '') + '">' +
+          '<div class="adm-cat-meta">/' + esc(c.slug) + ' · ' + esc(usage(c)) + '</div>' +
+          '</div>' +
+          '<div class="adm-rowacts">' +
+          '<button type="button" class="adm-x" data-act="save" data-id="' + esc(c.id) + '">Save</button>' +
+          '<button type="button" class="adm-x" data-act="cancel">Cancel</button>' +
+          '</div></div>';
+      }
+      return '<div class="adm-cat-row" data-id="' + esc(c.id) + '">' +
+        '<div>' +
+        '<div class="adm-cat-name">' + esc(c.name) + '</div>' +
+        '<div class="adm-cat-meta">/' + esc(c.slug) + ' · ' + esc(usage(c)) +
+        (c.description ? ' · ' + esc(c.description) : '') + '</div>' +
+        '</div>' +
+        '<div class="adm-rowacts">' +
+        (c.posts
+          ? '<a class="adm-x" href="/admin/blogs?category=' + encodeURIComponent(c.name) + '">View blogs</a>'
+          : '') +
+        '<button type="button" class="adm-x" data-act="edit" data-id="' + esc(c.id) + '">Rename</button>' +
+        '<button type="button" class="adm-x" data-act="delete" data-id="' + esc(c.id) + '">Delete</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function renderOrphans() {
+    var panel = document.getElementById('orphans-panel');
+    if (!state.orphans.length) { panel.hidden = true; return; }
+    panel.hidden = false;
+    document.getElementById('orphans').innerHTML = state.orphans.map(function (o) {
+      return '<div class="adm-cat-row">' +
+        '<div><div class="adm-cat-name">' + esc(o.name) + '</div>' +
+        '<div class="adm-cat-meta">' + o.posts + (o.posts === 1 ? ' article' : ' articles') +
+        ' · not in the dropdown</div></div>' +
+        '<div class="adm-rowacts">' +
+        '<button type="button" class="adm-x" data-act="adopt" data-name="' + esc(o.name) + '">Add as a category</button>' +
+        '</div></div>';
+    }).join('');
+  }
+
+  function byId(id) {
+    for (var i = 0; i < state.categories.length; i++) if (state.categories[i].id === id) return state.categories[i];
+    return null;
+  }
+
+  async function load() {
+    var r = await AdminAuth.apiRaw('/api/admin/categories');
+    if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+    if (!r.ok || !r.body) {
+      showMsg((r.body && r.body.error) || 'Could not load categories.');
+      document.getElementById('list').innerHTML = '<p class="adm-skeleton">Could not load categories.</p>';
+      return;
+    }
+    state.categories = r.body.categories || [];
+    state.orphans = r.body.orphans || [];
+    render();
+    renderOrphans();
+  }
+
+  async function create(name, description) {
+    var r = await AdminAuth.apiRaw('/api/admin/categories', {
+      method: 'POST', body: JSON.stringify({ name: name, description: description || '' }),
+    });
+    if (!r.ok) { showMsg((r.body && r.body.error) || 'Could not add that category.'); return false; }
+    showMsg('"' + name + '" added.', 'info');
+    await load();
+    return true;
+  }
+
+  /* A rename is the one operation here that touches published articles, so the
+     count is confirmed up front rather than reported after the fact. */
+  async function save(id) {
+    var c = byId(id);
+    if (!c) return;
+
+    var name = document.getElementById('edit-name').value.trim();
+    var desc = document.getElementById('edit-desc').value.trim();
+    if (!name) { showMsg('A category needs a name.'); return; }
+
+    if (name !== c.name && c.posts) {
+      if (!window.confirm(
+        'Rename "' + c.name + '" to "' + name + '"?\n\n' +
+        'This also updates ' + c.posts + (c.posts === 1 ? ' article' : ' articles') +
+        ' currently in that category' + (c.live_posts ? ', ' + c.live_posts + ' of them live on the site' : '') +
+        '.')) return;
+    }
+
+    var r = await AdminAuth.apiRaw('/api/admin/categories/' + id, {
+      method: 'PATCH', body: JSON.stringify({ name: name, description: desc }),
+    });
+
+    // 207: the category was renamed but the articles were not — a half-done
+    // state the operator must know about, not a success.
+    if (r.status === 207 && r.body) { showMsg(r.body.warning, 'error'); state.editing = null; await load(); return; }
+    if (!r.ok) { showMsg((r.body && r.body.error) || 'Could not save that category.'); return; }
+
+    showMsg(r.body.renamed
+      ? 'Renamed to "' + name + '"' + (r.body.moved ? ' and moved ' + r.body.moved +
+        (r.body.moved === 1 ? ' article' : ' articles') : '') + '.'
+      : 'Saved.', 'info');
+    state.editing = null;
+    await load();
+  }
+
+  async function del(id) {
+    var c = byId(id);
+    if (!c) return;
+    if (!window.confirm('Delete the category "' + c.name + '"?')) return;
+
+    var r = await AdminAuth.apiRaw('/api/admin/categories/' + id, { method: 'DELETE' });
+
+    if (r.status === 409 && r.body && r.body.requires_confirm) {
+      if (!window.confirm(r.body.error + '\n\nDelete anyway?')) return;
+      r = await AdminAuth.apiRaw('/api/admin/categories/' + id + '?confirm=in-use', { method: 'DELETE' });
+    }
+    if (!r.ok) { showMsg((r.body && r.body.error) || 'Could not delete that category.'); return; }
+
+    showMsg('"' + c.name + '" was deleted' +
+      (r.body.posts_kept ? ' — its ' + r.body.posts_kept + ' article(s) are unchanged and still live.' : '.'),
+      'info');
+    await load();
+  }
+
+  // ── wiring ───────────────────────────────────────────────────────────────
+
+  document.getElementById('add-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    var name = document.getElementById('new-name').value.trim();
+    if (!name) return;
+    var btn = document.getElementById('add-btn');
+    btn.disabled = true;
+    var ok = await create(name, document.getElementById('new-desc').value.trim());
+    btn.disabled = false;
+    if (ok) {
+      document.getElementById('new-name').value = '';
+      document.getElementById('new-desc').value = '';
+    }
+  });
+
+  document.getElementById('list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var act = b.dataset.act;
+    if (act === 'edit')   { state.editing = b.dataset.id; render(); document.getElementById('edit-name').focus(); return; }
+    if (act === 'cancel') { state.editing = null; render(); return; }
+    if (act === 'save')   { save(b.dataset.id); return; }
+    if (act === 'delete') { del(b.dataset.id); }
+  });
+
+  document.getElementById('orphans').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act="adopt"]');
+    if (b) create(b.dataset.name, '');
+  });
+
+  AdminAuth.guard(function (admin) {
+    AdminShell.mount({ active: 'categories', title: 'Categories' });
+    AdminShell.setEmail(admin.email || admin.id);
+    load();
+  });
+})();
+</script>
+
+</body>
+</html>

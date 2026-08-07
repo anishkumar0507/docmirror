@@ -3,8 +3,9 @@
 /* ──────────────────────────────────────────────────────────────────────────
    Admin CMS — media library
 
-     GET  /api/admin/media          list what has been uploaded
-     POST /api/admin/media/upload   upload one image
+     GET    /api/admin/media          list what has been uploaded
+     POST   /api/admin/media/upload   upload one image
+     DELETE /api/admin/media/:id      remove the object and its row
 
    Bytes go to the Supabase Storage bucket "blog-media" (migration 020);
    metadata goes to blog_media (migration 019). Nothing is ever written to the
@@ -176,4 +177,84 @@ async function upload(req, res) {
   });
 }
 
-module.exports = { list, upload, BUCKET, ALLOWED_MIME };
+/* Deleting is two separate stores — the bucket object and the metadata row —
+   so it is done object-first. If the object goes but the row fails, the library
+   shows a broken entry that can be deleted again; if the row went first and the
+   object failed, the bytes would stay in the bucket with nothing pointing at
+   them and no way to find them again. */
+async function remove(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
+
+  const supabase = db(res); if (!supabase) return;
+
+  const loaded = await withSupabaseRetry(
+    () => supabase.from('blog_media')
+      .select('id, bucket, storage_path, public_url, filename')
+      .eq('id', req.params.id).maybeSingle(),
+    { label: 'admin-media-load', attempts: 2 }
+  );
+  if (loaded.error) {
+    console.error('[admin/media] delete/load FAILED:', formatFetchError(loaded.error));
+    return res.status(503).json({ error: 'Could not load that image.', retryable: true });
+  }
+  if (!loaded.data) return res.status(404).json({ error: 'That image is no longer in the library.' });
+
+  const item = loaded.data;
+
+  // An image still used by an article would turn into a broken <img> the moment
+  // the object is gone, and nothing else would ever tell you. Both the featured
+  // image and inline body references count.
+  const usage = [];
+  const url = item.public_url || '';
+  if (url) {
+    const byFeatured = await withSupabaseRetry(
+      () => supabase.from('blog_posts').select('id, title, slug, status').eq('featured_image', url).limit(20),
+      { label: 'admin-media-usage-featured', attempts: 2 }
+    );
+    if (!byFeatured.error) for (const p of (byFeatured.data || [])) usage.push({ ...p, where: 'featured image' });
+
+    const byBody = await withSupabaseRetry(
+      () => supabase.from('blog_posts').select('id, title, slug, status')
+        .ilike('content_md', `%${item.storage_path}%`).limit(20),
+      { label: 'admin-media-usage-body', attempts: 2 }
+    );
+    if (!byBody.error) {
+      for (const p of (byBody.data || [])) {
+        if (!usage.some((u) => u.id === p.id)) usage.push({ ...p, where: 'article body' });
+      }
+    }
+  }
+
+  if (usage.length && String(req.query.confirm || '') !== 'in-use') {
+    return res.status(409).json({
+      error: `"${item.filename}" is still used by ${usage.length} article${usage.length === 1 ? '' : 's'}. ` +
+             'Deleting it will leave a broken image there.',
+      requires_confirm: 'in-use',
+      used_by: usage,
+    });
+  }
+
+  const del = await supabase.storage.from(item.bucket || BUCKET).remove([item.storage_path]);
+  if (del.error) {
+    console.error('[admin/media] storage delete FAILED:', del.error.message);
+    return res.status(503).json({ error: `Could not delete the file: ${del.error.message}`, retryable: true });
+  }
+
+  const { error } = await withSupabaseRetry(
+    () => supabase.from('blog_media').delete().eq('id', item.id),
+    { label: 'admin-media-delete', attempts: 2 }
+  );
+  if (error) {
+    console.error('[admin/media] row delete FAILED (object already removed):', formatFetchError(error));
+    return res.status(503).json({
+      error: 'The file was removed but the library entry could not be cleared. Try deleting it again.',
+      retryable: true,
+    });
+  }
+
+  console.log(`[admin/media] DELETED ${item.storage_path} (used by ${usage.length}) by=${req.admin.email}`);
+  return res.json({ deleted: { id: item.id, filename: item.filename }, was_used_by: usage.length });
+}
+
+module.exports = { list, upload, remove, BUCKET, ALLOWED_MIME };

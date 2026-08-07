@@ -497,6 +497,55 @@ a { color: var(--green-dark); }
 
 .adm-skeleton { color: var(--slate-muted); font-size: .9rem; padding: .5rem 0; }
 
+/* ── list screens: toolbar, filter tabs, row actions ─────────────────────── */
+.adm-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: 1rem;
+}
+.adm-toolbar .adm-in, .adm-toolbar .adm-sel { width: auto; }
+.adm-search { flex: 1 1 260px; min-width: 200px; max-width: 420px; }
+.adm-toolbar-note { font-size: .78rem; color: var(--slate-muted); margin-left: auto; }
+
+.adm-tabs { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: 1rem; }
+.adm-tab {
+  border: 1px solid var(--border); background: #fff; border-radius: 999px;
+  padding: 6px 13px; font: inherit; font-size: .82rem; color: var(--slate-light);
+  cursor: pointer; display: inline-flex; align-items: center; gap: .4rem;
+}
+.adm-tab:hover { border-color: var(--green); color: var(--navy); }
+.adm-tab.is-active { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+.adm-tab .n { font-size: .72rem; opacity: .75; font-variant-numeric: tabular-nums; }
+
+.adm-rowacts { display: flex; gap: .3rem; flex-wrap: nowrap; white-space: nowrap; }
+.adm-rowacts a { text-decoration: none; }
+
+.adm-table td.is-tight { width: 1%; }
+.adm-table-sub { font-size: .74rem; color: var(--slate-muted); }
+.adm-live-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: var(--green); margin-right: .35rem; vertical-align: middle;
+}
+
+/* Media library grid — the picker's tiles with room for a caption and a delete. */
+.adm-media-item.is-busy { opacity: .5; pointer-events: none; }
+.adm-media-item .m-actions {
+  display: flex; gap: .3rem; padding: 0 .55rem .5rem; justify-content: space-between; align-items: center;
+}
+.adm-media-item .m-actions button { flex-shrink: 0; }
+
+/* Categories — a compact editable list rather than a full table. */
+.adm-cat-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .8rem;
+  align-items: center; padding: .75rem 0; border-bottom: 1px solid var(--border);
+}
+.adm-cat-row:last-child { border-bottom: none; }
+.adm-cat-name { font-weight: 600; color: var(--navy); }
+.adm-cat-meta { font-size: .76rem; color: var(--slate-muted); margin-top: .15rem; }
+.adm-cat-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: .6rem; align-items: end; }
+
+@media (max-width: 720px) {
+  .adm-cat-form { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (max-width: 980px) { .adm-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .adm-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Private surface: never index, never follow, never show a search snippet. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Media — The Doc Mirror Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div id="adm-gate" class="adm-gate">
+  <div class="adm-spinner"></div>
+  <p class="adm-gate-msg">Checking admin access…</p>
+</div>
+
+<div class="adm-app">
+  <aside class="adm-side" id="adm-side"></aside>
+
+  <div class="adm-content">
+    <header class="adm-bar" id="adm-bar"></header>
+
+    <div class="adm-body">
+      <div id="msg" class="adm-msg"></div>
+
+      <!-- The whole panel is a drop target, so a drag anywhere on the page's
+           empty space still lands somewhere sensible. -->
+      <section class="adm-panel">
+        <div class="adm-img-drop" id="drop" style="aspect-ratio:auto;padding:1.6rem;text-align:center;cursor:pointer">
+          <div>
+            <strong style="display:block;color:var(--navy);font-size:.95rem">Drop images here, or click to choose</strong>
+            <small style="color:var(--slate-muted)" id="drop-hint">PNG, JPG, WebP or GIF · up to 5 MB</small>
+          </div>
+        </div>
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple hidden>
+        <div id="upload-status" class="adm-hint"></div>
+      </section>
+
+      <div class="adm-toolbar">
+        <input type="search" class="adm-in adm-search" id="q" placeholder="Search by filename…" autocomplete="off">
+        <span class="adm-toolbar-note" id="count-note"></span>
+      </div>
+
+      <section class="adm-panel">
+        <div id="grid"><p class="adm-skeleton">Loading media…</p></div>
+      </section>
+
+      <section class="adm-panel">
+        <h2>Where these live</h2>
+        <p class="adm-lede">
+          Uploads go to Supabase Storage, not into the repository — the site's filesystem is read-only
+          once deployed, so an image added here is available immediately without a deploy. Copy a URL to
+          paste it into an article, or pick images from inside the editor.
+          Deleting is permanent: if an article still points at the image, that article will show a broken
+          picture, so the delete warns first and names the articles.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/admin-auth.js"></script>
+<script src="/admin/admin-shell.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var esc = AdminAuth.escapeHtml;
+  var state = { q: '', items: [], limits: null };
+  var timer = null;
+
+  function showMsg(text, kind) {
+    var el = document.getElementById('msg');
+    if (!text) { el.className = 'adm-msg'; el.textContent = ''; return; }
+    el.className = 'adm-msg show adm-msg--' + (kind || 'error');
+    el.textContent = text;
+    if (kind === 'info') window.setTimeout(function () {
+      if (el.textContent === text) { el.className = 'adm-msg'; el.textContent = ''; }
+    }, 4000);
+  }
+
+  function fmtSize(bytes) {
+    if (!bytes) return '';
+    return bytes >= 1048576 ? (bytes / 1048576).toFixed(1) + ' MB' : Math.round(bytes / 1024) + ' KB';
+  }
+
+  function render() {
+    var box = document.getElementById('grid');
+
+    if (!state.items.length) {
+      box.innerHTML =
+        '<div class="adm-empty"><strong>' +
+        (state.q ? 'No image matches that filename' : 'Nothing uploaded yet') + '</strong>' +
+        '<p>' + (state.q ? 'Try a different search.' : 'Drop an image above to add the first one.') + '</p></div>';
+      document.getElementById('count-note').textContent = '';
+      return;
+    }
+
+    box.innerHTML = '<div class="adm-media-grid">' + state.items.map(function (m) {
+      var dims = (m.width && m.height) ? m.width + '×' + m.height : '';
+      return '<div class="adm-media-item" data-id="' + esc(m.id) + '">' +
+        '<div class="m-thumb"><img src="' + esc(m.public_url) + '" alt="' + esc(m.alt_text || m.filename) + '" loading="lazy"></div>' +
+        '<div class="m-meta">' +
+        '<span class="m-name" title="' + esc(m.filename) + '">' + esc(m.filename) + '</span>' +
+        [dims, fmtSize(m.size_bytes)].filter(Boolean).join(' · ') +
+        '</div>' +
+        '<div class="m-actions">' +
+        '<button type="button" class="adm-x" data-act="copy" data-id="' + esc(m.id) + '">Copy URL</button>' +
+        '<button type="button" class="adm-x" data-act="open" data-id="' + esc(m.id) + '">Open</button>' +
+        '<button type="button" class="adm-x" data-act="delete" data-id="' + esc(m.id) + '">Delete</button>' +
+        '</div></div>';
+    }).join('') + '</div>';
+
+    document.getElementById('count-note').textContent =
+      state.items.length + (state.items.length === 1 ? ' image' : ' images');
+  }
+
+  async function load() {
+    var r = await AdminAuth.apiRaw('/api/admin/media?limit=200' +
+      (state.q ? '&q=' + encodeURIComponent(state.q) : ''));
+    if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+    if (!r.ok || !r.body) {
+      showMsg((r.body && r.body.error) || 'Could not load the media library.');
+      document.getElementById('grid').innerHTML = '<p class="adm-skeleton">Could not load media.</p>';
+      return;
+    }
+    showMsg('');
+    state.items = r.body.media || [];
+    render();
+  }
+
+  function itemById(id) {
+    for (var i = 0; i < state.items.length; i++) if (state.items[i].id === id) return state.items[i];
+    return null;
+  }
+
+  // ── upload ───────────────────────────────────────────────────────────────
+  // Raw bytes, not multipart: the server reads them with express.raw() and the
+  // browser needs no encoding step. The type and size are checked here only to
+  // save a doomed round trip — the server and the bucket both re-check.
+
+  async function uploadOne(file, index, total) {
+    var status = document.getElementById('upload-status');
+    status.className = 'adm-hint';
+    status.textContent = 'Uploading ' + file.name + (total > 1 ? ' (' + index + ' of ' + total + ')' : '') + '…';
+
+    var max = (state.limits && state.limits.maxBytes) || 5242880;
+    if (file.size > max) {
+      throw new Error(file.name + ' is ' + (file.size / 1048576).toFixed(1) +
+                      ' MB — the limit is ' + Math.round(max / 1048576) + ' MB.');
+    }
+
+    var buf = await file.arrayBuffer();
+    var r = await AdminAuth.apiRaw(
+      '/api/admin/media/upload?filename=' + encodeURIComponent(file.name),
+      { method: 'POST', headers: { 'Content-Type': file.type || 'image/png' }, body: buf }
+    );
+    if (!r.ok) throw new Error((r.body && r.body.error) || ('Could not upload ' + file.name));
+    return r.body;
+  }
+
+  async function upload(files) {
+    var list = Array.prototype.slice.call(files);
+    if (!list.length) return;
+
+    var status = document.getElementById('upload-status');
+    var warnings = [];
+
+    try {
+      for (var i = 0; i < list.length; i++) {
+        var out = await uploadOne(list[i], i + 1, list.length);
+        if (out && out.warning) warnings.push(out.warning);
+      }
+      status.className = 'adm-hint is-good';
+      status.textContent = list.length === 1 ? 'Uploaded.' : list.length + ' images uploaded.';
+      if (warnings.length) showMsg(warnings[0], 'info');
+      await load();
+    } catch (e) {
+      status.className = 'adm-hint is-bad';
+      status.textContent = e.message;
+    }
+  }
+
+  // ── actions ──────────────────────────────────────────────────────────────
+
+  function copyUrl(m) {
+    var done = function () { showMsg('URL copied: ' + m.filename, 'info'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(m.public_url).then(done, function () { fallback(); });
+    } else { fallback(); }
+
+    function fallback() {
+      // Older browsers, and any context where the clipboard API is blocked.
+      var ta = document.createElement('textarea');
+      ta.value = m.public_url;
+      ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); }
+      catch (_) { window.prompt('Copy this URL:', m.public_url); }
+      document.body.removeChild(ta);
+    }
+  }
+
+  async function del(id) {
+    var m = itemById(id);
+    if (!m) return;
+    if (!window.confirm('Delete "' + m.filename + '"?\n\nThe file is removed permanently.')) return;
+
+    var tile = document.querySelector('.adm-media-item[data-id="' + id + '"]');
+    if (tile) tile.classList.add('is-busy');
+
+    var r = await AdminAuth.apiRaw('/api/admin/media/' + id, { method: 'DELETE' });
+
+    // The server checks usage against both the featured image and the article
+    // bodies, and names what it found — so the second prompt is a real decision
+    // rather than "are you sure" twice.
+    if (r.status === 409 && r.body && r.body.requires_confirm) {
+      var names = (r.body.used_by || []).map(function (p) {
+        return '  • ' + p.title + '  (' + p.where + ')';
+      }).join('\n');
+      if (!window.confirm(r.body.error + '\n\n' + names + '\n\nDelete anyway?')) {
+        if (tile) tile.classList.remove('is-busy');
+        return;
+      }
+      r = await AdminAuth.apiRaw('/api/admin/media/' + id + '?confirm=in-use', { method: 'DELETE' });
+    }
+
+    if (!r.ok) {
+      if (tile) tile.classList.remove('is-busy');
+      showMsg((r.body && r.body.error) || 'Could not delete that image.');
+      return;
+    }
+
+    showMsg('"' + m.filename + '" was deleted.', 'info');
+    await load();
+  }
+
+  // ── wiring ───────────────────────────────────────────────────────────────
+
+  var drop = document.getElementById('drop');
+  var fileInput = document.getElementById('file');
+
+  drop.addEventListener('click', function () { fileInput.click(); });
+  fileInput.addEventListener('change', function (e) { upload(e.target.files); e.target.value = ''; });
+
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('is-drag'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('is-drag'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer && e.dataTransfer.files) upload(e.dataTransfer.files);
+  });
+
+  document.getElementById('grid').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var m = itemById(b.dataset.id);
+    if (!m) return;
+    if (b.dataset.act === 'copy')   { copyUrl(m); return; }
+    if (b.dataset.act === 'open')   { window.open(m.public_url, '_blank', 'noopener'); return; }
+    if (b.dataset.act === 'delete') { del(b.dataset.id); }
+  });
+
+  document.getElementById('q').addEventListener('input', function (e) {
+    state.q = e.target.value.trim();
+    window.clearTimeout(timer);
+    timer = window.setTimeout(load, 250);
+  });
+
+  async function loadLimits() {
+    var r = await AdminAuth.apiRaw('/api/admin/options');
+    if (!r.ok || !r.body || !r.body.upload) return;
+    state.limits = r.body.upload;
+    document.getElementById('drop-hint').textContent =
+      'PNG, JPG, WebP or GIF · up to ' + Math.round(state.limits.maxBytes / 1048576) + ' MB · ' +
+      state.limits.recommendedMinWidth + '×' + state.limits.recommendedMinHeight +
+      ' or larger for a featured image';
+  }
+
+  AdminAuth.guard(function (admin) {
+    AdminShell.mount({
+      active: 'media',
+      title: 'Media',
+      actions: '<button type="button" class="adm-btn adm-btn--sm" id="btn-upload">Upload images</button>',
+    });
+    AdminShell.setEmail(admin.email || admin.id);
+    document.getElementById('btn-upload').addEventListener('click', function () { fileInput.click(); });
+    loadLimits();
+    load();
+  });
+})();
+</script>
+
+</body>
+</html>

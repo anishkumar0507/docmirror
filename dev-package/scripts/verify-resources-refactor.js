@@ -545,6 +545,49 @@ function checkContentAvailability() {
               `${posts.filter((p) => p.image).length} with a hero image`);
 }
 
+/*
+ * Vercel serves a real file in public/ from the CDN BEFORE the serverless
+ * function is invoked. Express does the opposite locally: a route registered
+ * ahead of express.static always wins. So a file in public/ whose name matches
+ * a dynamic route is invisible in every local test and silently replaces the
+ * route in production.
+ *
+ * That is not hypothetical. public/sitemap.xml did exactly this: /sitemap.xml
+ * kept serving the last committed copy, so a blog published through the admin
+ * never appeared in the sitemap no matter how many times it was republished.
+ *
+ * This walks the routes out of server.js rather than listing them, so a route
+ * added later is covered without anyone remembering to come back here.
+ */
+function checkNoShadowedRoutes() {
+  group('10. No file in public/ can shadow a dynamic route on Vercel');
+
+  const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const publicDir = path.join(__dirname, '..', 'public');
+
+  const routes = [...server.matchAll(/app\.(?:get|post|put|patch|delete|use)\(\s*'(\/[^']*)'/g)]
+    .map((m) => m[1])
+    .filter((p) => !p.includes(':') && !p.includes('*') && p !== '/');
+
+  const shadowed = [];
+  for (const route of new Set(routes)) {
+    const onDisk = path.join(publicDir, route.replace(/^\//, '').split('/').join(path.sep));
+    if (fs.existsSync(onDisk) && fs.statSync(onDisk).isFile()) shadowed.push({ route, onDisk });
+  }
+
+  // /favicon.ico is the one accepted case: its route only re-serves a file from
+  // public/ anyway, so the CDN winning changes nothing.
+  const real = shadowed.filter((s) => s.route !== '/favicon.ico');
+
+  check('no dynamic route is shadowed by a file in public/', real.length === 0,
+    real.map((s) => `${s.route} ← public${s.route}`).join(', '));
+
+  check('public/sitemap.xml does not exist — /sitemap.xml must stay per-request',
+    !fs.existsSync(path.join(publicDir, 'sitemap.xml')));
+
+  console.log(`    ${new Set(routes).size} literal routes checked against public/`);
+}
+
 // ── main ───────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -583,6 +626,7 @@ async function main() {
 
   const responses = await checkLiveServer(opts, rendered);
   checkBaseline(opts, responses);
+  checkNoShadowedRoutes();
 
   console.log(`\n${'─'.repeat(72)}`);
   if (failures.length) {

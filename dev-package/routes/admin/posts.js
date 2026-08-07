@@ -21,6 +21,10 @@ require('../../lib/env');
 const { getSupabaseClient, withSupabaseRetry, formatFetchError } = require('../../lib/supabase-client');
 const { slugify, getAllResources, getResourceBySlug } = require('../../lib/resources');
 const { readingTimeMinutes, autoExcerpt, BASE_PATH } = require('../../lib/blog-post-mapper');
+// Reused rather than re-derived: the list, the dashboard counts and the public
+// read must agree on what "published right now" means, down to the edge case of
+// a row marked 'published' with a future date.
+const { effectiveStatus, PUBLISHABLE } = require('./stats');
 
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const STATUSES = ['draft', 'scheduled', 'published', 'archived'];
@@ -353,6 +357,29 @@ async function slugConflict(supabase, slug, ignoreId) {
 
 // ── handlers ────────────────────────────────────────────────────────────────
 
+/*
+ * The status filter follows the SAME rule the dashboard counts and the public
+ * site use — effective status, not the raw column. Filtering on `status` alone
+ * would put a due-and-live post under "Scheduled", which is the one thing the
+ * whole read-time model exists to avoid.
+ *
+ * Only the columns the table draws are selected: content_md on fifty rows is
+ * megabytes of body text nothing on the screen reads.
+ */
+const LIST_COLUMNS =
+  'id, title, slug, excerpt, author, category, tags, read_time_minutes, featured_image, ' +
+  'status, published_at, created_at, updated_at';
+
+function applyStatusFilter(query, status, nowIso) {
+  switch (status) {
+    case 'draft':     return query.eq('status', 'draft');
+    case 'archived':  return query.eq('status', 'archived');
+    case 'published': return query.in('status', PUBLISHABLE).lte('published_at', nowIso);
+    case 'scheduled': return query.in('status', PUBLISHABLE).gt('published_at', nowIso);
+    default:          return query;
+  }
+}
+
 async function list(req, res) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store');
@@ -362,21 +389,44 @@ async function list(req, res) {
   const limit  = Math.min(Math.max(parseInt(req.query.limit, 10) || 50, 1), 200);
   const status = String(req.query.status || '').trim();
   const q      = String(req.query.q || '').trim();
+  const cat    = String(req.query.category || '').trim();
 
-  const cols = await selectColumns(supabase);
-  let query = supabase.from('blog_posts').select(cols)
-    .order('updated_at', { ascending: false }).limit(limit);
+  const now    = new Date();
+  const nowIso = now.toISOString();
+  const nowMs  = now.getTime();
 
-  if (STATUSES.includes(status)) query = query.eq('status', status);
+  const sort = ['updated_at', 'published_at', 'created_at', 'title'].includes(String(req.query.sort || ''))
+    ? String(req.query.sort) : 'updated_at';
+
+  let query = supabase.from('blog_posts').select(LIST_COLUMNS, { count: 'exact' })
+    .order(sort, { ascending: sort === 'title', nullsFirst: false })
+    .limit(limit);
+
+  query = applyStatusFilter(query, status, nowIso);
+  if (cat) query = query.eq('category', cat);
   if (q) {
     const safe = q.replace(/[%,()]/g, ' ');
     query = query.or(`title.ilike.%${safe}%,slug.ilike.%${safe}%,excerpt.ilike.%${safe}%`);
   }
 
-  const { data, error } = await withSupabaseRetry(() => query, { label: 'admin-posts-list', attempts: 2 });
+  const { data, error, count } = await withSupabaseRetry(
+    () => query, { label: 'admin-posts-list', attempts: 2 }
+  );
   if (error) return fail(res, 'list', error);
 
-  return res.json({ posts: data || [] });
+  const posts = (data || []).map((row) => {
+    const eff = effectiveStatus(row, nowMs);
+    return Object.assign({}, row, {
+      effective_status: eff,
+      is_public:        eff === 'published',
+      url:              `${BASE_PATH}/${row.slug}`,
+    });
+  });
+
+  // `matched` is how many rows the filter found in total; `posts.length` is how
+  // many came back under the limit. Reported separately so the screen can say
+  // "showing 50 of 120" instead of implying it has everything.
+  return res.json({ posts, matched: typeof count === 'number' ? count : posts.length, limit });
 }
 
 async function get(req, res) {
@@ -670,6 +720,57 @@ async function update(req, res) {
 }
 
 /**
+ * POST /api/admin/posts/:id/status
+ *
+ * A status change on its own, for the blog list where the row is not being
+ * edited. The full PATCH rebuilds every field from the request body, so using
+ * it from a list would mean sending the whole article back just to press
+ * Publish — and any field the list did not happen to carry would be blanked.
+ *
+ * The publish checklist still applies: a post cannot be published or scheduled
+ * from here with fields missing, exactly as in the editor.
+ */
+async function setStatus(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-store');
+
+  const supabase = db(res); if (!supabase) return;
+
+  const cols = await selectColumns(supabase);
+  const loaded = await withSupabaseRetry(
+    () => supabase.from('blog_posts').select(cols).eq('id', req.params.id).maybeSingle(),
+    { label: 'admin-posts-status-load', attempts: 2 }
+  );
+  if (loaded.error) return fail(res, 'status/load', loaded.error);
+  if (!loaded.data) return res.status(404).json({ error: 'Blog not found' });
+
+  const existing = loaded.data;
+  const action = String((req.body && req.body.action) || '');
+  if (!['publish', 'schedule', 'archive', 'save_draft'].includes(action)) {
+    return res.status(400).json({ error: 'Unknown action.' });
+  }
+
+  // The row as it stands is what the checklist is judged against — this route
+  // changes status, never content.
+  const st = resolveStatus(action, req.body || {}, existing, existing);
+  if (st.errors.length) return res.status(400).json({ error: st.errors[0], errors: st.errors });
+
+  const { data, error } = await withSupabaseRetry(
+    () => supabase.from('blog_posts')
+      .update({ status: st.status, published_at: st.published_at, updated_by: req.admin.id })
+      .eq('id', existing.id).select(cols).single(),
+    { label: 'admin-posts-status', attempts: 2 }
+  );
+  if (error) return fail(res, 'status', error);
+
+  console.log(
+    `[admin/posts] STATUS ${existing.status} -> ${data.status} id=${data.id} ` +
+    `slug=${data.slug} by=${req.admin.email}`
+  );
+  return res.json({ post: Object.assign({}, data, readToggles(data)) });
+}
+
+/**
  * DELETE /api/admin/posts/:id
  *
  * Permanent. There is no soft-delete column and no undo — Archive is the
@@ -729,7 +830,7 @@ async function remove(req, res) {
 }
 
 module.exports = {
-  list, get, create, update, remove, slugCheck, relatedSearch, resolveRelated,
+  list, get, create, update, remove, setStatus, slugCheck, relatedSearch, resolveRelated,
   // exported for tests and for the editor's mirrored checklist
   buildFields, resolveStatus, missingForPublish, sanitiseMarkdown,
   zonedWallClockToUtc, PUBLISH_REQUIRED, SLUG_RE,

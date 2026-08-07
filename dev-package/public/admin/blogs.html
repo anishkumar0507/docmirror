@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Private surface: never index, never follow, never show a search snippet. -->
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>Blogs — The Doc Mirror Admin</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/admin/admin.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div id="adm-gate" class="adm-gate">
+  <div class="adm-spinner"></div>
+  <p class="adm-gate-msg">Checking admin access…</p>
+</div>
+
+<div class="adm-app">
+  <aside class="adm-side" id="adm-side"></aside>
+
+  <div class="adm-content">
+    <header class="adm-bar" id="adm-bar"></header>
+
+    <div class="adm-body">
+      <div id="msg" class="adm-msg"></div>
+
+      <div class="adm-tabs" id="tabs"></div>
+
+      <div class="adm-toolbar">
+        <input type="search" class="adm-in adm-search" id="q"
+               placeholder="Search title, slug or excerpt…" autocomplete="off">
+        <select class="adm-sel" id="category" aria-label="Filter by category">
+          <option value="">All categories</option>
+        </select>
+        <select class="adm-sel" id="sort" aria-label="Sort by">
+          <option value="updated_at">Recently updated</option>
+          <option value="published_at">Publish date</option>
+          <option value="created_at">Recently created</option>
+          <option value="title">Title (A–Z)</option>
+        </select>
+        <span class="adm-toolbar-note" id="count-note"></span>
+      </div>
+
+      <section class="adm-panel">
+        <div id="list-body"><p class="adm-skeleton">Loading blogs…</p></div>
+      </section>
+
+      <section class="adm-panel">
+        <h2>About this list</h2>
+        <p class="adm-lede">
+          These are <strong>CMS blogs</strong> only. The original Resources articles are files in the
+          repository — they stay live and are edited the same way they always were, so they do not
+          appear here. Both sets show together on the public
+          <a href="/resources" target="_blank" rel="noopener">Resources</a> page.
+          A status here is what the public actually sees: a scheduled post whose time has passed is
+          shown as <strong>Published</strong>, because it is.
+        </p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script src="/admin/admin-auth.js"></script>
+<script src="/admin/admin-shell.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var esc = AdminAuth.escapeHtml;
+
+  var TABS = [
+    { key: '',          label: 'All' },
+    { key: 'published', label: 'Published' },
+    { key: 'scheduled', label: 'Scheduled' },
+    { key: 'draft',     label: 'Drafts' },
+    { key: 'archived',  label: 'Archived' },
+  ];
+
+  var state = { status: '', q: '', category: '', sort: 'updated_at', counts: null, rows: [] };
+  var timer = null;
+
+  // ── rendering ────────────────────────────────────────────────────────────
+
+  function fmtDate(iso) {
+    if (!iso) return '<span class="adm-table-date">—</span>';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '<span class="adm-table-date">—</span>';
+    var text = d.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    return '<span class="adm-table-date" title="' + esc(iso) + ' (UTC)">' + esc(text) + '</span>';
+  }
+
+  function chip(effective, raw) {
+    var label = effective.charAt(0).toUpperCase() + effective.slice(1);
+    var title = (raw !== effective)
+      ? 'Stored status: ' + raw + ' — shown as ' + effective + ' because its publish time has passed'
+      : '';
+    return '<span class="adm-chip adm-chip--' + esc(effective) + '"' +
+           (title ? ' title="' + esc(title) + '"' : '') + '>' + esc(label) + '</span>';
+  }
+
+  function renderTabs() {
+    document.getElementById('tabs').innerHTML = TABS.map(function (t) {
+      var n = state.counts ? state.counts[t.key === '' ? 'total' : (t.key === 'draft' ? 'drafts' : t.key)] : null;
+      return '<button type="button" class="adm-tab' + (state.status === t.key ? ' is-active' : '') + '"' +
+             ' data-status="' + t.key + '">' + esc(t.label) +
+             (n == null ? '' : '<span class="n">' + n + '</span>') + '</button>';
+    }).join('');
+  }
+
+  /* Which buttons a row gets depends on what it is now, not on what it says.
+     Publish on a live post would be a no-op; Unpublish on a draft would too. */
+  function rowActions(r) {
+    var id = esc(r.id);
+    var out = '<a class="adm-x" href="/admin/blogs/' + id + '/edit">Edit</a>';
+
+    if (r.is_public) {
+      out += '<a class="adm-x" href="' + esc(r.url) + '" target="_blank" rel="noopener">View</a>';
+    } else {
+      out += '<button type="button" class="adm-x" data-act="preview" data-id="' + id + '">Preview</button>';
+    }
+
+    if (r.effective_status === 'draft' || r.effective_status === 'archived') {
+      out += '<button type="button" class="adm-x" data-act="publish" data-id="' + id + '">Publish</button>';
+    } else {
+      out += '<button type="button" class="adm-x" data-act="save_draft" data-id="' + id + '">Unpublish</button>';
+    }
+
+    if (r.effective_status !== 'archived') {
+      out += '<button type="button" class="adm-x" data-act="archive" data-id="' + id + '">Archive</button>';
+    }
+
+    out += '<button type="button" class="adm-x" data-act="delete" data-id="' + id + '">Delete</button>';
+    return '<div class="adm-rowacts">' + out + '</div>';
+  }
+
+  function renderRows(body) {
+    var box = document.getElementById('list-body');
+    var rows = body.posts || [];
+    state.rows = rows;
+
+    if (!rows.length) {
+      var filtered = state.q || state.status || state.category;
+      box.innerHTML =
+        '<div class="adm-empty">' +
+        '<strong>' + (filtered ? 'Nothing matches that' : 'No CMS blogs yet') + '</strong>' +
+        '<p>' + (filtered
+          ? 'Try a different search, or clear the filters.'
+          : 'Your existing Resources articles are still live and untouched. Create your first CMS post to see it here.') +
+        '</p>' +
+        (filtered
+          ? '<button type="button" class="adm-btn adm-btn--ghost adm-btn--sm" id="clear-filters">Clear filters</button>'
+          : '<a class="adm-action adm-action--primary" href="/admin/blogs/new">+ Add Blog</a>') +
+        '</div>';
+      var cf = document.getElementById('clear-filters');
+      if (cf) cf.addEventListener('click', function () {
+        state.q = ''; state.status = ''; state.category = '';
+        document.getElementById('q').value = '';
+        document.getElementById('category').value = '';
+        renderTabs(); load();
+      });
+      return;
+    }
+
+    var html =
+      '<div class="adm-table-wrap"><table class="adm-table">' +
+      '<thead><tr><th>Title</th><th>Status</th><th>Category</th>' +
+      '<th>Publish date</th><th>Updated</th><th>Actions</th></tr></thead><tbody>';
+
+    rows.forEach(function (r) {
+      html +=
+        '<tr data-row-id="' + esc(r.id) + '">' +
+        '<td><a class="adm-table-title" href="/admin/blogs/' + esc(r.id) + '/edit" style="text-decoration:none">' +
+        (r.is_public ? '<span class="adm-live-dot" title="Public right now"></span>' : '') +
+        esc(r.title || '(untitled)') + '</a>' +
+        '<div class="adm-table-slug">/resources/' + esc(r.slug || '') + '</div></td>' +
+        '<td>' + chip(r.effective_status, r.status) + '</td>' +
+        '<td>' + esc(r.category || '—') + '</td>' +
+        '<td>' + fmtDate(r.published_at) + '</td>' +
+        '<td>' + fmtDate(r.updated_at) + '</td>' +
+        '<td class="is-tight">' + rowActions(r) + '</td>' +
+        '</tr>';
+    });
+
+    box.innerHTML = html + '</tbody></table></div>';
+
+    var note = document.getElementById('count-note');
+    note.textContent = (body.matched > rows.length)
+      ? 'Showing ' + rows.length + ' of ' + body.matched
+      : rows.length + (rows.length === 1 ? ' blog' : ' blogs');
+  }
+
+  function showMsg(text, kind) {
+    var el = document.getElementById('msg');
+    if (!text) { el.className = 'adm-msg'; el.textContent = ''; return; }
+    el.className = 'adm-msg show adm-msg--' + (kind || 'error');
+    el.textContent = text;
+    if (kind === 'info') window.setTimeout(function () {
+      if (el.textContent === text) { el.className = 'adm-msg'; el.textContent = ''; }
+    }, 4000);
+  }
+
+  // ── loading ──────────────────────────────────────────────────────────────
+
+  async function load() {
+    var qs = '?limit=200&sort=' + encodeURIComponent(state.sort);
+    if (state.status)   qs += '&status='   + encodeURIComponent(state.status);
+    if (state.q)        qs += '&q='        + encodeURIComponent(state.q);
+    if (state.category) qs += '&category=' + encodeURIComponent(state.category);
+
+    var r = await AdminAuth.apiRaw('/api/admin/posts' + qs);
+    if (r.status === 401 || r.status === 403) { window.location.href = '/admin/login'; return; }
+    if (!r.ok || !r.body) {
+      showMsg((r.body && r.body.error) || 'Could not load the blog list.');
+      document.getElementById('list-body').innerHTML = '<p class="adm-skeleton">Could not load blogs.</p>';
+      return;
+    }
+    showMsg('');
+    renderRows(r.body);
+  }
+
+  // The tab counts come from /stats, which counts in the database rather than
+  // counting the rows that happened to come back under the list's limit.
+  async function loadCounts() {
+    var r = await AdminAuth.apiRaw('/api/admin/stats?limit=1');
+    if (r.ok && r.body && r.body.counts) { state.counts = r.body.counts; renderTabs(); }
+  }
+
+  async function loadCategories() {
+    var r = await AdminAuth.apiRaw('/api/admin/options');
+    if (!r.ok || !r.body) return;
+    var sel = document.getElementById('category');
+    (r.body.categories || []).forEach(function (c) {
+      var name = typeof c === 'string' ? c : (c.name || '');
+      if (!name) return;
+      var o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+    });
+    // A category arriving from the URL is already in state; the <select> can
+    // only show it once its options exist.
+    if (state.category) sel.value = state.category;
+  }
+
+  async function refresh() { await Promise.all([load(), loadCounts()]); }
+
+  // ── row actions ──────────────────────────────────────────────────────────
+
+  function rowById(id) {
+    for (var i = 0; i < state.rows.length; i++) if (state.rows[i].id === id) return state.rows[i];
+    return null;
+  }
+
+  async function changeStatus(id, action) {
+    var r = rowById(id);
+    if (!r) return;
+
+    if (action === 'archive' && r.is_public &&
+        !window.confirm('Archive "' + r.title + '"?\n\nIt is live right now — archiving removes it from ' +
+                        'the site immediately. This can be undone by publishing it again.')) return;
+    if (action === 'save_draft' && r.is_public &&
+        !window.confirm('Unpublish "' + r.title + '"?\n\nIt is live right now and will disappear from the ' +
+                        'site immediately.')) return;
+
+    var res = await AdminAuth.apiRaw('/api/admin/posts/' + id + '/status', {
+      method: 'POST', body: JSON.stringify({ action: action }),
+    });
+
+    if (!res.ok) {
+      // A publish blocked by the checklist is not an error to shrug at — the
+      // fields are only fixable in the editor, so say that and offer to go.
+      var err = (res.body && res.body.error) || 'Could not change the status.';
+      if (res.status === 400 && /Complete these/.test(err)) {
+        if (window.confirm(err + '\n\nOpen the editor to fill them in?')) {
+          window.location.href = '/admin/blogs/' + id + '/edit';
+        }
+        return;
+      }
+      showMsg(err);
+      return;
+    }
+
+    var verb = { publish: 'published', save_draft: 'moved back to draft', archive: 'archived' }[action] || 'updated';
+    showMsg('"' + (res.body.post ? res.body.post.title : r.title) + '" ' + verb + '.', 'info');
+    await refresh();
+  }
+
+  async function deletePost(id) {
+    var r = rowById(id);
+    if (!r) return;
+
+    var warning = r.is_public
+      ? 'Delete "' + r.title + '"?\n\nThis post is LIVE. Deleting it will 404 its public URL for anyone ' +
+        'who has it bookmarked or linked.\n\nArchive removes it from the site and can be undone — ' +
+        'delete cannot.'
+      : 'Delete "' + r.title + '"?\n\nThis cannot be undone.';
+    if (!window.confirm(warning)) return;
+
+    var res = await AdminAuth.apiRaw('/api/admin/posts/' + id + (r.is_public ? '?confirm=live' : ''),
+      { method: 'DELETE' });
+    if (res.status === 409 && res.body && res.body.requires_confirm) {
+      if (!window.confirm(res.body.error + '\n\nDelete anyway?')) return;
+      res = await AdminAuth.apiRaw('/api/admin/posts/' + id + '?confirm=live', { method: 'DELETE' });
+    }
+    if (!res.ok) { showMsg((res.body && res.body.error) || 'Could not delete.'); return; }
+
+    showMsg('"' + r.title + '" was deleted.', 'info');
+    await refresh();
+  }
+
+  /* Preview renders the row through the REAL public renderer, so what opens is
+     the actual article page rather than an approximation. The draft is POSTed
+     and written into the tab — it never gets a public address.
+
+     The tab is opened synchronously, before the fetches, exactly as the editor
+     does: a window.open after an await is a pop-up blocker's definition of an
+     unwanted pop-up. */
+  async function previewPost(id) {
+    var win = window.open('', '_blank');
+    if (!win) { showMsg('Allow pop-ups on this site to use Preview.'); return; }
+    win.document.write('<p style="font-family:sans-serif;padding:2rem">Building preview…</p>');
+
+    try {
+      var full = await AdminAuth.apiRaw('/api/admin/posts/' + id);
+      if (!full.ok || !full.body || !full.body.post) {
+        win.close();
+        showMsg((full.body && full.body.error) || 'Could not load that blog for preview.');
+        return;
+      }
+
+      var res = await fetch('/api/admin/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + AdminAuth.token() },
+        body: JSON.stringify(full.body.post),
+      });
+      var html = await res.text();
+      if (!res.ok) { win.close(); showMsg('Could not build the preview.'); return; }
+      win.document.open(); win.document.write(html); win.document.close();
+    } catch (e) {
+      win.close();
+      showMsg('Preview failed: ' + e.message);
+    }
+  }
+
+  // ── wiring ───────────────────────────────────────────────────────────────
+
+  document.getElementById('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-status]');
+    if (!b) return;
+    state.status = b.dataset.status;
+    renderTabs();
+    load();
+  });
+
+  document.getElementById('list-body').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    var id = b.dataset.id;
+    var act = b.dataset.act;
+    if (act === 'delete')  { deletePost(id); return; }
+    if (act === 'preview') { previewPost(id); return; }
+    changeStatus(id, act);
+  });
+
+  document.getElementById('q').addEventListener('input', function (e) {
+    state.q = e.target.value.trim();
+    window.clearTimeout(timer);
+    timer = window.setTimeout(load, 250);
+  });
+
+  document.getElementById('category').addEventListener('change', function (e) {
+    state.category = e.target.value; load();
+  });
+  document.getElementById('sort').addEventListener('change', function (e) {
+    state.sort = e.target.value; load();
+  });
+
+  // Arriving from the Categories screen ("View blogs") pre-fills the filter, so
+  // the link lands on a filtered list rather than on everything.
+  function readQuery() {
+    var p = new URLSearchParams(window.location.search);
+    var cat = (p.get('category') || '').trim();
+    var st  = (p.get('status') || '').trim();
+    var q   = (p.get('q') || '').trim();
+    if (cat) { state.category = cat; }
+    if (TABS.some(function (t) { return t.key === st; })) state.status = st;
+    if (q) { state.q = q; document.getElementById('q').value = q; }
+  }
+
+  AdminAuth.guard(function (admin) {
+    AdminShell.mount({
+      active: 'blogs',
+      title: 'Blogs',
+      actions: '<a class="adm-btn adm-btn--sm" href="/admin/blogs/new" style="text-decoration:none">+ Add Blog</a>',
+    });
+    AdminShell.setEmail(admin.email || admin.id);
+    readQuery();
+    renderTabs();
+    loadCategories();
+    refresh();
+  });
+})();
+</script>
+
+</body>
+</html>
