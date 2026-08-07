@@ -118,8 +118,39 @@ function faqFromFrontmatter(value) {
 }
 
 /**
- * Finds an FAQ written as a body section — an "## FAQ" heading, then one
- * heading per question a level deeper, each followed by its answer.
+ * Recognises a line as the start of a question, in any of the shapes people
+ * actually write FAQs in. Returns the question text, or null.
+ *
+ *   ### What is AEO?          a heading deeper than the FAQ heading
+ *   **What is AEO?**          a bold line on its own, ending in a question mark
+ *   Q: What is AEO?           Q-prefixed, with or without bold
+ *   **Q. What is AEO?**
+ *
+ * Only these four; anything else in the section is treated as answer text.
+ */
+function questionFromLine(line, sectionLevel) {
+  const heading = line.match(/^(#{1,6})\s+(.+?)\s*$/);
+  if (heading && heading[1].length > sectionLevel) return heading[2].trim();
+
+  const qPrefixed = line.match(/^\s*(?:\*\*|__)?\s*Q\s*[:.]\s*(.+?)\s*(?:\*\*|__)?\s*$/i);
+  if (qPrefixed && qPrefixed[1].trim()) return qPrefixed[1].replace(/(\*\*|__)\s*$/, '').trim();
+
+  // A whole line in bold that asks something. The question mark is what keeps
+  // an emphasised sentence inside an answer from being read as a new question.
+  const boldOnly = line.match(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/);
+  if (boldOnly && /\?\s*$/.test(boldOnly[1])) return boldOnly[1].trim();
+
+  return null;
+}
+
+/** Drops a leading "A:" / "A." from an answer, bold or not. */
+function stripAnswerPrefix(text) {
+  return String(text).replace(/^\s*(?:\*\*|__)?\s*A\s*[:.]\s*/i, '');
+}
+
+/**
+ * Finds an FAQ written as a body section — an "## FAQ" heading followed by
+ * question/answer pairs in any of the shapes questionFromLine recognises.
  *
  * Returns the questions AND the line range they occupy, because the section has
  * to be removed from the body: the article template renders the FAQ as its own
@@ -128,11 +159,15 @@ function faqFromFrontmatter(value) {
 function faqFromBody(body) {
   const lines = body.split('\n');
 
+  // H2 to H4 only. An "# FAQ" is deliberately not recognised: at H1 the section
+  // runs until the next H1, so every ordinary "## Section" after it would be
+  // swallowed and read as a question. H1 is the article title's level anyway —
+  // a file that writes "# FAQ" should write "## FAQ".
   let start = -1;
   let level = 0;
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].match(/^(#{2,4})\s+(.+?)\s*$/);
-    if (m && FAQ_HEADING_RE.test(m[2].replace(/[:\-—]\s*$/, '').trim())) {
+    if (m && FAQ_HEADING_RE.test(m[2].replace(/[:\-—(]\s*.*$/, '').trim())) {
       start = i;
       level = m[1].length;
       break;
@@ -140,7 +175,8 @@ function faqFromBody(body) {
   }
   if (start === -1) return null;
 
-  // The section ends at the next heading of the same or higher rank.
+  // The section ends at the next heading of the same or higher rank — but a
+  // heading that is itself a question belongs to the FAQ, not after it.
   let end = lines.length;
   for (let i = start + 1; i < lines.length; i++) {
     const m = lines[i].match(/^(#{1,6})\s+/);
@@ -150,12 +186,13 @@ function faqFromBody(body) {
   const faq = [];
   let current = null;
   for (let i = start + 1; i < end; i++) {
-    const h = lines[i].match(/^(#{1,6})\s+(.+?)\s*$/);
-    if (h && h[1].length > level) {
+    const q = questionFromLine(lines[i], level);
+    if (q) {
       if (current && current.answer.trim()) faq.push(current);
-      current = { question: h[2].trim(), answer: '' };
+      current = { question: q, answer: '' };
     } else if (current) {
-      current.answer += (current.answer ? '\n' : '') + lines[i];
+      const text = current.answer ? lines[i] : stripAnswerPrefix(lines[i]);
+      current.answer += (current.answer ? '\n' : '') + text;
     }
   }
   if (current && current.answer.trim()) faq.push(current);
@@ -354,6 +391,7 @@ module.exports = {
   parseFrontmatter,
   quoteRiskyScalars,
   faqFromBody,
+  questionFromLine,
   relatedFromBody,
   splitDate,
   MAX_RELATED,

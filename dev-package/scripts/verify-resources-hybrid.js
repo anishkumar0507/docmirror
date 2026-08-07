@@ -470,8 +470,16 @@ function checkSecurity() {
 
 // ── 12. The real drafts stay private ────────────────────────────────────────
 
+/**
+ * The live database, whatever is in it.
+ *
+ * Written against the ACTUAL rows rather than a fixed list of test slugs, so it
+ * keeps meaning something as real posts are written, published and archived. It
+ * asks one question: does every row that should not be public stay out of every
+ * public surface?
+ */
 async function checkRealDrafts() {
-  group('12. The two real CMS drafts remain private');
+  group('12. Against the live database: nothing private is public');
 
   db._reset();
   const loaded = await db._load();
@@ -480,21 +488,45 @@ async function checkRealDrafts() {
     return;
   }
 
-  const posts = db.getPosts();
-  console.log(`    live query returned ${posts.length} publicly-eligible CMS post(s)`);
-  check('the query returns no draft', posts.length === 0, posts.map((p) => p.slug).join(', '));
+  const { getSupabaseClient } = require('../lib/supabase-client');
+  const { data: rows, error } = await getSupabaseClient()
+    .from('blog_posts').select('slug, title, status, published_at');
+  if (error) { console.log('  ~ skipped (could not read blog_posts)'); return; }
+
+  const now = Date.now();
+  const eligible = (rows || []).filter((r) =>
+    ['published', 'scheduled'].includes(r.status) && r.published_at && Date.parse(r.published_at) <= now);
+  const hidden = (rows || []).filter((r) => !eligible.includes(r));
+
+  console.log(`    ${rows.length} CMS row(s): ${eligible.length} publicly eligible, ${hidden.length} not`);
+  eligible.forEach((r) => console.log(`      public : ${r.slug}  (${r.status})`));
+  hidden.forEach((r) => console.log(`      hidden : ${r.slug}  (${r.status})`));
 
   const all = resources.getAllResources();
-  for (const slug of ['doc-mirror-cms-test-blog', 'cms-test-draft-step-e-verification']) {
-    check(`"${slug}" is absent from the public collection`, !all.some((p) => p.slug === slug));
-    check(`"${slug}" does not resolve by slug`, !resources.getResourceBySlug(slug));
-    check(`"${slug}" is absent from the sitemap`, !buildSitemapXml().includes(slug));
-  }
+  const sitemap = buildSitemapXml();
   const listing = views.renderListing();
-  check('neither draft appears on the listing',
-    !listing.includes('doc-mirror-cms-test-blog') && !listing.includes('cms-test-draft-step-e'));
-  check(`the public collection is still exactly the ${MD_COUNT} Markdown articles`,
-    all.length === MD_COUNT, String(all.length));
+
+  check('the CMS source returns exactly the eligible rows',
+    db.getPosts().length === eligible.length,
+    `${db.getPosts().length} vs ${eligible.length}`);
+  check('the collection is the Markdown articles plus those',
+    all.length === MD_COUNT + eligible.length, `${all.length} vs ${MD_COUNT + eligible.length}`);
+
+  for (const r of hidden) {
+    check(`"${r.slug}" (${r.status}) is not in the collection`, !all.some((p) => p.slug === r.slug));
+    check(`"${r.slug}" does not resolve by slug`, !resources.getResourceBySlug(r.slug));
+    check(`"${r.slug}" is not in the sitemap`, !sitemap.includes('/' + r.slug));
+    check(`"${r.slug}" is not on the listing`, !listing.includes('/resources/' + r.slug));
+  }
+  if (!hidden.length) console.log('    (no hidden rows to check right now)');
+
+  for (const r of eligible) {
+    check(`"${r.slug}" (${r.status}) IS public`, all.some((p) => p.slug === r.slug));
+    check(`"${r.slug}" is in the sitemap`, sitemap.includes('/' + r.slug));
+  }
+
+  check('every Markdown article is still present',
+    markdown.getAllResources().every((p) => all.some((x) => x.slug === p.slug)));
 }
 
 // ── main ────────────────────────────────────────────────────────────────────

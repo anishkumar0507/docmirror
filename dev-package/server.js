@@ -119,6 +119,15 @@ app.get('/resources',        warmResources, resourcesRoute.listingHandler);
 app.get('/resources/:slug',  warmResources, resourcesRoute.articleHandler);
 app.get('/pages/resources.html', (_req, res) => res.redirect(301, '/resources'));
 
+// ── /blog → /resources ───────────────────────────────────────────────────────
+// Articles have always lived under /resources, but /blog is what an author
+// reaches for when writing an internal link, and every such link used to land on
+// the homepage. These 301s send the reader to the real article and tell search
+// engines which URL is canonical — the same treatment the retired guide URLs
+// above already get. Nothing is served at /blog; it only ever redirects.
+app.get('/blog', (_req, res) => res.redirect(301, '/resources'));
+app.get('/blog/:slug', warmResources, resourcesRoute.blogRedirectHandler);
+
 // ── Sitemap ──────────────────────────────────────────────────────────────────
 // Built by lib/sitemap.js, which is also what `npm run sitemap` writes to
 // public/sitemap.xml. One builder, so the committed file and the URL Google
@@ -246,9 +255,12 @@ app.get('/favicon.ico', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'favicon.svg'));
 });
 
-app.get('*', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+// Anything that matched no route and no file is genuinely not here. This used to
+// serve index.html with HTTP 200, which told browsers and search engines that
+// every mistyped URL was a valid page — a typo looked like a redirect to the
+// homepage, and Google collected a duplicate homepage at every wrong address.
+// `/` is unaffected: express.static above serves public/index.html for it.
+app.get('*', resourcesRoute.notFoundHandler);
 
 // ── Startup health checks (non-blocking — do not prevent server from serving) ──
 // These run after the server is listening and log actionable errors if misconfigured.

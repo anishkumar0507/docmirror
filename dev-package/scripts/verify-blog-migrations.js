@@ -38,9 +38,10 @@ const NEW_FILES = [
   '020_blog_storage.sql',
   '021_profiles_admin_role.sql',
   '022_blog_schema_toggles.sql',
+  '023_blog_posts_public_view.sql',
 ];
 
-const LAST_MIGRATION = 22;
+const LAST_MIGRATION = 23;
 
 const NEW_TABLES = ['blog_categories', 'blog_posts', 'blog_media'];
 
@@ -335,9 +336,24 @@ function checkSchemaInvariants(files) {
   check('profiles.role is constrained to user/admin',
     /CHECK\s*\(\s*role\s+IN\s*\(\s*'user',\s*'admin'\s*\)\s*\)/i.test(role));
 
+  // 023 — the public view now matches the rule the site actually applies
+  const view = stripComments(files['023_blog_posts_public_view.sql']);
+  check('023 widens the view to include due scheduled posts',
+    /status\s+IN\s*\(\s*'published',\s*'scheduled'\s*\)/i.test(view));
+  check('023 keeps the published_at gate',
+    /published_at\s+IS\s+NOT\s+NULL[\s\S]*?published_at\s*<=\s*NOW\(\)/i.test(view));
+  check('023 keeps the view private',
+    /REVOKE\s+ALL\s+ON\s+TABLE\s+blog_posts_public\s+FROM\s+anon,\s*authenticated/i.test(view));
+  check('023 still grants the server',
+    /GRANT\s+SELECT\s+ON\s+TABLE\s+blog_posts_public\s+TO\s+service_role/i.test(view));
+  check('023 matches isPublic() in the application',
+    /status\s+IN\s*\(\s*'published',\s*'scheduled'\s*\)/i.test(view) &&
+    /published_at\s*<=\s*NOW\(\)/i.test(view));
+
   const schemaChanging = ['017_blog_categories.sql', '018_blog_posts.sql',
                           '019_blog_media.sql', '021_profiles_admin_role.sql',
-                          '022_blog_schema_toggles.sql'];
+                          '022_blog_schema_toggles.sql',
+                          '023_blog_posts_public_view.sql'];
   for (const f of schemaChanging) {
     check(`${f} reloads the PostgREST schema cache`, /NOTIFY\s+pgrst/i.test(files[f]));
   }

@@ -436,6 +436,56 @@ ${relatedBlock}
   });
 }
 
+// ── not found ──────────────────────────────────────────────────────────────
+
+// A real 404 page, in the site's own design. Previously ANY unknown URL fell
+// through to the catch-all and returned the HOMEPAGE with HTTP 200 — a mistyped
+// link looked like a redirect to the front page, and Google was handed a
+// duplicate copy of the homepage at every wrong address.
+//
+// Takes the requested path so it works for a missing article and for any other
+// unknown URL. Uses only classes that already exist in PAGE_CSS, so no styling
+// is added.
+function renderNotFound(requestedPath) {
+  const canonical = `${SITE}/resources`;
+  const recent = getAllResources().slice(0, 3);
+  const shown = String(requestedPath || '').split('?')[0].slice(0, 120);
+
+  const suggestions = recent.length
+    ? `<section class="res-related" aria-label="Recent guides">
+  <h2>Recent guides</h2>
+  <div class="res-grid">${recent.map(resourceCard).join('\n')}</div>
+</section>`
+    : '';
+
+  const body = `<div class="eyebrow">Not found</div>
+<h1>We couldn't find that page</h1>
+<p class="lede">The address <strong>${escapeHtml(shown)}</strong> doesn't match anything on The Doc Mirror. It may have been renamed, or the link that brought you here may have a typo.</p>
+<a class="back-link" href="/resources">&larr; Browse all resources</a>
+${suggestions}
+${CTA_BLOCK}`;
+
+  return renderShell({
+    title: 'Guide not found | The Doc Mirror',
+    description: 'That guide could not be found. Browse all Doc Mirror resources on doctor visibility in Google and AI search.',
+    canonical,
+    ogType: 'website',
+    ogImage: DEFAULT_OG_IMAGE,
+    // A 404 is not a thing to index, and it carries no article data.
+    jsonLd: JSON.stringify({
+      '@context': 'https://schema.org',
+      '@graph': [{
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Home', item: SITE },
+          { '@type': 'ListItem', position: 2, name: 'Resources', item: canonical },
+        ],
+      }],
+    }),
+    body,
+  });
+}
+
 // ── Express handlers ───────────────────────────────────────────────────────
 
 function listingHandler(_req, res) {
@@ -443,11 +493,49 @@ function listingHandler(_req, res) {
   res.send(renderListing());
 }
 
-function articleHandler(req, res, next) {
+function sendNotFound(req, res) {
+  res.status(404)
+    .set('Content-Type', 'text/html; charset=utf-8')
+    .set('X-Robots-Tag', 'noindex')
+    .send(renderNotFound(req.originalUrl || req.url));
+}
+
+/** The site-wide 404, for any URL that matched no route and no file. */
+function notFoundHandler(req, res) {
+  sendNotFound(req, res);
+}
+
+function articleHandler(req, res) {
   const post = getResourceBySlug(req.params.slug);
-  if (!post) return next();          // fall through to catch-all (index.html/SPA)
+  if (!post) return sendNotFound(req, res);
   res.set('Content-Type', 'text/html; charset=utf-8');
   res.send(renderArticle(post));
 }
 
-module.exports = { listingHandler, articleHandler, renderListing, renderArticle };
+/**
+ * /blog/:slug → /resources/:slug
+ *
+ * Articles have always lived under /resources, but /blog is the address people
+ * reach for when writing an internal link, and every one of those landed on the
+ * homepage instead of the article. A 301 sends the reader to the real page and
+ * tells search engines which address is canonical — the same treatment
+ * server.js already gives the retired /ai-visibility-for-doctors style URLs.
+ *
+ * A /blog slug with no article behind it gets the 404 page, not a redirect to
+ * an article that does not exist.
+ */
+function blogRedirectHandler(req, res) {
+  const post = getResourceBySlug(req.params.slug);
+  if (!post) return sendNotFound(req, res);
+  return res.redirect(301, post.url);
+}
+
+module.exports = {
+  listingHandler,
+  articleHandler,
+  blogRedirectHandler,
+  notFoundHandler,
+  renderListing,
+  renderArticle,
+  renderNotFound,
+};

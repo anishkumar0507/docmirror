@@ -26,6 +26,12 @@
    Exit 0 = no public regression.
    ────────────────────────────────────────────────────────────────────────── */
 
+// Loaded so this process can reach the CMS the same way the spawned server
+// does. Without it the server would serve published CMS posts that this process
+// had never fetched, and the two would be compared as if they disagreed.
+// The byte-identity group below still clears the CMS source explicitly.
+require('../lib/env');
+
 const fs      = require('fs');
 const path    = require('path');
 const http    = require('http');
@@ -261,13 +267,39 @@ function checkOrchestratorContract() {
   check('getResourceBySlug arity is unchanged (1)', orch.getResourceBySlug.length === md.getResourceBySlug.length);
   check('getRelated arity is unchanged (1)', orch.getRelated.length === md.getRelated.length);
 
-  group('3. warmResources is a transparent pass-through');
+}
+
+/**
+ * warmResources has two legitimate behaviours, and both matter:
+ *   warm/disabled → next() on the same call stack, so a page never waits for
+ *                   data already in memory
+ *   cold          → next() after the first load resolves; only the first
+ *                   request after a restart pays that
+ * What must never vary is that control is handed on exactly once.
+ */
+async function checkWarmResources() {
+  group('3. warmResources hands control on, in both states');
+
+  const orch = require('../lib/resources');
+  const db   = require('../lib/resources-db');
+
+  await orch.refresh();                       // make sure something is cached
 
   let called = 0;
   let synchronous = false;
   orch.warmResources({}, {}, () => { called++; synchronous = true; });
-  check('warmResources calls next() exactly once', called === 1, `called ${called}×`);
-  check('warmResources calls next() synchronously (no added latency)', synchronous);
+  check('warm: next() called exactly once', called === 1, `called ${called}×`);
+  check('warm: called synchronously — no added latency', synchronous);
+
+  db._reset();
+  called = 0;
+  await new Promise((resolve) => {
+    const timer = setTimeout(resolve, 20000);  // never hang the suite
+    orch.warmResources({}, {}, () => { called++; clearTimeout(timer); resolve(); });
+  });
+  check('cold: next() still called exactly once', called === 1, `called ${called}×`);
+
+  db._reset();
 }
 
 function checkDataEquivalence() {
@@ -317,10 +349,16 @@ function checkDataEquivalence() {
 }
 
 function checkRenderedOutput() {
-  group('5. The real renderer produces byte-identical HTML either way');
+  group('5. With no CMS posts, the renderer produces byte-identical HTML either way');
 
   const orch = require('../lib/resources');
   const md   = require('../lib/resources-markdown');
+
+  // This comparison only means anything with the CMS source empty: it asks
+  // whether the orchestrator changed how a Markdown-only site renders. With CMS
+  // posts loaded the two sides SHOULD differ, because one of them knows about
+  // posts the other cannot see. Cleared explicitly rather than assumed.
+  require('../lib/resources-db')._reset();
 
   const viewsNew  = loadWithEngine('../routes/resources', orch);
   const viewsOrig = loadWithEngine('../routes/resources', md);
@@ -421,10 +459,22 @@ async function checkLiveServer(opts, rendered) {
     check('GET /sitemap.xml content-type is XML',
       /xml/.test(responses['sitemap.xml'].headers['content-type'] || ''));
 
-    sameBytes('served /resources matches the rendered listing',
-      responses['resources.html'].body, Buffer.from(rendered.listing, 'utf8'));
-    sameBytes('served /sitemap.xml matches the built sitemap',
-      responses['sitemap.xml'].body, Buffer.from(rendered.sitemap, 'utf8'));
+    // Re-render in this process with the CMS source loaded, so both sides see
+    // the same articles. Without the warm-up the running server would include
+    // published CMS posts that this process has never fetched, and the two would
+    // differ for a reason that has nothing to do with the renderer.
+    const orch = require('../lib/resources');
+    await orch.refresh();
+    const views = loadWithEngine('../routes/resources', orch);
+    const liveListing = views.renderListing();
+    const liveSitemap = loadWithEngine('../lib/sitemap', orch).buildSitemapXml();
+
+    sameBytes('served /resources matches what this process renders',
+      responses['resources.html'].body, Buffer.from(liveListing, 'utf8'));
+    sameBytes('served /sitemap.xml matches what this process builds',
+      responses['sitemap.xml'].body, Buffer.from(liveSitemap, 'utf8'));
+    console.log(`    ${orch.getAllResources().length} articles in the collection ` +
+                `(${orch.cmsStatus().posts} from the CMS)`);
 
     // warmResources sits in front of these three routes; every article must
     // still resolve through it.
@@ -504,6 +554,7 @@ async function main() {
 
   checkPreservedImplementation();
   checkOrchestratorContract();
+  await checkWarmResources();
   checkDataEquivalence();
   const rendered = checkRenderedOutput();
 

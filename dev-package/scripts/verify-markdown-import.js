@@ -151,6 +151,72 @@ function checkBodyFaq() {
   check('the author is told what happened',
     r.notes.some((n) => /moved into the FAQ editor/.test(n)), r.notes.join(' | '));
 
+  group('  — the other shapes people write FAQs in');
+
+  const SHAPES = {
+    'bold questions': [
+      '## FAQ', '',
+      '**Does this get picked up?**', '', 'Yes, a bold line ending in a question mark.', '',
+      '**And a second one?**', '', 'Also yes.',
+    ],
+    'Q: / A: pairs': [
+      '## Frequently Asked Questions', '',
+      'Q: Does this get picked up?', 'A: Yes, the A prefix is stripped.', '',
+      'Q: And a second one?', 'A: Also yes.',
+    ],
+    'bold Q: pairs': [
+      '## FAQs', '',
+      '**Q: Does this get picked up?**', '', '**A:** Yes it does.', '',
+      '**Q: And a second one?**', '', 'Also yes.',
+    ],
+    'heading with a suffix': [
+      '## Frequently Asked Questions (FAQs)', '',
+      '### Does this get picked up?', '', 'Yes.', '',
+      '### And a second one?', '', 'Also yes.',
+    ],
+  };
+
+  for (const [label, sectionLines] of Object.entries(SHAPES)) {
+    const src = ['---', 'title: Shape test', '---', '', 'Intro.', '', ...sectionLines,
+                 '', '## After', '', 'Tail section.'].join('\n');
+    const out = parseMarkdownImport(src, {});
+    check(`${label}: both questions found`, out.fields.faq.length === 2,
+      JSON.stringify(out.fields.faq.map((f) => f.question)));
+    check(`${label}: question text is clean`,
+      (out.fields.faq[0] || {}).question === 'Does this get picked up?',
+      (out.fields.faq[0] || {}).question);
+    check(`${label}: answer captured, prefix stripped`,
+      /^Yes/.test((out.fields.faq[0] || {}).answer || ''), (out.fields.faq[0] || {}).answer);
+    check(`${label}: section removed from the body`,
+      !/get picked up/.test(out.fields.content_md));
+    check(`${label}: the section after it survives`,
+      /Tail section/.test(out.fields.content_md));
+  }
+
+  group('  — an H1 FAQ heading is deliberately NOT treated as a section');
+  const h1Faq = parseMarkdownImport([
+    '---', 'title: x', '---', '', '# FAQ', '',
+    '## A question?', '', 'An answer.', '',
+    '## An ordinary section', '', 'Ordinary prose.',
+  ].join('\n'), {});
+  check('no FAQ extracted from an H1 heading', h1Faq.fields.faq.length === 0,
+    JSON.stringify(h1Faq.fields.faq.map((f) => f.question)));
+  check('so the ordinary section that follows is not swallowed',
+    /An ordinary section/.test(h1Faq.fields.content_md) && /Ordinary prose/.test(h1Faq.fields.content_md));
+
+  group('  — a bold sentence inside an answer is not mistaken for a question');
+  const emphasised = parseMarkdownImport([
+    '---', 'title: x', '---', '', '## FAQ', '',
+    '### A real question?', '',
+    'An answer that contains **an emphasised statement** inline.', '',
+    '**This whole line is bold but is not a question.**', '',
+    'More of the same answer.',
+  ].join('\n'), {});
+  check('only the heading counted as a question', emphasised.fields.faq.length === 1,
+    JSON.stringify(emphasised.fields.faq.map((f) => f.question)));
+  check('the bold line stayed in the answer',
+    /not a question/.test(emphasised.fields.faq[0].answer), emphasised.fields.faq[0].answer);
+
   const fmWins = parseMarkdownImport([
     '---', 'title: x', 'faq:', '  - question: From frontmatter', '    answer: Yes.', '---', '',
     '## FAQ', '', '### From the body', '', 'Should be ignored.',
