@@ -44,6 +44,9 @@
 .dm-social-chip:hover{background:rgba(0,168,120,.18);color:#00A878}\
 .dm-footer-divider{height:1px;background:rgba(255,255,255,.12);margin:24px 0 0}\
 .dm-footer-bottom{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.95rem;text-align:center;max-width:1200px;width:100%}\
+.dm-footer-legal{margin:0 auto;padding-top:24px;color:rgba(255,255,255,.55);font-size:0.85rem;text-align:center;max-width:1200px;width:100%}\
+.dm-footer-legal + .dm-footer-bottom{padding-top:8px}\
+[data-company-row][hidden]{display:none}\
 @media(max-width:960px){.dm-footer-grid{grid-template-columns:1fr 1fr;gap:28px 24px}.dm-footer-brand{grid-column:1 / -1}}\
 @media(max-width:768px){.dm-footer{padding:36px 1rem 18px}.dm-footer-card{padding:28px 22px 18px}.dm-footer-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px 24px}.dm-footer-brand{grid-column:1 / -1}.dm-footer-links{gap:0.65rem}.dm-footer-col h4{margin-bottom:0.8rem;padding-bottom:0.65rem}}\
 @media(max-width:420px){.dm-footer-card{padding:24px 16px 16px}.dm-footer-grid{grid-template-columns:1fr 1fr;gap:26px 16px}.dm-footer-col h4{font-size:0.78rem;letter-spacing:.12em}.dm-footer-links a{font-size:0.88rem}.dm-footer-brand p{font-size:0.88rem}}\
@@ -98,7 +101,7 @@
         <h4>COMPANY</h4>\
         <div class="dm-footer-links">\
           <a href="/about">About Us</a>\
-          <a href="/about#contact">Contact</a>\
+          <a href="/contact">Contact</a>\
           <a href="/privacy">Privacy</a>\
           <a href="/terms">Terms</a>\
         </div>\
@@ -108,14 +111,107 @@
         <div class="dm-footer-links">\
           <a href="/#faq">FAQ</a>\
           <a href="/help-center">Help Center</a>\
-          <a href="/about#contact">Contact Support</a>\
+          <a href="/contact">Contact Support</a>\
         </div>\
       </div>\
     </div>\
     <div class="dm-footer-divider"></div>\
-    <div class="dm-footer-bottom">© 2026 The Doc Mirror. All rights reserved.</div>\
+    <div class="dm-footer-legal" data-company-row hidden>The Doc Mirror is a product of <span data-company="legalEntity"></span>.</div>\
+    <div class="dm-footer-bottom">© 2026 <span data-company="legalEntityDisplay">The Doc Mirror</span>. All rights reserved.</div>\
   </div>\
 </footer>';
+
+  // Fill every [data-company="key"] element on the page (footer + homepage +
+  // contact + policy pages) from lib/company.js, surfaced via /api/client-config.
+  // Single source of truth — nothing hardcodes the entity name. An empty value
+  // (e.g. address/phone not filled in yet) hides its [data-company-row] wrapper
+  // entirely rather than rendering an empty line.
+  function fillCompany(company) {
+    if (!company) return;
+    var els = document.querySelectorAll('[data-company]');
+    for (var i = 0; i < els.length; i++) {
+      var el  = els[i];
+      var val = company[el.getAttribute('data-company')];
+      var row = el.closest('[data-company-row]');
+      if (val) {
+        el.textContent = val;
+        if (el.hasAttribute('data-company-mailto')) el.setAttribute('href', 'mailto:' + val);
+        if (el.hasAttribute('data-company-tel'))    el.setAttribute('href', 'tel:' + val.replace(/\s+/g, ''));
+        if (row) row.hidden = false;
+      } else if (row) {
+        row.hidden = true;   // omit empty address/phone rows entirely
+      }
+    }
+  }
+
+  function loadCompany() {
+    if (!document.querySelector('[data-company]')) return; // nothing to fill on this page
+    fetch('/api/client-config', { headers: { Accept: 'application/json' } })
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) { fillCompany(cfg && cfg.company); })
+      .catch(function () { /* leave brand fallback in place on failure */ });
+  }
+
+  // ── Session state (nav display only) ──────────────────────────────────────
+  // The nav reflects whether a session token is present so a logged-in visitor
+  // never sees a misleading "Log In" button. This is DISPLAY ONLY — every gated
+  // action (dashboard, report unlock) is still verified server-side against the
+  // token. A stale/expired token here just means clicking "Dashboard" re-validates
+  // and bounces to login, which is correct.
+  function isLoggedIn() {
+    try { return !!localStorage.getItem('tdm_access_token'); } catch (e) { return false; }
+  }
+
+  // Deliberate logout = a full fresh start: drop the session AND any cached audit /
+  // preview / unlock state, and revoke the Supabase session if that client is
+  // present on this page. After this the site behaves like a first-time visit.
+  function clearAllSession() {
+    var keys = [
+      'tdm_access_token', 'tdm_refresh_token', 'tdm_user_id', 'tdm_user_email',
+      'tdm_checkout_email', 'docmirrorPreviewReport', 'tdm_audit_result', 'tdm_free_preview'
+    ];
+    keys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+  }
+
+  function tdmLogout(ev) {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    function finish() { clearAllSession(); window.location.href = '/'; }
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        fetch('/api/client-config').then(function (r) { return r.json(); }).then(function (cfg) {
+          try {
+            if (cfg && cfg.supabaseUrl && cfg.supabaseAnonKey) {
+              var sc = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+              var at = localStorage.getItem('tdm_access_token');
+              var rt = localStorage.getItem('tdm_refresh_token');
+              if (at && rt) { sc.auth.setSession({ access_token: at, refresh_token: rt }).then(function () { sc.auth.signOut().then(finish, finish); }, finish); return; }
+            }
+          } catch (e) {}
+          finish();
+        }, finish);
+        return;
+      }
+    } catch (e) {}
+    finish();
+  }
+  window.tdmLogout = tdmLogout;
+
+  // Swap the static "Log In" link for "Dashboard" + "Log out" when a session
+  // exists, so the header is never inconsistent with the actual login state.
+  function applyNavAuth() {
+    var loginLink = document.querySelector('.dm-nav-login');
+    if (!loginLink || !isLoggedIn()) return; // logged out → keep "Log In"
+    loginLink.textContent = 'Dashboard';
+    loginLink.setAttribute('href', '/dashboard.html');
+    if (!document.querySelector('.dm-nav-logout')) {
+      var out = document.createElement('a');
+      out.className = 'dm-nav-login dm-nav-logout';
+      out.href = '/';
+      out.textContent = 'Log out';
+      out.addEventListener('click', tdmLogout);
+      loginLink.parentNode.insertBefore(out, loginLink.nextSibling);
+    }
+  }
 
   function mount() {
     if (!document.getElementById('dm-layout-css')) {
@@ -128,6 +224,8 @@
     if (h) h.innerHTML = HEADER;
     var f = document.getElementById('dm-footer');
     if (f) f.innerHTML = FOOTER;
+    applyNavAuth();  // reflect login state in the nav
+    loadCompany(); // fill footer + page-level [data-company] spans
   }
 
   if (document.readyState === 'loading') {

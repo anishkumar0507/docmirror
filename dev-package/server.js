@@ -39,6 +39,7 @@ const verifySubPaymentHandler     = require('./routes/verify-subscription-paymen
 const cancelSubHandler            = require('./routes/cancel-subscription');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
+const generateReportEntitledHandler = require('./routes/generate-report-entitled');
 const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
@@ -83,6 +84,7 @@ const CLEAN_PAGES = {
   '/privacy':                       'privacy.html',
   '/terms':                         'terms.html',
   '/about':                         'about.html',
+  '/contact':                       'contact.html',
   '/pricing':                       'pricing.html',
   '/help-center':                   'help-center.html',
 };
@@ -200,6 +202,7 @@ app.post('/api/checkout-subscription',        checkoutSubHandler);
 app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
 app.post('/api/cancel-subscription',          cancelSubHandler);        // stop auto-pay now, keep access until cycle end
 app.post('/api/generate-report',              generateReportHandler);  // pipeline stage 1: insights
+app.post('/api/generate-report-entitled',     generateReportEntitledHandler);  // auth + entitlement-gated generation (subscribers; no order)
 app.post('/api/render-pdf',                   renderPdfHandler);        // pipeline stage 2: pdf
 app.post('/api/send-report-email',            sendReportEmailHandler);  // pipeline stage 3: email
 app.get('/api/reconcile',                     reconcileHandler);        // safety-net (Vercel cron)

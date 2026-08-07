@@ -445,8 +445,7 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
     </div>
 
     <div class="nav-section-label">Overview</div>
-    <a class="nav-link active" href="#campaign" id="nav-campaign"><span class="icon">📣</span>Topical Campaign</a>
-    <a class="nav-link" href="#exec"><span class="icon">📋</span>Executive Summary</a>
+    <a class="nav-link active" href="#exec" id="nav-exec"><span class="icon">📋</span>Executive Summary</a>
     <a class="nav-link" href="#score"><span class="icon">📊</span>Visibility Score</a>
     <a class="nav-link" href="#trend"><span class="icon">📈</span>Score Trend</a>
     <a class="nav-link" href="#reports"><span class="icon">📄</span>Reports &amp; PDFs</a>
@@ -497,11 +496,6 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
         <div class="avatar" id="topbar-av">DR</div>
       </div>
     </div>
-
-    <!-- 1. Topical Campaign Banner -->
-    <section id="campaign">
-      <div id="campaign-content"></div>
-    </section>
 
     <!-- 1b. Executive Summary -->
     <section id="exec" class="section">
@@ -554,7 +548,7 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
         <div class="section-title">Reports &amp; PDFs</div>
       </div>
       <div class="reports-list" id="reports-list">
-        <div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div><div class="empty-sub">After your first paid audit, your PDF will appear here and be emailed to you.</div></div>
+        <div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div><div class="empty-sub">Run a check and your report will generate here automatically — included in your Monitor plan.</div></div>
       </div>
     </section>
 
@@ -733,7 +727,11 @@ async function checkAuth() {
   // shown an upgrade gate (not silently bounced) with a plan-specific message and
   // a CTA into the Monitor checkout, which reuses their account.
   var plan = _profile ? (_profile.plan || 'free') : 'free';
-  if (plan !== 'monitor') {
+  // Monitor-feature gate routes through the server-computed entitlement (single
+  // source of truth), falling back to plan only if the field is absent.
+  var _ent = _profile && _profile.entitlement;
+  var hasMonitor = _ent ? !!_ent.hasMonitorFeatures : (plan === 'monitor');
+  if (!hasMonitor) {
     var isAudit = (plan === 'audit');
     var headline = isAudit ? 'Upgrade to Unlock Your Dashboard' : 'Dashboard Requires Monitor Plan';
     var message = isAudit
@@ -770,8 +768,12 @@ function api(url) {
 }
 
 async function doLogout() {
-  if (_supabase) await _supabase.auth.signOut();
-  ['tdm_access_token','tdm_refresh_token','tdm_user_id','tdm_user_email'].forEach(function(k){ localStorage.removeItem(k); });
+  if (_supabase) { try { await _supabase.auth.signOut(); } catch(e) {} }
+  // Full fresh start: drop the session AND any cached audit/preview/unlock state,
+  // so logging out truly resets the site to a first-time visit.
+  ['tdm_access_token','tdm_refresh_token','tdm_user_id','tdm_user_email',
+   'tdm_checkout_email','docmirrorPreviewReport','tdm_audit_result','tdm_free_preview']
+    .forEach(function(k){ try { localStorage.removeItem(k); } catch(e) {} });
   window.location.href = '/';
 }
 
@@ -872,7 +874,7 @@ function initDashboard(profile, reports) {
   el('practice-sub').textContent  = [specialty, city].filter(Boolean).join(' · ') + ' · Monitor active';
   el('topbar-av').textContent    = initials;
   el('topbar-av').title          = doctorName;
-  el('week-label').textContent   = 'Week of ' + weekOf();
+  el('week-label').textContent   = today();
 
   // Settings
   el('settings-email').textContent = email;
@@ -909,7 +911,6 @@ function initDashboard(profile, reports) {
   populateSeoHealth(latest);
 
   // All sections — monitor plan only (non-monitor users are blocked in checkAuth)
-  populateCampaign(specialty);
   populateExecSummary(insights, latest);
   populateAiTracker(specialty, city, latest);
   populateCompetitors(latest, plan, insights);
@@ -1153,9 +1154,12 @@ function populateTrend(reports) {
 function populateReports(reports) {
   var c = el('reports-list'); if (!c) return;
   if (!reports || !reports.length) {
+    // Only Monitor subscribers reach the dashboard, so this empty state is always
+    // a subscriber — no payment language. Running a check generates the full
+    // report automatically (entitlement-gated server-side; no payment).
     c.innerHTML = '<div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div>' +
-      '<div class="empty-sub">After your first paid audit, your PDF will appear here.</div>' +
-      '<a href="/" style="display:inline-block;margin-top:12px;background:#0A2540;color:#fff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.85rem">Get your first report →</a></div>';
+      '<div class="empty-sub">Run a check and your report will generate here automatically — included in your Monitor plan.</div>' +
+      '<a href="/" style="display:inline-block;margin-top:12px;background:#00A878;color:#fff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.85rem">Run a check →</a></div>';
     return;
   }
   c.innerHTML = reports.map(function(r, i) {
@@ -1199,44 +1203,6 @@ function populateReports(reports) {
         : '<button class="dl-btn" disabled style="opacity:.4;cursor:not-allowed">Generating&hellip;</button>') +
       '</div>';
   }).join('');
-}
-
-// ── TOPICAL CAMPAIGN ─────────────────────────────────────────────────────
-var MONTHLY_CAMPAIGNS = {
-  0:  { title: 'Cervical Cancer Prevention Month', sub: 'January is Cervical Cancer Prevention Month. Patients are searching for screening information. Your content pack is ready to launch.' },
-  1:  { title: 'Heart Health Month', sub: 'February is American Heart Month. Cardiac health searches peak this month. We have a full campaign ready for you.' },
-  2:  { title: 'Colorectal Cancer Awareness Month', sub: 'March focuses on colorectal health. Your specialty-matched content for this awareness month is prepared.' },
-  3:  { title: 'Oral Health Month', sub: 'April is Oral Health Month. Patient searches around dental and oral health are elevated this month.' },
-  4:  { title: 'Mental Health Awareness Month', sub: 'May is Mental Health Awareness Month. Patients are searching for mental wellness and stress management information.' },
-  5:  { title: 'Hypertension &amp; Heart Health Awareness', sub: 'June is World Hypertension Month. Blood pressure and cardiac screening searches are up 2× this month. Your awareness campaign is ready.' },
-  6:  { title: 'UV Safety &amp; Skin Health Month', sub: 'July is UV Safety Month. Patients are searching for sun protection and dermatology advice.' },
-  7:  { title: 'Eye Health Month', sub: 'August prepares for World Sight Day. Vision health searches peak. Your eye health content is ready.' },
-  8:  { title: 'Thyroid &amp; PCOS Awareness Month', sub: 'September is Thyroid Awareness Month. Hormonal health searches are elevated — your campaign is ready.' },
-  9:  { title: 'Breast Cancer Awareness Month', sub: 'October is the highest-traffic month for cancer screening searches. Your campaign is prepared.' },
-  10: { title: 'Lung Cancer Awareness Month', sub: 'November is Lung Cancer Awareness Month. Respiratory health searches are elevated this month.' },
-  11: { title: 'Year-End Wellness Month', sub: 'December: patients are searching for year-end health check-ups. Your wellness campaign is ready to launch.' },
-};
-
-function populateCampaign(specialty) {
-  var month = new Date().getMonth();
-  var cam   = MONTHLY_CAMPAIGNS[month];
-  el('campaign-content').innerHTML =
-    '<div class="campaign-banner">' +
-    '<div class="campaign-eyebrow">This Month &middot; Active Campaign</div>' +
-    '<div class="campaign-title">' + cam.title + '</div>' +
-    '<p class="campaign-sub">' + cam.sub + (specialty ? ' Matched to your specialty: <strong>' + escH(specialty) + '</strong>.' : '') + '</p>' +
-    '<div class="campaign-activating">Your full topical content pack is being prepared below. Click &ldquo;Content Pack&rdquo; in the sidebar to view this week\'s ready-to-publish pieces.</div>' +
-    '</div>';
-}
-
-function populateCampaignLocked() {
-  el('campaign-content').innerHTML =
-    '<div class="locked-card" style="background:linear-gradient(135deg,#f5f0ff,#fff);border-color:var(--purple-light)">' +
-    '<div class="lock-icon">📣</div>' +
-    '<h3>Topical Campaign Engine</h3>' +
-    '<p>Every month we prepare a full awareness campaign matched to your specialty — content, schedule, and patient messaging, ready to publish.</p>' +
-    '<a href="/pages/checkout-subscription.html" class="locked-btn" style="background:var(--purple)">Unlock Campaign Engine →</a>' +
-    '</div>';
 }
 
 // ── AI RANK TRACKER ──────────────────────────────────────────────────────
@@ -1761,6 +1727,11 @@ function weekOf() {
   var mon = new Date(d);
   mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return mon.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// Today's date for the top-bar pill (replaces the "Week of …" label).
+function today() {
+  return new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 }
 
 // ── SCROLL-BASED ACTIVE NAV HIGHLIGHT ─────────────────────────────────────

@@ -3,6 +3,15 @@
 require('../../lib/env');
 const { getSupabaseClient, withSupabaseRetry } = require('../../lib/supabase-client');
 const { requireAuth } = require('../../lib/auth-middleware');
+const { getEntitlement } = require('../../lib/entitlements');
+
+// finalize the plan (lazy expiry / audit upgrade) then attach the single-source
+// entitlement so the dashboard gates on getEntitlement(), not an inline plan check.
+async function respond(res, supabase, profile, user) {
+  const finalized = await finalizePlan(supabase, profile, user);
+  const entitlement = await getEntitlement(user.id);
+  return res.json({ ...finalized, entitlement });
+}
 
 async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -35,10 +44,10 @@ async function handler(req, res) {
       console.error('[user/me] profile upsert failed:', insertErr.message);
       return res.status(500).json({ error: 'Could not load profile' });
     }
-    return res.json(await finalizePlan(supabase, inserted, req.user));
+    return respond(res, supabase, inserted, req.user);
   }
 
-  return res.json(await finalizePlan(supabase, profile, req.user));
+  return respond(res, supabase, profile, req.user);
 }
 
 // Resolve the effective plan on read: first expire a cancelled Monitor whose paid
