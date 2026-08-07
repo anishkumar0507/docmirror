@@ -152,6 +152,67 @@
       .catch(function () { /* leave brand fallback in place on failure */ });
   }
 
+  // ── Session state (nav display only) ──────────────────────────────────────
+  // The nav reflects whether a session token is present so a logged-in visitor
+  // never sees a misleading "Log In" button. This is DISPLAY ONLY — every gated
+  // action (dashboard, report unlock) is still verified server-side against the
+  // token. A stale/expired token here just means clicking "Dashboard" re-validates
+  // and bounces to login, which is correct.
+  function isLoggedIn() {
+    try { return !!localStorage.getItem('tdm_access_token'); } catch (e) { return false; }
+  }
+
+  // Deliberate logout = a full fresh start: drop the session AND any cached audit /
+  // preview / unlock state, and revoke the Supabase session if that client is
+  // present on this page. After this the site behaves like a first-time visit.
+  function clearAllSession() {
+    var keys = [
+      'tdm_access_token', 'tdm_refresh_token', 'tdm_user_id', 'tdm_user_email',
+      'tdm_checkout_email', 'docmirrorPreviewReport', 'tdm_audit_result', 'tdm_free_preview'
+    ];
+    keys.forEach(function (k) { try { localStorage.removeItem(k); } catch (e) {} });
+  }
+
+  function tdmLogout(ev) {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    function finish() { clearAllSession(); window.location.href = '/'; }
+    try {
+      if (window.supabase && typeof window.supabase.createClient === 'function') {
+        fetch('/api/client-config').then(function (r) { return r.json(); }).then(function (cfg) {
+          try {
+            if (cfg && cfg.supabaseUrl && cfg.supabaseAnonKey) {
+              var sc = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+              var at = localStorage.getItem('tdm_access_token');
+              var rt = localStorage.getItem('tdm_refresh_token');
+              if (at && rt) { sc.auth.setSession({ access_token: at, refresh_token: rt }).then(function () { sc.auth.signOut().then(finish, finish); }, finish); return; }
+            }
+          } catch (e) {}
+          finish();
+        }, finish);
+        return;
+      }
+    } catch (e) {}
+    finish();
+  }
+  window.tdmLogout = tdmLogout;
+
+  // Swap the static "Log In" link for "Dashboard" + "Log out" when a session
+  // exists, so the header is never inconsistent with the actual login state.
+  function applyNavAuth() {
+    var loginLink = document.querySelector('.dm-nav-login');
+    if (!loginLink || !isLoggedIn()) return; // logged out → keep "Log In"
+    loginLink.textContent = 'Dashboard';
+    loginLink.setAttribute('href', '/dashboard.html');
+    if (!document.querySelector('.dm-nav-logout')) {
+      var out = document.createElement('a');
+      out.className = 'dm-nav-login dm-nav-logout';
+      out.href = '/';
+      out.textContent = 'Log out';
+      out.addEventListener('click', tdmLogout);
+      loginLink.parentNode.insertBefore(out, loginLink.nextSibling);
+    }
+  }
+
   function mount() {
     if (!document.getElementById('dm-layout-css')) {
       var style = document.createElement('style');
@@ -163,6 +224,7 @@
     if (h) h.innerHTML = HEADER;
     var f = document.getElementById('dm-footer');
     if (f) f.innerHTML = FOOTER;
+    applyNavAuth();  // reflect login state in the nav
     loadCompany(); // fill footer + page-level [data-company] spans
   }
 
