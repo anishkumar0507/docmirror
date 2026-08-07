@@ -1425,23 +1425,119 @@ function unlockFullReport(opts) {
 // state comes from GET /api/payment-status. ?paid and ?demo are ignored entirely,
 // so /preview-report.html?paid=1 or ?demo=1 shows the free preview only.
 (function () {
+  // A concrete report id, if one is in the URL. The FREE homepage check never mints
+  // an auditId (that only happens at checkout), so on a "Run a new check" there is
+  // usually NO id here — the subscriber path below handles that from the token.
   function getReportId() {
     try {
       var p = new URLSearchParams(window.location.search);
-      return (p.get('reportId') || p.get('auditId') || '').trim();
-    } catch (e) { return ''; }
+      var id = (p.get('reportId') || p.get('auditId') || '').trim();
+      if (id) return id;
+    } catch (e) {}
+    try {
+      var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
+      if (raw) { var d = JSON.parse(raw); if (d && d.auditId) return String(d.auditId).trim(); }
+    } catch (e) {}
+    return '';
   }
 
-  var reportId = getReportId();
-  if (!reportId) return;  // no reportId → free preview (default locked state)
+  // The raw audit object from the just-run free check (no server id yet).
+  function readLocalAudit() {
+    try {
+      var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return null;
+  }
 
-  fetch('/api/payment-status?reportId=' + encodeURIComponent(reportId), { cache: 'no-store' })
-    .then(function (r) { return r.json(); })
-    .then(function (res) {
-      // Unlock ONLY when the backend confirms a verified payment.
-      if (res && res.paid === true) unlockFullReport();
+  var reportId   = getReportId();
+  var localAudit = readLocalAudit();
+  // Nothing to show and no id → default locked free preview.
+  if (!reportId && !localAudit) return;
+
+  // Load the Supabase UMD client on demand (only if not already present).
+  function ensureSupabase(cb) {
+    if (window.supabase) return cb();
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js';
+    s.onload = cb; s.onerror = function () { cb(); };
+    document.head.appendChild(s);
+  }
+
+  // Obtain a FRESH session token via the same session-restore the dashboard uses,
+  // so a subscriber landing here — even via a direct URL — is recognised. The
+  // SERVER decides entitlement from the verified token; nothing here is trusted.
+  // No token / not a subscriber → existing free/paywall behaviour, unchanged.
+  function withToken(cb) {
+    ensureSupabase(function () {
+      var at = null, rt = null;
+      try { at = localStorage.getItem('tdm_access_token'); rt = localStorage.getItem('tdm_refresh_token'); } catch (e) {}
+      if (!window.supabase || !at || !rt) return cb(at);
+      fetch('/api/client-config').then(function (r) { return r.json(); }).then(function (cfg) {
+        if (!cfg || !cfg.supabaseUrl || !cfg.supabaseAnonKey) return cb(at);
+        try {
+          var sc = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+          sc.auth.setSession({ access_token: at, refresh_token: rt }).then(function (s) {
+            var sess = s && s.data && s.data.session;
+            if (sess) { try { localStorage.setItem('tdm_access_token', sess.access_token); localStorage.setItem('tdm_refresh_token', sess.refresh_token); } catch (e) {} }
+            cb(sess ? sess.access_token : at);
+          }).catch(function () { cb(at); });
+        } catch (e) { cb(at); }
+      }).catch(function () { cb(at); });
+    });
+  }
+
+  // Entitled-subscriber unlock: the SERVER decides entitlement from the verified
+  // token (never from anything the client sends). We hand it the raw audit data so
+  // it can mint an id + generate the PDF for a fresh check. `entitled:true` unlocks
+  // the on-page report; not entitled → paywall stays, unchanged.
+  function subscriberUnlock(token) {
+    if (!token) return;
+    fetch('/api/generate-report-entitled', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ auditId: reportId || undefined, auditData: localAudit || undefined })
     })
-    .catch(function () { /* fail closed — stay on free preview */ });
+      .then(function (r) { return r.json(); })
+      .then(function (res) { if (res && res.entitled === true) unlockFullReport(); })
+      .catch(function () { /* fail closed — stay on free preview */ });
+  }
+
+  withToken(function (token) {
+    // CASE A — a concrete report id (a $19 report re-opened, or a shared link).
+    // payment-status is the source of truth: it covers both the one-time paid
+    // report AND an entitled subscriber viewing it.
+    if (reportId) {
+      var headers = {};
+      if (token) headers['Authorization'] = 'Bearer ' + token;
+      fetch('/api/payment-status?reportId=' + encodeURIComponent(reportId), { cache: 'no-store', headers: headers })
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res && res.paid === true) {
+            unlockFullReport();
+            // Subscriber (server said 'entitled'): make sure the DATA + PDF exist
+            // and are persisted to Reports & PDFs. Re-checked server side.
+            if (res.status === 'entitled' && token) {
+              fetch('/api/generate-report-entitled', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ auditId: reportId, auditData: localAudit || undefined })
+              }).catch(function () {});
+            }
+            return;
+          }
+          // Not paid via the one-time path — but a logged-in subscriber still gets
+          // access. Let the server decide from the token.
+          if (token && localAudit) subscriberUnlock(token);
+        })
+        .catch(function () { if (token && localAudit) subscriberUnlock(token); });
+      return;
+    }
+
+    // CASE B — fresh free check, no id. Only a logged-in subscriber unlocks it;
+    // anonymous visitors keep the free preview + paywall (unchanged).
+    if (token && localAudit) subscriberUnlock(token);
+  });
 })();
 </script>
 

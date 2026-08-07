@@ -554,7 +554,7 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
         <div class="section-title">Reports &amp; PDFs</div>
       </div>
       <div class="reports-list" id="reports-list">
-        <div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div><div class="empty-sub">After your first paid audit, your PDF will appear here and be emailed to you.</div></div>
+        <div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div><div class="empty-sub">Run a check and your report will generate here automatically — included in your Monitor plan.</div></div>
       </div>
     </section>
 
@@ -733,7 +733,11 @@ async function checkAuth() {
   // shown an upgrade gate (not silently bounced) with a plan-specific message and
   // a CTA into the Monitor checkout, which reuses their account.
   var plan = _profile ? (_profile.plan || 'free') : 'free';
-  if (plan !== 'monitor') {
+  // Monitor-feature gate routes through the server-computed entitlement (single
+  // source of truth), falling back to plan only if the field is absent.
+  var _ent = _profile && _profile.entitlement;
+  var hasMonitor = _ent ? !!_ent.hasMonitorFeatures : (plan === 'monitor');
+  if (!hasMonitor) {
     var isAudit = (plan === 'audit');
     var headline = isAudit ? 'Upgrade to Unlock Your Dashboard' : 'Dashboard Requires Monitor Plan';
     var message = isAudit
@@ -1153,9 +1157,12 @@ function populateTrend(reports) {
 function populateReports(reports) {
   var c = el('reports-list'); if (!c) return;
   if (!reports || !reports.length) {
+    // Only Monitor subscribers reach the dashboard, so this empty state is always
+    // a subscriber — no payment language. Running a check generates the full
+    // report automatically (entitlement-gated server-side; no payment).
     c.innerHTML = '<div class="empty-card"><div class="empty-icon">📄</div><div class="empty-title">No reports yet</div>' +
-      '<div class="empty-sub">After your first paid audit, your PDF will appear here.</div>' +
-      '<a href="/" style="display:inline-block;margin-top:12px;background:#0A2540;color:#fff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.85rem">Get your first report →</a></div>';
+      '<div class="empty-sub">Run a check and your report will generate here automatically — included in your Monitor plan.</div>' +
+      '<a href="/" style="display:inline-block;margin-top:12px;background:#00A878;color:#fff;padding:9px 20px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.85rem">Run a check →</a></div>';
     return;
   }
   c.innerHTML = reports.map(function(r, i) {
