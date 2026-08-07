@@ -880,7 +880,7 @@ function initDashboard(profile, reports) {
   el('practice-sub').textContent  = [specialty, city].filter(Boolean).join(' · ') + ' · Monitor active';
   el('topbar-av').textContent    = initials;
   el('topbar-av').title          = doctorName;
-  el('week-label').textContent   = 'Week of ' + weekOf();
+  el('week-label').textContent   = today();
 
   // Settings
   el('settings-email').textContent = email;
@@ -1772,6 +1772,11 @@ function weekOf() {
   var mon = new Date(d);
   mon.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
   return mon.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
+}
+
+// Today's date for the top-bar pill (replaces the "Week of …" label).
+function today() {
+  return new Date().toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
 }
 
 // ── SCROLL-BASED ACTIVE NAV HIGHLIGHT ─────────────────────────────────────
