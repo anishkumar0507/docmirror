@@ -47,6 +47,20 @@ const TIERS = {
 
 const PRODUCTS = ['report', 'monitor'];
 
+// ── Organization plan tiers (multi-doctor) — CONSTANTS ONLY ──────────────────
+// profileLimit = how many doctor_profiles an org on this plan may hold.
+// These are PLACEHOLDER prices (TBD) and are NOT wired to any checkout or UI —
+// nothing reads them yet. The existing $19 report / $49 monitor flows (TIERS
+// above) are untouched. Amounts here are MAJOR units (whole dollars / rupees),
+// unlike TIERS which are minor units; they'll be normalized when a real
+// multi-doctor checkout is wired in a later phase.
+const ORG_PLANS = {
+  solo:     { profileLimit: 1,  usd: null, inr: null   },                 // existing free/solo
+  clinic:   { profileLimit: 10, usd: 150,  inr: 11999  },                 // PLACEHOLDER, TBD
+  hospital: { profileLimit: 25, usd: null, inr: null   },                 // Phase 4
+  agency:   { profileLimit: 10, usd: 150,  inr: 11999  },                 // PLACEHOLDER, TBD
+};
+
 /** First positive integer among the given env var names, else null. */
 function envUnits(...names) {
   for (const name of names) {
@@ -135,6 +149,7 @@ function billingCurrency()    { return process.env.RAZORPAY_CURRENCY || TIERS.IN
 module.exports = {
   // new region-aware API
   TIERS,
+  ORG_PLANS,          // multi-doctor org plan constants (not wired yet)
   priceFor,
   providerFor,
   displayPrices,

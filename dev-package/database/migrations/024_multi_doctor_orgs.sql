@@ -75,7 +75,7 @@ RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
-SET search_path = public
+SET search_path = public, pg_temp
 AS $$
   SELECT EXISTS (
     SELECT 1 FROM org_members
@@ -116,5 +116,23 @@ CREATE POLICY "members_read_doctor_profiles"
 
 -- NOTE: reports / paid_reports RLS is intentionally UNCHANGED in Phase 1.
 
--- ── 8. Reload PostgREST schema cache (fixes PGRST204 after DDL) ────────────
+-- ── 8. Unified org-scoped audit view ──────────────────────────────────────
+--     One read surface over both audit tables. Defined AFTER section 4 so the
+--     org_id / doctor_profile_id columns exist.
+--     security_invoker = on is REQUIRED: the view runs with the querying user's
+--     rights, so each underlying table's RLS is enforced. Without it the view
+--     would run as its owner and bypass RLS — one org could read another org's
+--     rows (the same failure class as paid_reports having had no user policy).
+CREATE OR REPLACE VIEW org_audits
+WITH (security_invoker = on) AS
+  SELECT id, org_id, doctor_profile_id, user_id, audit_id, pdf_url,
+         created_at, doctor_name, score, 'free'::text AS source
+  FROM reports
+  UNION ALL
+  SELECT id, org_id, doctor_profile_id, user_id, audit_id, pdf_url,
+         created_at, NULL::text AS doctor_name, NULL::int AS score,
+         'paid'::text AS source
+  FROM paid_reports;
+
+-- ── 9. Reload PostgREST schema cache (fixes PGRST204 after DDL) ────────────
 NOTIFY pgrst, 'reload schema';

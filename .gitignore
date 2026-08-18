@@ -16,3 +16,11 @@ node_modules/
 # live /sitemap.xml is built per request — so committing it only invites someone
 # to move it back into public/, where it would shadow the live route.
 dev-package/sitemap.preview.xml
+
+# One-off comp-account admin scripts — contain a plaintext credential, NEVER commit
+dev-package/scripts/create-comp-account.js
+dev-package/scripts/remove-comp-account.js
+dev-package/scripts/clear-comp-scans.js
+docmirror-backup-*.sql
+dev-package/scripts/backfill-orgs.js
+dev-package/scripts/backfill-orgs.fn.sql
