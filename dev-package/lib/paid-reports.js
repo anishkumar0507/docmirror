@@ -1,6 +1,7 @@
 'use strict';
 
 const { getSupabaseClient, formatFetchError } = require('./supabase-client');
+const { resolveOrgForUser } = require('./org-resolve');
 
 function isMissingTableError(err) {
   // Be PRECISE: only a genuinely-absent table. The old version also matched the
@@ -33,7 +34,20 @@ async function insertPending({ auditId, email, userId = null }) {
   }
 
   const row = { audit_id: auditId, email, status: 'pending' };
-  if (userId) row.user_id = userId;
+  if (userId) {
+    row.user_id = userId;
+    // Best-effort org stamp (same one place as reports-store). Isolated so a
+    // failed org lookup never blocks the pending order — row inserts org_id NULL.
+    try {
+      const { orgId, doctorProfileId } = await resolveOrgForUser(userId, supabase);
+      if (orgId) {
+        row.org_id = orgId;
+        if (doctorProfileId) row.doctor_profile_id = doctorProfileId;
+      }
+    } catch (e) {
+      console.warn(`[paid_reports] org stamp skipped audit_id=${auditId}:`, e.message);
+    }
+  }
 
   const { error } = await supabase.from('paid_reports').insert(row);
 

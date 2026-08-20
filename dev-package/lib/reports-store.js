@@ -14,14 +14,17 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 const { withSupabaseRetry } = require('./supabase-client');
+const { resolveOrgForUser } = require('./org-resolve');
 
 // Columns that are known to exist on `reports` in the live schema.
 // `insights` was added by migration 010/011 and is now present in production
 // (verified 2026-06-13), so it is written directly to the row as well as to
 // audit_cache.audit_data.insights (the dashboard's source of truth).
+// org_id / doctor_profile_id were added by migration 024 (multi-doctor).
 const SAFE_FIELDS = [
   'audit_id', 'user_id', 'doctor_name', 'score', 'review_count', 'rating',
   'photo_count', 'specialty', 'city', 'competitors', 'pdf_url', 'insights',
+  'org_id', 'doctor_profile_id',
 ];
 const SELECT_FIELDS = ['id', ...SAFE_FIELDS, 'created_at'].join(', ');
 
@@ -66,6 +69,23 @@ async function upsertReport(supabase, rawRow) {
   if (!supabase) return { ok: false, reason: 'no_supabase' };
   const row = sanitizeRow(rawRow);
   if (!row.audit_id) return { ok: false, reason: 'no_audit_id' };
+
+  // Stamp org linkage on the row so all 5 pipeline entry points inherit it from
+  // this one place (no per-route duplication → no forgotten path → no orphans).
+  // BEST-EFFORT and isolated in its own try/catch: an org-resolution failure must
+  // never fail the write — the row still inserts with org_id NULL. Guest rows
+  // (no user_id) and callers that already set org_id are left untouched.
+  if (row.user_id && !row.org_id) {
+    try {
+      const { orgId, doctorProfileId } = await resolveOrgForUser(row.user_id, supabase);
+      if (orgId) {
+        row.org_id = orgId;
+        if (doctorProfileId) row.doctor_profile_id = doctorProfileId;
+      }
+    } catch (e) {
+      console.warn(`[reports-store] org stamp skipped audit_id=${row.audit_id}:`, e.message);
+    }
+  }
 
   try {
     // All three round-trips go through withSupabaseRetry so a single stale-socket
