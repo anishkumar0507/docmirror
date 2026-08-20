@@ -497,6 +497,56 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       </div>
     </div>
 
+    <!-- 0. Agency: multi-doctor management. Hidden by default; shown ONLY when
+         entitlement.isMultiProfile === true, so solo users never see it. -->
+    <style>
+      #agency .agency-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+      #agency-usage{font-size:12px;color:var(--slate-light);font-weight:600}
+      .agency-btn{background:var(--green,#00A878);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.85rem;font-weight:700;cursor:pointer}
+      .agency-btn:disabled{background:#cbd5e0;cursor:not-allowed}
+      #agency-msg{display:none;font-size:12px;margin-top:8px;font-weight:600}
+      #agency-form{display:none;background:#fff;border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin:10px 0 1rem}
+      #agency-form .af-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+      #agency-form input{flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit}
+      .agency-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
+      .agency-card{background:#fff;border:.5px solid var(--border);border-radius:14px;padding:1rem 1.15rem;display:flex;flex-direction:column;gap:12px}
+      .agency-card-top{display:flex;justify-content:space-between;gap:8px}
+      .agency-name{font-weight:700;color:var(--navy);font-size:.95rem}
+      .agency-meta{font-size:12px;color:var(--slate-light);margin:2px 0 4px}
+      .agency-archive{background:none;border:1px solid var(--border);color:var(--slate-light);border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;height:fit-content;white-space:nowrap}
+      .agency-archive:hover{border-color:#B83260;color:#B83260}
+      .agency-card-bottom{display:flex;align-items:center;gap:16px;border-top:.5px solid var(--border);padding-top:10px}
+      .agency-stat{display:flex;flex-direction:column}
+      .agency-stat-l{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-light);font-weight:700}
+      .agency-stat-v{font-size:.9rem;font-weight:700;color:var(--navy)}
+      .agency-run{margin-left:auto;background:var(--navy,#0A2540);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:not-allowed;opacity:.5}
+    </style>
+    <section id="agency" class="section" style="display:none">
+      <div class="section-head">
+        <div class="section-title">Doctors <span class="tag new">Agency</span></div>
+        <div class="agency-toolbar">
+          <span id="agency-usage">&mdash;</span>
+          <button class="agency-btn" id="agency-add-btn" type="button" onclick="toggleAddForm(true)">+ Add doctor</button>
+        </div>
+      </div>
+      <div id="agency-msg"></div>
+      <form id="agency-form" onsubmit="submitAddDoctor(event);return false">
+        <div class="af-row">
+          <input id="af-name" placeholder="Doctor name *" autocomplete="off" />
+          <input id="af-speciality" placeholder="Speciality" autocomplete="off" />
+        </div>
+        <div class="af-row">
+          <input id="af-city" placeholder="City" autocomplete="off" />
+          <input id="af-website" placeholder="Website (https://…)" autocomplete="off" />
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="agency-btn" id="af-submit" type="submit">Add doctor</button>
+          <button type="button" onclick="toggleAddForm(false)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:.85rem;cursor:pointer;font-family:inherit">Cancel</button>
+        </div>
+      </form>
+      <div class="agency-grid" id="agency-grid"></div>
+    </section>
+
     <!-- 1b. Executive Summary -->
     <section id="exec" class="section">
       <div class="section-head">
@@ -761,6 +811,13 @@ async function checkAuth() {
   } catch(e) { reports = []; }
 
   initDashboard(_profile, reports);
+
+  // Agency (multi-doctor) view — ONLY for orgs whose profileLimit > 1. Solo users
+  // (isMultiProfile false / absent) never trigger this, so their dashboard is
+  // byte-for-byte unchanged and the #agency section stays display:none.
+  if (_ent && _ent.isMultiProfile === true) {
+    try { populateAgency(_ent, reports); } catch (e) { console.warn('[agency] init failed', e); }
+  }
 }
 
 function api(url) {
@@ -812,6 +869,174 @@ function doCancelSubscription() {
 }
 
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── AGENCY: multi-doctor management (only runs when entitlement.isMultiProfile) ──
+// Server enforces everything (auth, org ownership, profile limit); this is pure UI
+// over the already-secure /api/profiles endpoints. Nothing here changes the solo
+// experience — populateAgency is only ever called for isMultiProfile orgs.
+var _agencyEnt = null, _agencyReportsByProfile = {};
+
+// Attribute-safe escape (escH doesn't cover quotes; needed for href/attributes).
+function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+function agencyApi(method, path, body) {
+  return fetch(path, {
+    method: method,
+    headers: { 'Authorization': 'Bearer ' + _token, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined
+  }).then(function(r){ return r.json().then(function(j){ return { status: r.status, body: j }; })
+                        .catch(function(){ return { status: r.status, body: {} }; }); });
+}
+
+function agencyMsg(text, isErr) {
+  var m = el('agency-msg');
+  if (!m) return;
+  m.textContent = text || '';
+  m.style.display = text ? 'block' : 'none';
+  m.style.color = isErr ? '#B83260' : 'var(--green-dark)';
+}
+
+// Build { doctor_profile_id -> {date, score} } (newest) from the reports we already
+// loaded. If the reports don't carry doctor_profile_id yet, cards show "No audits
+// yet" — per-profile audit wiring is 3D.
+function buildReportsByProfile(reports) {
+  var map = {};
+  (reports || []).forEach(function(rep){
+    var pid = rep && rep.doctor_profile_id;
+    if (!pid) return;
+    var d = rep.created_at || rep.date || null;
+    if (!map[pid] || (d && new Date(d) > new Date(map[pid].date || 0))) {
+      map[pid] = { date: d, score: (typeof rep.score === 'number' ? rep.score : null) };
+    }
+  });
+  return map;
+}
+
+async function populateAgency(ent, reports) {
+  _agencyEnt = ent;
+  _agencyReportsByProfile = buildReportsByProfile(reports);
+  var sec = el('agency');
+  if (!sec) return;
+  sec.style.display = '';
+  renderAgencyHeader(ent);
+  await loadAgencyProfiles();
+}
+
+function renderAgencyHeader(ent) {
+  var used = ent.profilesUsed, lim = ent.profileLimit;
+  var u = el('agency-usage'); if (u) u.textContent = used + ' / ' + lim + ' doctors';
+  var addBtn = el('agency-add-btn'); if (!addBtn) return;
+  if (!ent.canCreateProfile) {
+    addBtn.disabled = true;
+    addBtn.title = 'Profile limit reached (' + used + '/' + lim + ')';
+    agencyMsg('Profile limit reached (' + used + '/' + lim + '). Archive a doctor or upgrade to add more.', false);
+  } else {
+    addBtn.disabled = false;
+    addBtn.title = '';
+    agencyMsg('');
+  }
+}
+
+async function loadAgencyProfiles() {
+  var grid = el('agency-grid'); if (!grid) return;
+  grid.innerHTML = '<div class="empty-card">Loading doctors&hellip;</div>';
+  var res = await agencyApi('GET', '/api/profiles');
+  if (res.status !== 200) {
+    grid.innerHTML = '';
+    agencyMsg('Could not load doctors (HTTP ' + res.status + ').', true);
+    return;
+  }
+  var profiles = (res.body && res.body.profiles) || [];
+  if (!profiles.length) {
+    grid.innerHTML = '<div class="empty-card"><div class="empty-title">No doctors yet</div>' +
+      '<div class="empty-sub">Add your first doctor profile to start tracking.</div></div>';
+    return;
+  }
+  grid.innerHTML = profiles.map(agencyCardHtml).join('');
+}
+
+function agencyCardHtml(p) {
+  var last = _agencyReportsByProfile[p.id];
+  var lastTxt  = last && last.date ? new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'No audits yet';
+  var scoreTxt = last && last.score != null ? (last.score + '/100') : '&mdash;';
+  var meta = [p.speciality, p.city].filter(Boolean).map(escH).join(' · ');
+  var site = p.website
+    ? '<a href="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" style="color:var(--green-dark);font-size:12px;text-decoration:none">' + escH(p.website) + '</a>'
+    : '<span style="color:var(--slate-light);font-size:12px">No website</span>';
+  return '<div class="agency-card" data-id="' + escAttr(p.id) + '">' +
+      '<div class="agency-card-top">' +
+        '<div><div class="agency-name">' + escH(p.name || 'Unnamed') + '</div>' +
+          '<div class="agency-meta">' + (meta || '&mdash;') + '</div>' + site + '</div>' +
+        '<button class="agency-archive" type="button" onclick="archiveDoctor(\'' + escAttr(p.id) + '\')">Archive</button>' +
+      '</div>' +
+      '<div class="agency-card-bottom">' +
+        '<div class="agency-stat"><span class="agency-stat-l">Last audit</span><span class="agency-stat-v">' + lastTxt + '</span></div>' +
+        '<div class="agency-stat"><span class="agency-stat-l">Score</span><span class="agency-stat-v">' + scoreTxt + '</span></div>' +
+        '<button class="agency-run" type="button" disabled title="Coming soon (3D)">Run audit</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function toggleAddForm(show) {
+  var f = el('agency-form'); if (!f) return;
+  f.style.display = show ? 'block' : 'none';
+  if (show) { agencyMsg(''); var n = el('af-name'); if (n) n.focus(); }
+}
+
+async function submitAddDoctor(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  var name = (el('af-name').value || '').trim();
+  if (!name) { agencyMsg('Doctor name is required.', true); return; }
+  var body = {
+    name: name,
+    website:    (el('af-website').value || '').trim(),
+    speciality: (el('af-speciality').value || '').trim(),
+    city:       (el('af-city').value || '').trim()
+  };
+  var btn = el('af-submit'); btn.disabled = true; var old = btn.textContent; btn.textContent = 'Adding…';
+  var res = await agencyApi('POST', '/api/profiles', body);
+  btn.disabled = false; btn.textContent = old;
+  if (res.status === 201) {
+    ['af-name','af-website','af-speciality','af-city'].forEach(function(id){ var i = el(id); if (i) i.value = ''; });
+    toggleAddForm(false);
+    agencyMsg('Doctor added.', false);
+    await refreshAgency();
+  } else if (res.status === 403) {
+    // Limit or no-org — show the server's clear message, never a silent fail.
+    agencyMsg((res.body && res.body.error) || 'Profile limit reached.', true);
+  } else if (res.status === 400) {
+    agencyMsg((res.body && res.body.error) || 'Please check the form.', true);
+  } else if (res.status === 401) {
+    agencyMsg('Session expired — please refresh and sign in again.', true);
+  } else {
+    agencyMsg((res.body && res.body.error) || ('Could not add doctor (HTTP ' + res.status + ').'), true);
+  }
+}
+
+async function archiveDoctor(id) {
+  var card = document.querySelector('.agency-card[data-id="' + id + '"]');
+  var nm = card ? ((card.querySelector('.agency-name') || {}).textContent || '') : '';
+  if (!confirm('Archive ' + (nm || 'this doctor') + '?\n\nTheir audit history is kept; archiving frees a profile slot.')) return;
+  var res = await agencyApi('DELETE', '/api/profiles/' + encodeURIComponent(id));
+  if (res.status === 200) {
+    agencyMsg('Doctor archived.', false);
+    await refreshAgency();
+  } else if (res.status === 404) {
+    agencyMsg('That doctor was not found (already archived?).', true);
+    await refreshAgency();
+  } else {
+    agencyMsg((res.body && res.body.error) || ('Could not archive (HTTP ' + res.status + ').'), true);
+  }
+}
+
+// After add/archive: re-read entitlement (usage + canCreateProfile) and the list.
+async function refreshAgency() {
+  try {
+    var prof = await api('/api/user/me');
+    if (prof && prof.entitlement) { _agencyEnt = prof.entitlement; renderAgencyHeader(prof.entitlement); }
+  } catch (e) { /* keep prior header on transient error */ }
+  await loadAgencyProfiles();
+}
 
 // ── MAIN INIT ────────────────────────────────────────────────────────────
 function initDashboard(profile, reports) {
