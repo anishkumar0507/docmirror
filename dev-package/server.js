@@ -40,6 +40,7 @@ const cancelSubHandler            = require('./routes/cancel-subscription');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
 const generateReportEntitledHandler = require('./routes/generate-report-entitled');
+const profilesRoute               = require('./routes/profiles');
 const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
@@ -200,6 +201,13 @@ app.get('/api/dashboard',                 userDashboardHandler);    // aggregate
 app.get('/api/history',                   userHistoryHandler);      // week-over-week trend series
 app.get('/api/notifications',             userNotificationsHandler);
 app.post('/api/notifications',            userNotificationsHandler); // mark read
+
+// Doctor profiles (multi-doctor org). Every route requireAuth-gated; the org is
+// resolved server-side per request and ownership is enforced inside each query.
+app.post('/api/profiles',                 requireAuth, profilesRoute.create);
+app.get('/api/profiles',                  requireAuth, profilesRoute.list);
+app.patch('/api/profiles/:id',            requireAuth, profilesRoute.update);
+app.delete('/api/profiles/:id',           requireAuth, profilesRoute.archive);
 app.get('/api/weekly-update',             weeklyCheckHandler);      // alias for the weekly cron
 app.post('/api/weekly-update',            weeklyCheckHandler);
 app.post('/api/checkout-subscription',        checkoutSubHandler);
