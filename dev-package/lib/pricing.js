@@ -54,11 +54,17 @@ const PRODUCTS = ['report', 'monitor'];
 // above) are untouched. Amounts here are MAJOR units (whole dollars / rupees),
 // unlike TIERS which are minor units; they'll be normalized when a real
 // multi-doctor checkout is wired in a later phase.
+// inr is HAND-SET, never converted from usd — display currency must equal the
+// charged currency (a USD-priced-but-INR-charged order fails 3DS on US banks).
+// PLACEHOLDER prices live in ONE place (CLINIC_PRICING); clinic + agency SPREAD a
+// copy of it — separate objects, so changing one tier's limit/label never leaks
+// into the other (which an `agency: ORG_PLANS.clinic` reference alias would).
+const CLINIC_PRICING = { usd: 150, inr: 11999 };
 const ORG_PLANS = {
-  solo:     { profileLimit: 1,  usd: null, inr: null   },                 // existing free/solo
-  clinic:   { profileLimit: 10, usd: 150,  inr: 11999  },                 // PLACEHOLDER, TBD
-  hospital: { profileLimit: 25, usd: null, inr: null   },                 // Phase 4
-  agency:   { profileLimit: 10, usd: 150,  inr: 11999  },                 // PLACEHOLDER, TBD
+  solo:     { profileLimit: 1,  usd: null, inr: null, label: 'Solo' },      // existing free/solo
+  clinic:   { profileLimit: 10, ...CLINIC_PRICING, label: 'Clinic' },       // PLACEHOLDER, TBD
+  hospital: { profileLimit: 25, usd: null, inr: null, label: 'Hospital' },  // Phase 4
+  agency:   { profileLimit: 10, ...CLINIC_PRICING, label: 'Agency' },       // PLACEHOLDER, TBD (shares clinic pricing)
 };
 
 /** First positive integer among the given env var names, else null. */
