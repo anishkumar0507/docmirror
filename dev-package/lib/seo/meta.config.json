@@ -1,0 +1,69 @@
+{
+  "_readme": "SINGLE SOURCE OF TRUTH for marketing meta. title = <=60 char (Google truncation). ogTitle = longer social/LLM version. NEVER swap them. Only the `home` entry is emitted to a real document today; the anchor entries (#tool, #pricing, #faq, ...) live here ready for a future route conversion — anchors currently inherit the homepage meta, which is correct. Validate with: node lib/seo/check-meta.js",
+  "site": {
+    "canonicalHost": "https://www.thedocmirror.com",
+    "siteName": "The Doc Mirror",
+    "legalEntity": "NEXTDOT DIGITAL SOLUTIONS PRIVATE LIMITED",
+    "twitterCard": "summary_large_image",
+    "ogImage": "https://www.thedocmirror.com/assets/logo/og-image.png",
+    "ogImageWidth": 1200,
+    "ogImageHeight": 630,
+    "locale": "en_US"
+  },
+  "pages": {
+    "home": {
+      "route": "/",
+      "isRealRoute": true,
+      "title": "Doctor Visibility Score — Free AI & Google Check",
+      "ogTitle": "Doctor Visibility Score — Check Your AI & Google Presence Free | The Doc Mirror",
+      "description": "See exactly how patients find you on Google, ChatGPT, Gemini and Claude. Get your free Doctor Visibility Score in 60 seconds — no login needed."
+    },
+    "how-it-works": {
+      "anchor": "/#how-it-works",
+      "isRealRoute": false,
+      "title": "How It Works — 3 Steps to Your Visibility Score",
+      "ogTitle": "How The Doc Mirror Works — 3 Steps to Know Your Patient Visibility",
+      "description": "Enter your name and city, see what patients find on Google and AI tools, then get a step-by-step fix guide — all in well under 60 seconds."
+    },
+    "check": {
+      "anchor": "/#tool",
+      "_anchorNote": "Brief called this #check; the real audit anchor on the page is #tool.",
+      "isRealRoute": false,
+      "title": "Free Doctor Visibility Check — Google & AI Score",
+      "ogTitle": "Free Doctor Visibility Check — See Your Google & AI Score Instantly",
+      "description": "Run a free check in 60 seconds. Discover your Doctor Visibility Score across Google Maps, ChatGPT, Gemini and Claude — no login or credit card required."
+    },
+    "pricing": {
+      "anchor": "/#pricing",
+      "isRealRoute": false,
+      "_pricingNote": "Tier NAMES, not a universal USD price: India is charged INR (report ₹1,828 / monitor ₹4,715), US & rest-of-world USD ($19 / $49/mo). A '$19 & $49' title would be factually wrong for Indian traffic and cannot show two currencies in 60 chars, so we name the tiers instead. Offer schema (Step 4) carries both currencies.",
+      "title": "Pricing — Free, Full Audit & Monthly Monitor Plans",
+      "ogTitle": "Pricing — Free, Full Audit & Monthly Monitor Plans | The Doc Mirror",
+      "description": "Choose the plan that fits your practice: start free, unlock the full 7-pillar visibility audit, or monitor your Google and AI ranking every month."
+    },
+    "why-it-matters": {
+      "anchor": "/#why-doc-mirror",
+      "_anchorNote": "Brief called this #why-it-matters; the real section on the page is #why-doc-mirror.",
+      "_statNote": "Brief's copy used '77%' and '1 in 3'. No verifiable source could be produced, so per Step 6b those figures are NOT put in the meta (never invent a citation). Reworded to be truthful without an unsourced statistic.",
+      "isRealRoute": false,
+      "title": "Why Google & AI Visibility Matters for Your Practice",
+      "ogTitle": "Why Your Google & AI Visibility Matters for Patients | The Doc Mirror",
+      "description": "Patients search Google and ask AI tools like ChatGPT to recommend a doctor before booking. See if your practice appears — before your competitors do."
+    },
+    "faq": {
+      "anchor": "/#faq",
+      "isRealRoute": false,
+      "title": "FAQ — Doctor Visibility & AI Search Answers",
+      "ogTitle": "FAQ — Doctor Visibility & AI Search Answers | The Doc Mirror",
+      "description": "Answers to common questions: Is the check free? Will it change my Google listing? How is AI visibility measured? What doctors ask about online visibility."
+    },
+    "waitlist": {
+      "anchor": "/#waitlist",
+      "isRealRoute": false,
+      "_sectionNote": "No #waitlist section exists on the page today. Entry kept for a future section/route. Brief's '200+ doctors' figure removed pending verification (Step 6b).",
+      "title": "Join the Waitlist — Live AI Visibility for Doctors",
+      "ogTitle": "Join the Waitlist — Real-Time AI Visibility for Doctors Launching Soon",
+      "description": "Be first in line for live Google API integration and real-time AI visibility tracking. Join the waitlist and get a free audit the moment it launches."
+    }
+  }
+}
