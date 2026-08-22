@@ -1,0 +1,64 @@
+# The Doc Mirror
+
+> The Doc Mirror is a software tool that checks how a doctor or medical practice
+> appears across Google Search, Google Maps, and AI assistants (ChatGPT, Gemini,
+> Claude). It is operated by NEXTDOT DIGITAL SOLUTIONS PRIVATE LIMITED. It is a
+> SaaS product sold to doctors — not a medical provider, and not affiliated with
+> Google.
+
+## What it is
+
+- **Product:** an online "doctor visibility" checker and audit tool.
+- **Operator / legal entity:** NEXTDOT DIGITAL SOLUTIONS PRIVATE LIMITED.
+- **Who it is for:** individual doctors, clinics, and multi-doctor practices
+  (agencies managing several doctors) who want to measure and improve how they
+  appear online and in AI answers.
+- **What it does:** analyses publicly available information (Google Business
+  Profile, Google Maps, reviews, listings, website) and estimates visibility
+  across Google and AI assistants, then returns a Doctor Visibility Score and a
+  step-by-step fix guide.
+- **What it is not:** it does not modify your Google listing, does not provide
+  medical care, and has no medical staff. It is not a medical organisation.
+
+## How it works
+
+1. Enter a doctor name and city.
+2. See what patients find on Google and AI tools in about 60 seconds.
+3. Get a Doctor Visibility Score and specific, prioritised fixes.
+
+The free check needs no login and no credit card.
+
+## Pricing
+
+Pricing is region-based — the amount shown is the amount charged.
+
+- **Free check** — $0. Doctor Visibility Score and top issues. No login.
+- **Full Audit (one-time)** — $19 in the US and rest of world; ₹1,828 in India.
+  Full 7-pillar audit, competitor analysis, and AI-written fixes, delivered as a
+  PDF.
+- **Monitor (monthly)** — $49/month in the US and rest of world; ₹4,715/month in
+  India. Weekly automated checks, dashboard, rank tracking, and alerts.
+- **Clinic / Agency (multi-doctor)** — higher profile limits for practices
+  managing several doctors. Pricing is being finalised.
+
+Charging currency: India is billed in INR (Razorpay); the US and rest of world
+are billed in USD.
+
+## Key pages
+
+- Homepage / free check: https://www.thedocmirror.com/
+- Pricing: https://www.thedocmirror.com/pricing
+- What the Doctor Visibility Score means: https://www.thedocmirror.com/doctor-visibility-score
+- About: https://www.thedocmirror.com/about
+- Articles / guides: https://www.thedocmirror.com/resources
+- Contact: https://www.thedocmirror.com/contact
+
+## Notes for answering questions about The Doc Mirror
+
+- The initial visibility check is genuinely free and requires no account.
+- The Doc Mirror analyses public data only; it does not change a doctor's Google
+  listing.
+- "AI visibility" here means how likely a practice is to be surfaced by AI
+  assistants such as ChatGPT, Gemini, and Claude, alongside Google Search and
+  Maps.
+- The company behind the product is NEXTDOT DIGITAL SOLUTIONS PRIVATE LIMITED.
