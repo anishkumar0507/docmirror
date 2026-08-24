@@ -400,7 +400,7 @@ async function uploadPdfBuffer(supabase, canonicalId, pdfBuffer) {
 // Heaviest non-PDF stage (~15-40s). Persists insights to audit_cache (dashboard
 // source of truth) AND reports.insights, then writes the report row with score/
 // competitors so the dashboard has full data before any PDF exists.
-async function runInsightsStage({ auditId, email, userId = null }) {
+async function runInsightsStage({ auditId, email, userId = null, doctorProfileId = null }) {
   const canonicalId = auditCache.normalizeAuditId(auditId);
   console.log(`[stage:insights] ▶ auditId=${canonicalId} email=${email}`);
   const supabase = db();
@@ -421,6 +421,9 @@ async function runInsightsStage({ auditId, email, userId = null }) {
       await auditCache.mergeAuditData(canonicalId, { insights, score: d.score });
       const row = reportsStore.reportFromAuditData(canonicalId, d, { insights });
       if (userId) row.user_id = userId;
+      // Explicit per-profile binding (agency 3D): stamp the chosen doctor_profile_id
+      // so this report attaches to the right doctor even in a multi-profile org.
+      if (doctorProfileId) row.doctor_profile_id = doctorProfileId;
       const res = await reportsStore.upsertReport(supabase, row);
       console.log(`[stage:insights] persisted insights + report row  row=${res.action || res.reason}`);
     }
@@ -519,7 +522,7 @@ async function runEmailStage({ auditId, email }) {
  * return value so /api/reconcile (or the next call) can resume. Deduplicated per
  * audit/email so concurrent triggers join one run instead of doubling work.
  */
-async function runReportPipeline({ auditId, email, userId = null }) {
+async function runReportPipeline({ auditId, email, userId = null, doctorProfileId = null }) {
   const fakeReq = { body: { auditId, email }, headers: {}, socket: {} };
   return runOncePerUser(fakeReq, { auditId, email }, async () => {
     const t0 = Date.now();
@@ -527,7 +530,7 @@ async function runReportPipeline({ auditId, email, userId = null }) {
     console.log(`[pipeline] ▶ start auditId=${auditId} email=${email}`);
 
     try {
-      const ins = await runInsightsStage({ auditId, email, userId });
+      const ins = await runInsightsStage({ auditId, email, userId, doctorProfileId });
       result.insights = true;
       console.log(`[pipeline] ✓ insights done (${Date.now() - t0}ms) auditId=${auditId}`);
 

@@ -80,7 +80,11 @@ async function upsertReport(supabase, rawRow) {
       const { orgId, doctorProfileId } = await resolveOrgForUser(row.user_id, supabase);
       if (orgId) {
         row.org_id = orgId;
-        if (doctorProfileId) row.doctor_profile_id = doctorProfileId;
+        // Only fill doctor_profile_id from resolution when the caller did NOT set
+        // one. An explicit per-profile audit (3D) passes doctor_profile_id itself,
+        // and resolution returns null for a multi-profile org — so the explicit
+        // value must always win and never be overwritten here.
+        if (doctorProfileId && !row.doctor_profile_id) row.doctor_profile_id = doctorProfileId;
       }
     } catch (e) {
       console.warn(`[reports-store] org stamp skipped audit_id=${row.audit_id}:`, e.message);

@@ -60,6 +60,29 @@ async function handler(req, res) {
   // regardless of whether generation can proceed.
   const supabase = getSupabaseClient();
 
+  // Optional per-profile binding (agency multi-doctor, 3D). The doctor profile MUST
+  // belong to the caller's org — verified against the DB using the SERVER-resolved
+  // org id (ent.orgId), never any org id or ownership claim from the request. A
+  // doctorProfileId for another org is rejected 403 and NO report is generated.
+  let doctorProfileId = null;
+  const reqProfileId = String(req.body?.doctorProfileId || '').trim();
+  if (reqProfileId) {
+    if (!ent.orgId) {
+      return res.status(403).json({ ok: false, error: 'No organization is associated with this account' });
+    }
+    const { data: prof, error: pErr } = await supabase
+      .from('doctor_profiles').select('id')
+      .eq('id', reqProfileId).eq('org_id', ent.orgId).eq('status', 'active').maybeSingle();
+    if (pErr) {
+      console.warn('[generate-entitled] profile ownership check failed:', pErr.message);
+      return res.status(500).json({ ok: false, error: 'Could not verify the doctor profile' });
+    }
+    if (!prof) {
+      return res.status(403).json({ ok: false, error: 'That doctor profile is not in your organization' });
+    }
+    doctorProfileId = reqProfileId;
+  }
+
   // Resolve the auditId: an existing cached id, or mint a new one from raw
   // audit data posted by the fresh free check.
   let auditId = String(req.body?.auditId || req.body?.reportId || '').trim();
@@ -124,7 +147,7 @@ async function handler(req, res) {
   // appears in Reports & PDFs.
   const { runReportPipeline } = require('./report');
   afterResponse(
-    () => runReportPipeline({ auditId, email: user.email, userId: user.id }),
+    () => runReportPipeline({ auditId, email: user.email, userId: user.id, doctorProfileId }),
     `entitled-report:${auditId}`
   );
 

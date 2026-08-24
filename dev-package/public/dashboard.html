@@ -519,7 +519,9 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       .agency-stat{display:flex;flex-direction:column}
       .agency-stat-l{font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--slate-light);font-weight:700}
       .agency-stat-v{font-size:.9rem;font-weight:700;color:var(--navy)}
-      .agency-run{margin-left:auto;background:var(--navy,#0A2540);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:not-allowed;opacity:.5}
+      .agency-run{margin-left:auto;background:var(--navy,#0A2540);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
+      .agency-run:hover:not(:disabled){background:var(--green,#00A878)}
+      .agency-run:disabled{opacity:.5;cursor:not-allowed}
     </style>
     <section id="agency" class="section" style="display:none">
       <div class="section-head">
@@ -963,7 +965,8 @@ function agencyCardHtml(p) {
   var site = p.website
     ? '<a href="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" style="color:var(--green-dark);font-size:12px;text-decoration:none">' + escH(p.website) + '</a>'
     : '<span style="color:var(--slate-light);font-size:12px">No website</span>';
-  return '<div class="agency-card" data-id="' + escAttr(p.id) + '">' +
+  return '<div class="agency-card" data-id="' + escAttr(p.id) + '"' +
+      ' data-name="' + escAttr(p.name || '') + '" data-speciality="' + escAttr(p.speciality || '') + '" data-city="' + escAttr(p.city || '') + '">' +
       '<div class="agency-card-top">' +
         '<div><div class="agency-name">' + escH(p.name || 'Unnamed') + '</div>' +
           '<div class="agency-meta">' + (meta || '&mdash;') + '</div>' + site + '</div>' +
@@ -972,7 +975,7 @@ function agencyCardHtml(p) {
       '<div class="agency-card-bottom">' +
         '<div class="agency-stat"><span class="agency-stat-l">Last audit</span><span class="agency-stat-v">' + lastTxt + '</span></div>' +
         '<div class="agency-stat"><span class="agency-stat-l">Score</span><span class="agency-stat-v">' + scoreTxt + '</span></div>' +
-        '<button class="agency-run" type="button" disabled title="Coming soon (3D)">Run audit</button>' +
+        '<button class="agency-run" type="button" onclick="runProfileAudit(this,\'' + escAttr(p.id) + '\')">Run audit</button>' +
       '</div>' +
     '</div>';
 }
@@ -1036,6 +1039,60 @@ async function refreshAgency() {
     if (prof && prof.entitlement) { _agencyEnt = prof.entitlement; renderAgencyHeader(prof.entitlement); }
   } catch (e) { /* keep prior header on transient error */ }
   await loadAgencyProfiles();
+}
+
+// Run a fresh audit for ONE profile (never a batch — a "Run all" would blow the
+// 60s serverless limit; that needs a job queue, later). Reuses the existing
+// two-step flow: /api/audit (quick) → /api/generate-report-entitled (heavy
+// pipeline runs in the background under waitUntil). The report is bound to this
+// doctor_profile_id server-side; the DB verifies the profile is in the caller's org.
+async function runProfileAudit(btn, profileId) {
+  var card = btn.closest('.agency-card');
+  var name = (card.getAttribute('data-name') || '').trim();
+  var speciality = (card.getAttribute('data-speciality') || '').trim();
+  var city = (card.getAttribute('data-city') || '').trim();
+  if (!name || !city) { agencyMsg('Add a name and city to this profile before running an audit.', true); return; }
+
+  // /api/audit expects fn + ln; split the stored full name (strip a leading "Dr").
+  var parts = name.replace(/^dr\.?\s+/i, '').trim().split(/\s+/);
+  var fn = parts.shift() || '';
+  var ln = parts.join(' ') || fn;
+
+  btn.disabled = true; var old = btn.textContent; btn.textContent = 'Running…';
+  agencyMsg('');
+  try {
+    var aRes = await fetch('/api/audit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fn: fn, ln: ln, sp: speciality, ct: city })
+    });
+    var audit = await aRes.json().catch(function(){ return {}; });
+    if (!aRes.ok) { agencyMsg('Audit service error (HTTP ' + aRes.status + '). Try again.', true); btn.disabled = false; btn.textContent = old; return; }
+    if (audit.needsSelection) { agencyMsg('Several Google listings match “' + name + '”. Refine the profile name or city.', true); btn.disabled = false; btn.textContent = old; return; }
+    if (audit.notFound || audit.verified === false) { agencyMsg('Couldn’t verify “' + name + '” on Google for ' + city + '. Check the name and city.', true); btn.disabled = false; btn.textContent = old; return; }
+
+    // Generate the report bound to this profile (server re-checks org ownership).
+    var gRes = await agencyApi('POST', '/api/generate-report-entitled', { auditData: audit, doctorProfileId: profileId });
+    if (gRes.status === 403) { agencyMsg((gRes.body && gRes.body.error) || 'You can only audit profiles in your own organization.', true); btn.disabled = false; btn.textContent = old; return; }
+    if (!(gRes.body && gRes.body.entitled)) { agencyMsg((gRes.body && gRes.body.error) || ('Could not start generation (HTTP ' + gRes.status + ').'), true); btn.disabled = false; btn.textContent = old; return; }
+
+    // Card shows the fresh audit result immediately; the full PDF finishes in the
+    // background and lands in Reports & PDFs within ~60s.
+    updateCardResult(card, audit.score);
+    agencyMsg('Audit complete for ' + name + '. The full PDF report will appear in Reports & PDFs shortly.', false);
+    btn.textContent = 'Done ✓';
+    setTimeout(function(){ btn.disabled = false; btn.textContent = old; }, 5000);
+  } catch (e) {
+    agencyMsg('Audit failed — please try again.', true);
+    btn.disabled = false; btn.textContent = old;
+  }
+}
+
+// Reflect a just-run audit on the card (Last audit = today, Score = new score).
+function updateCardResult(card, score) {
+  if (!card) return;
+  var vals = card.querySelectorAll('.agency-stat-v');
+  if (vals[0]) vals[0].textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  if (vals[1] && typeof score === 'number') vals[1].textContent = score + '/100';
 }
 
 // ── MAIN INIT ────────────────────────────────────────────────────────────
