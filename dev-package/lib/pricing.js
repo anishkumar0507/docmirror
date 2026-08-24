@@ -59,7 +59,10 @@ const PRODUCTS = ['report', 'monitor'];
 // PLACEHOLDER prices live in ONE place (CLINIC_PRICING); clinic + agency SPREAD a
 // copy of it — separate objects, so changing one tier's limit/label never leaks
 // into the other (which an `agency: ORG_PLANS.clinic` reference alias would).
-const CLINIC_PRICING = { usd: 150, inr: 11999 };
+// PLACEHOLDER (both still TBD). inr is HAND-SET, never a conversion of usd — a
+// converted number ($450 ≈ ₹37,xxx) reads badly and would break display=charge;
+// 35999 is a deliberate, marketable INR price point, NOT math on 450.
+const CLINIC_PRICING = { usd: 450, inr: 35999 };
 const ORG_PLANS = {
   solo:     { profileLimit: 1,  usd: null, inr: null, label: 'Solo' },      // existing free/solo
   clinic:   { profileLimit: 10, ...CLINIC_PRICING, label: 'Clinic' },       // PLACEHOLDER, TBD
