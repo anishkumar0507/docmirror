@@ -1899,167 +1899,34 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
 
 <div id="dm-footer"></div>
 
+<script src="/js/scan-widget.js"></script>
 <script>
-// ── CONFIG ─────────────────────────────────────────────────────────────────
-// Flip to true once /api/audit is live and returning real data
-const API_READY = true;
-const API_URL = '/api/audit';
 const ER = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
 let _aid=null,_dn=null,_sc=null,_sp=null,_ct=null;
 
-// ── FIELD HELPERS ──────────────────────────────────────────────────────────
-function setErr(fid,eid,on){
-  var f=document.getElementById(fid),e=document.getElementById(eid);
-  var inp=f.querySelector('input,select');
-  inp.classList.toggle('err',on);
-  e.classList.toggle('on',on);
-}
-function clearAll(){['ff','fl','fsp','fct'].forEach(function(x,i){setErr(x,['ef','el','esp','ect'][i],false)});}
-['fn','ln','ct'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){var m={fn:'ff',ln:'fl',ct:'fct'},em={fn:'ef',ln:'el',ct:'ect'};setErr(m[id],em[id],false)});});
-document.getElementById('sp').addEventListener('change',function(){setErr('fsp','esp',false);if(window.__updateSpecialtyConflict)window.__updateSpecialtyConflict();});
-(function(){var si=document.getElementById('sp-input');if(si)si.addEventListener('input',function(){setErr('fsp','esp',false);});})();
+// ── SCAN WIDGET ────────────────────────────────────────────────────────────
+// The scan flow (validate → /api/audit → selection / verify-fail / report)
+// lives in /js/scan-widget.js so the dashboard "Add doctor" modal runs the
+// SAME code instead of a second copy. Defaults = this page's element ids, so
+// behaviour is unchanged. The markup calls these by name via onclick=.
+var _scan = TDMScan.create();
+window.runCheck    = function(){ _scan.run(); };
+window.runURL      = function(){ _scan.runUrl(); };
+window.resetTool   = function(){ _scan.reset(); };
+window.noneOfThese = function(){ _scan.noneOfThese(); };
+window.toggleURL   = function(btn){ _scan.toggleUrlPanel(btn); };
 
 // No specialty notice is ever shown on the form — the box has been removed.
 // The doctor's selected specialty is always primary and Google's category is
 // NEVER surfaced before the report. Specialty matching still runs in the BACKEND
 // (user_specialty + google_specialty are stored there for competitor analysis).
-// Kept as a no-op so existing callers (change/autocomplete handlers) don't break.
+// Kept as a no-op so existing callers (autocomplete handlers) don't break.
 window.__updateSpecialtyConflict=function(){ return false; };
 
-// ── VALIDATE ───────────────────────────────────────────────────────────────
-function validate(){
-  clearAll();
-  var ok=true,fn=document.getElementById('fn').value.trim(),ln=document.getElementById('ln').value.trim(),sp=document.getElementById('sp').value,ct=document.getElementById('ct').value.trim();
-  if(!fn){setErr('ff','ef',true);ok=false;}
-  if(!ln){setErr('fl','el',true);ok=false;}
-  if(!sp){setErr('fsp','esp',true);ok=false;}
-  if(!ct||ct.length<2){setErr('fct','ect',true);ok=false;}
-  if(!ok){var first=document.querySelector('.field input.err,.field select.err');if(first)first.focus();}
-  return ok;
-}
 
-// ── RUN CHECK ─────────────────────────────────────────────────────────────
-window.runCheck = async function() {
-  var fn = (document.getElementById('fn') || {}).value || '';
-  var ln = (document.getElementById('ln') || {}).value || '';
-  var sp = (document.getElementById('sp') || {}).value || '';
-  var spp = (document.getElementById('sp-parent') || {}).value || '';
-  var ct = (document.getElementById('ct') || {}).value || '';
-  fn = fn.trim(); ln = ln.trim(); sp = sp.trim(); spp = spp.trim(); ct = ct.trim();
 
-  // Validate — use existing field-error UI
-  clearAll();
-  var ok = true;
-  if (!fn)          { setErr('ff','ef',true); ok = false; }
-  if (!ln)          { setErr('fl','el',true); ok = false; }
-  if (!sp)          { setErr('fsp','esp',true); ok = false; }
-  if (!ct || ct.length < 2) { setErr('fct','ect',true); ok = false; }
-  if (!ok) {
-    var first = document.querySelector('.field input.err,.field select.err');
-    if (first) first.focus();
-    return;
-  }
 
-  // Specialty vs Google category is INFORMATIONAL only — refresh the notice but
-  // never block. The doctor's selected specialty is always respected.
-  if (window.__updateSpecialtyConflict) window.__updateSpecialtyConflict();
 
-  // Clear any stale report data from previous sessions before starting fresh
-  try { localStorage.removeItem('docmirrorPreviewReport'); localStorage.removeItem('tdm_free_preview'); } catch(e) {}
-
-  var placeId = (document.getElementById('place-id') || {}).value || '';
-  if (!API_READY) { runFreePreview({fn:fn,ln:ln,sp:sp,ct:ct}); return; }
-  doAudit({fn:fn,ln:ln,sp:sp,spp:spp,ct:ct,placeId:placeId.trim()});
-};
-function runURL(){
-  var val=document.getElementById('mu').value.trim();
-  var inp=document.getElementById('mu');
-  var urlRe=/^https?:\/\/(www\.)?(maps\.google|google\.com\/maps|goo\.gl|g\.page)/i;
-
-  if(!val){
-    inp.style.borderColor='var(--red)';
-    inp.focus();
-    return;
-  }
-  inp.style.borderColor='';
-
-  if(!API_READY){showWL();return;}
-
-  // Clear stale data before new search
-  try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e){}
-
-  if(urlRe.test(val)){
-    // Clean Google Maps URL — use directly
-    doAudit({mapsUrl:val});
-  } else {
-    // Name or clinic name — pass as free text search
-    // Strip "Dr." prefix if present, split into first/last
-    var clean=val.replace(/^Dr\.?\s*/i,'').trim();
-    var parts=clean.split(/\s+/);
-    var fn=parts[0]||clean;
-    var ln=parts.slice(1).join(' ')||'';
-    doAudit({fn:fn, ln:ln, freeText:val});
-  }
-}
-
-// ── AUDIT (real API) ───────────────────────────────────────────────────────
-var _ac=null,_tm=null;
-// Navigate to the report after an audit. Breaks out of the Pricing modal iframe
-// (top window) when embedded, and carries the selected plan (?plan=audit|monitor)
-// forward so the report continues to the correct checkout. Homepage (non-embed)
-// audits have no plan param and behave exactly as before.
-function _tdmGoReport(){
-  var _p=null; try{ _p=(new URLSearchParams(location.search)).get('plan'); }catch(e){}
-  var _u='/pages/preview-report.html'+((_p==='audit'||_p==='monitor')?('?plan='+_p):'');
-  (window.top&&window.top!==window.self?window.top:window).location.href=_u;
-}
-async function doAudit(p){
-  document.getElementById('inp').style.display='none';
-  document.getElementById('ls').classList.add('active');
-  setS(1,'spin');
-  setTimeout(function(){setS(2,'spin');},600);
-  _tm=setTimeout(function(){document.getElementById('tm').classList.add('on');},8000);
-  if(_ac)_ac.abort();
-  _ac=new AbortController();
-  try{
-    var r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p),signal:_ac.signal});
-    setS(3,'spin');await wait(300);setS(4,'spin');
-    if(!r.ok)throw new Error('err '+r.status);
-    var d=await r.json();
-    setS(5,'spin');await wait(400);
-    for(var i=1;i<=5;i++)setS(i,'dn');
-    clearTimeout(_tm);await wait(600);
-    if(d.needsSelection && d.matches && d.matches.length){
-      // Several plausible listings — let the user pick the right one.
-      try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
-      showDidYouMean(d.matches,p,d);
-    }else if(d.verified===false || d.notFound){
-      // Verification failed — never store or show preview/competitor data.
-      try{localStorage.removeItem('docmirrorPreviewReport');localStorage.removeItem('tdm_free_preview');}catch(e2){}
-      showVF(d,p);
-    }else{
-      try{localStorage.setItem('docmirrorPreviewReport',JSON.stringify(d));}catch(e2){}
-      _tdmGoReport();
-    }
-  }catch(e){
-    clearTimeout(_tm);
-    if(e.name==='AbortError')return;
-    document.getElementById('ls').classList.remove('active');
-    document.getElementById('inp').style.display='block';
-    var te=document.getElementById('tool-err');
-    te.textContent='Could not reach the server. Please try again in a moment.';
-    te.classList.add('on');
-  }
-}
-function wait(ms){return new Promise(function(r){setTimeout(r,ms);})}
-function setS(n,st){
-  var el=document.getElementById('s'+n),ic=document.getElementById('i'+n);
-  el.classList.add('vis');
-  if(st==='spin'){
-    ic.className='s-icon spin';
-    if(n>1){var pi=document.getElementById('i'+(n-1));pi.className='s-icon dn';pi.innerHTML='<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>';document.getElementById('s'+(n-1)).classList.add('done');}
-  }else if(st==='dn'){ic.className='s-icon dn';ic.innerHTML='<svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>';el.classList.add('done');}
-}
 
 // ── RESULTS (from API data) ────────────────────────────────────────────────
 function showRes(d,p){
@@ -2504,69 +2371,6 @@ function showNF(p){
   _sc=0;_dn='Dr. '+(p.fn||'')+' '+(p.ln||'');
   document.getElementById('nf').scrollIntoView({behavior:'smooth',block:'start'});
 }
-// Could not verify this listing — show a soft, reason-aware card (NOT alarming).
-// GMB-missing is NOT handled here (it returns verified:true → a limited report).
-function showVF(d,p){
-  document.getElementById('ls').classList.remove('active');
-  document.getElementById('inp').style.display='none';
-  var reason=(d&&d.reason)||'';
-  var titleEl=document.getElementById('vf-title');
-  if(titleEl){
-    titleEl.textContent = reason==='city_mismatch'
-      ? "We couldn't find this doctor in that city"
-      : "We couldn't confirm this listing";
-  }
-  var msg=(d&&d.message)?d.message:"Please double-check the name, city and specialty, then try again.";
-  var el=document.getElementById('vf-msg');if(el)el.textContent=msg;
-  document.getElementById('vf').classList.add('active');
-  document.getElementById('vf').scrollIntoView({behavior:'smooth',block:'start'});
-}
-
-// "Please select yours" — render candidate profiles; picking one re-runs the
-// audit with that exact placeId (the trusted path). "None of these" generates a
-// GMB-missing report (never another clinic's data).
-var _dsParams=null;
-function showDidYouMean(matches,p,d){
-  _dsParams=p;
-  document.getElementById('ls').classList.remove('active');
-  document.getElementById('inp').style.display='none';
-  var body=document.getElementById('ds-body');
-  if(body&&d&&d.message)body.textContent=d.message;
-  var list=document.getElementById('ds-list');
-  if(list){
-    list.innerHTML='';
-    matches.forEach(function(m){
-      var item=document.createElement('div');
-      item.className='ds-item';
-      item.innerHTML='<div class="ds-info"><span class="ds-name"></span><span class="ds-addr"></span><span class="ds-meta2"></span></div><button type="button" class="ds-use">Use this profile</button>';
-      item.querySelector('.ds-name').textContent=m.name||'Listing';
-      item.querySelector('.ds-addr').textContent=m.address||'';
-      var meta=(m.rating!=null?('★ '+m.rating+' · '):'')+(m.reviewCount||0)+' reviews';
-      var metaEl=item.querySelector('.ds-meta2');
-      metaEl.textContent=meta;
-      if(m.website){
-        metaEl.appendChild(document.createTextNode(' · '));
-        var a=document.createElement('a');a.className='ds-web';a.href=m.website;a.target='_blank';a.rel='noopener';a.textContent='Website';
-        metaEl.appendChild(a);
-      }
-      item.querySelector('.ds-use').onclick=function(){
-        document.getElementById('ds').classList.remove('active');
-        var np={};for(var k in p){np[k]=p[k];}np.placeId=m.placeId;np.gmbMissing=false;
-        doAudit(np);
-      };
-      list.appendChild(item);
-    });
-  }
-  document.getElementById('ds').classList.add('active');
-  document.getElementById('ds').scrollIntoView({behavior:'smooth',block:'start'});
-}
-// "None of these" → no GMB for this exact doctor → limited GMB-missing report.
-function noneOfThese(){
-  document.getElementById('ds').classList.remove('active');
-  var p=_dsParams||{};
-  var np={};for(var k in p){np[k]=p[k];}np.gmbMissing=true;np.placeId='';
-  doAudit(np);
-}
 function showWL(){
   document.getElementById('nf').classList.remove('active');
   document.getElementById('inp').style.display='none';
@@ -2630,55 +2434,7 @@ function doOneTime(){
   window.location.href='/pages/checkout.html';
 }
 
-// ── RESET ──────────────────────────────────────────────────────────────────
-function resetTool(){
-  ['ls','rs','nf','vf','ds'].forEach(function(id){var el=document.getElementById(id);el.classList.remove('active','on');});
-  document.getElementById('inp').style.display='block';
-  document.getElementById('wl').classList.remove('on');
-  document.getElementById('tm').classList.remove('on');
-  document.getElementById('tool-err').classList.remove('on');
-  clearAll();
-  document.getElementById('tool').scrollIntoView({behavior:'smooth',block:'start'});
-}
 
-// ── FREE PREVIEW FLOW ──────────────────────────────────────────────────────
-var _imul = Math.imul || function(a,b){var ah=(a>>>16)&0xffff,al=a&0xffff,bh=(b>>>16)&0xffff,bl=b&0xffff;return((al*bh+ah*bl)<<16)+(al*bl)|0;};
-function _strSeed(s){var h=0;for(var i=0;i<s.length;i++)h=(_imul(31,h)+s.charCodeAt(i))|0;return(h>>>0)||1;}
-function _mkRng(seed){var s=seed>>>0;return function(lo,hi){s=(_imul(1664525,s)+1013904223)>>>0;return lo+(s%(hi-lo+1));};}
-function calculateFreeVisibilityScore(p){
-  var seed=_strSeed((p.fn+p.ln+p.sp+p.ct).toLowerCase().replace(/\s+/g,''));
-  var r=_mkRng(seed);
-  var base=42+(p.sp?5:0)+(p.ct&&p.ct.length>2?4:0)+r(0,21)-8;
-  var google=Math.min(88,Math.max(28,base+r(4,14)));
-  var chatgpt=Math.min(google-3,Math.max(15,google-r(8,22)));
-  var gemini=Math.min(chatgpt+3,Math.max(12,chatgpt-r(2,10)));
-  var claude=Math.min(gemini,Math.max(10,gemini-r(2,8)));
-  var overall=Math.round((google+chatgpt+gemini+claude)/4);
-  return{doctorName:'Dr. '+p.fn+' '+p.ln,specialty:p.sp,cityState:p.ct,
-    overallScore:overall,googleScore:google,chatgptScore:chatgpt,geminiScore:gemini,claudeScore:claude,
-    reviewStrength:r(15,70),competitorGap:0,competitors:[]};
-}
-function runFreePreview(p){
-  document.getElementById('inp').style.display='none';
-  var ds=document.getElementById('demo-strip');if(ds)ds.style.display='none';
-  document.getElementById('ls').classList.add('active');
-  setS(1,'spin');
-  setTimeout(function(){setS(2,'spin');},480);
-  setTimeout(function(){setS(3,'spin');},960);
-  setTimeout(function(){setS(4,'spin');},1440);
-  setTimeout(function(){
-    setS(5,'spin');
-    var result=calculateFreeVisibilityScore(p);
-    try{localStorage.setItem('tdm_free_preview',JSON.stringify(result));}catch(e){}
-    setTimeout(function(){_tdmGoReport();},380);
-  },1920);
-}
-
-// ── URL TOGGLE ─────────────────────────────────────────────────────────────
-function toggleURL(btn){
-  var p=document.getElementById('url-panel'),open=p.classList.toggle('open');
-  btn.setAttribute('aria-expanded',String(open));
-}
 
 </script>
 <script>

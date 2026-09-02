@@ -444,6 +444,9 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       <div class="doctor-spec" id="doc-spec">&mdash;</div>
     </div>
 
+    <!-- Multi-doctor profile switcher — populated + shown only in profile mode. -->
+    <div id="profile-switcher"></div>
+
     <div class="nav-section-label">Overview</div>
     <a class="nav-link active" href="#exec" id="nav-exec"><span class="icon">📋</span>Executive Summary</a>
     <a class="nav-link" href="#score"><span class="icon">📊</span>Visibility Score</a>
@@ -505,9 +508,6 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       .agency-btn{background:var(--green,#00A878);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:.85rem;font-weight:700;cursor:pointer}
       .agency-btn:disabled{background:#cbd5e0;cursor:not-allowed}
       #agency-msg{display:none;font-size:12px;margin-top:8px;font-weight:600}
-      #agency-form{display:none;background:#fff;border:.5px solid var(--border);border-radius:12px;padding:1rem 1.25rem;margin:10px 0 1rem}
-      #agency-form .af-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
-      #agency-form input{flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit}
       .agency-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
       .agency-card{background:#fff;border:.5px solid var(--border);border-radius:14px;padding:1rem 1.15rem;display:flex;flex-direction:column;gap:12px}
       .agency-card-top{display:flex;justify-content:space-between;gap:8px}
@@ -522,30 +522,252 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       .agency-run{margin-left:auto;background:var(--navy,#0A2540);color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .15s}
       .agency-run:hover:not(:disabled){background:var(--green,#00A878)}
       .agency-run:disabled{opacity:.5;cursor:not-allowed}
+      .agency-card{cursor:pointer}
+
+      /* ── Multi-doctor modes. ONLY active when <body> carries the class; solo
+         users get no class, so nothing below applies to them. ────────────────── */
+      /* Mode 1 — org landing: show only the Doctors grid; hide every other section
+         and the section nav. #agency is force-shown (beats its inline display:none). */
+      body.tdm-org-landing main > section:not(#agency){display:none !important}
+      body.tdm-org-landing #agency{display:block !important}
+      body.tdm-org-landing aside .nav-link,
+      body.tdm-org-landing aside .nav-section-label{display:none !important}
+      /* Mode 2 — profile dashboard: hide the grid, reveal the profile switcher. */
+      body.tdm-profile #agency{display:none !important}
+      body.tdm-profile #profile-switcher{display:block !important}
+      /* profile switcher (sidebar) */
+      #profile-switcher{display:none;margin-bottom:.5rem;padding-bottom:.5rem;border-bottom:.5px solid var(--border)}
+      #profile-switcher .ps-back{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--slate-light);text-decoration:none;padding:6px 4px;font-weight:600}
+      #profile-switcher .ps-back:hover{color:var(--green-dark)}
+      #profile-switcher .ps-label{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate-light);font-weight:700;margin:8px 4px 4px}
+      #profile-switcher .ps-item{display:block;width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:12.5px;color:var(--slate);padding:7px 8px;border-radius:7px;cursor:pointer}
+      #profile-switcher .ps-item:hover{background:var(--warm)}
+      #profile-switcher .ps-item.active{background:var(--green-light);color:var(--green-dark);font-weight:700}
+
+      /* ── ADD-DOCTOR MODAL ──────────────────────────────────────────────────
+         The homepage scan, in a dialog. The LOGIC is shared (/js/scan-widget.js,
+         doctor-autocomplete.js, specialty-combobox.js) — only these styles are
+         written here, because index.html is off-limits and its scan CSS is inline
+         in that file. The field ids match the homepage's on purpose: the shared
+         autocomplete/combobox modules auto-init against those exact ids, so the
+         modal gets the real doctor-name suggestions with no glue code. */
+      .ad-modal{position:fixed;inset:0;background:rgba(10,37,64,.7);z-index:600;display:none;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+      .ad-modal.show{display:flex}
+      .ad-box{background:#fff;border-radius:16px;padding:1.6rem;max-width:560px;width:100%;position:relative;margin:auto}
+      .ad-close{position:absolute;top:12px;right:14px;background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--slate-light)}
+      .ad-close:hover{color:var(--navy)}
+      .ad-title{font-size:1.05rem;font-weight:700;color:var(--navy)}
+      .ad-sub{font-size:12.5px;color:var(--slate-light);margin-top:4px;line-height:1.5}
+      .ad-step-title{font-size:.95rem;font-weight:700;color:var(--navy);margin-bottom:4px}
+      .ad-head{margin-bottom:1rem;padding-right:1.5rem}
+      #ad-loading,#ad-ds,#ad-vf,#ad-result{display:none}
+      #ad-loading.active,#ad-ds.active,#ad-vf.active,#ad-result.active{display:block}
+
+      /* form fields — same class contract the scan widget + shared modules expect */
+      .ad-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+      .ad-box .field{display:flex;flex-direction:column;gap:4px;position:relative}
+      .ad-box .field.full{grid-column:1/-1}
+      .ad-box .field label{font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.04em}
+      .ad-box .field input{padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:.85rem;font-family:inherit;color:var(--navy);width:100%}
+      .ad-box .field input:focus{outline:none;border-color:var(--green)}
+      .ad-box .field input.err{border-color:var(--red);background:var(--red-light)}
+      .ad-box .field-err{display:none;font-size:11px;color:var(--red);font-weight:600}
+      .ad-box .field-err.on{display:block}
+      .ad-scan-btn{width:100%;margin-top:12px;padding:11px}
+      .ad-err{display:none;font-size:12px;color:var(--red);font-weight:600;margin-top:8px}
+      .ad-err.on{display:block}
+      .ad-ghost{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:.8rem;font-weight:600;cursor:pointer;font-family:inherit;color:var(--slate)}
+      .ad-ghost:hover{border-color:var(--slate-light);color:var(--navy)}
+
+      /* doctor-name autocomplete panel (rendered by /js/doctor-autocomplete.js) */
+      .ad-box .name-ac{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px;position:relative}
+      .ad-box .dr-ac-panel{display:none;position:absolute;top:100%;left:0;right:0;z-index:20;background:#fff;border:1px solid var(--border);border-radius:10px;margin-top:4px;box-shadow:0 8px 24px rgba(10,37,64,.12);max-height:260px;overflow-y:auto}
+      .ad-box .dr-ac-panel.open{display:block}
+      .ad-box .dr-ac-opt{padding:9px 11px;cursor:pointer;border-bottom:.5px solid var(--border)}
+      .ad-box .dr-ac-opt:last-child{border-bottom:none}
+      .ad-box .dr-ac-opt.active,.ad-box .dr-ac-opt:hover{background:var(--green-light)}
+      .ad-box .dr-ac-name{font-size:.85rem;font-weight:700;color:var(--navy);display:block}
+      .ad-box .dr-ac-meta{font-size:11.5px;color:var(--slate-light);display:block;margin-top:2px}
+      .ad-box .dr-ac-foot{font-size:11px;color:var(--slate-muted);display:block;margin-top:2px}
+      .ad-box .dr-ac-rate{color:var(--amber);font-weight:700}
+      .ad-box .dr-ac-pin{width:11px;height:11px;vertical-align:-1px;margin-right:2px}
+      .ad-box .dr-ac-state{padding:10px 11px;font-size:12px;color:var(--slate-light)}
+      .ad-box .dr-ac-opt mark{background:#FFF3C4;color:inherit;padding:0}
+      .ad-box .dr-ac-spin{display:inline-block;width:11px;height:11px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:ad-spin .7s linear infinite;vertical-align:-1px;margin-right:6px}
+
+      /* specialty combobox panel (rendered by /js/specialty-combobox.js) */
+      .ad-box .sp-cb{position:relative}
+      .ad-box .sp-cb-panel{display:none;position:absolute;top:100%;left:0;right:0;z-index:20;background:#fff;border:1px solid var(--border);border-radius:10px;margin-top:4px;box-shadow:0 8px 24px rgba(10,37,64,.12);max-height:240px;overflow-y:auto}
+      .ad-box .sp-cb-panel.open{display:block}
+      .ad-box .sp-cb-group{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--slate-muted);padding:8px 11px 4px}
+      .ad-box .sp-cb-opt{padding:8px 11px;cursor:pointer}
+      .ad-box .sp-cb-opt.active,.ad-box .sp-cb-opt:hover{background:var(--green-light)}
+      .ad-box .sp-cb-name{font-size:.85rem;color:var(--navy);font-weight:600;display:block}
+      .ad-box .sp-cb-sub{font-size:11px;color:var(--slate-light);display:block}
+      .ad-box .sp-cb-empty{padding:10px 11px;font-size:12px;color:var(--slate-light)}
+
+      /* loading steps — the widget writes .vis/.done and .s-icon idle|spin|dn */
+      .ad-box .loading-step{display:flex;align-items:center;gap:9px;font-size:.83rem;color:var(--slate-light);padding:6px 0;opacity:0;transition:opacity .25s}
+      .ad-box .loading-step.vis{opacity:1}
+      .ad-box .loading-step.done{color:var(--navy)}
+      .ad-box .s-icon{width:15px;height:15px;border-radius:50%;flex:0 0 15px;display:flex;align-items:center;justify-content:center;background:var(--border)}
+      .ad-box .s-icon.spin{background:none;border:2px solid var(--border);border-top-color:var(--green);animation:ad-spin .7s linear infinite}
+      .ad-box .s-icon.dn{background:var(--green)}
+      @keyframes ad-spin{to{transform:rotate(360deg)}}
+      .ad-timeout{display:none;font-size:11.5px;color:var(--slate-muted);margin-top:8px}
+      .ad-timeout.on{display:block}
+
+      /* "which listing is this?" cards — same .ds-* contract as the homepage,
+         built by scanWidget.buildMatchItem() so the markup never forks */
+      .ad-box .ds-item{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:8px}
+      .ad-box .ds-info{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+      .ad-box .ds-name{font-size:.85rem;font-weight:700;color:var(--navy)}
+      .ad-box .ds-addr{font-size:11.5px;color:var(--slate-light)}
+      .ad-box .ds-meta2{font-size:11px;color:var(--slate-muted)}
+      .ad-box .ds-web{color:var(--green-dark);text-decoration:none}
+      .ad-box .ds-use{background:var(--navy);color:#fff;border:none;border-radius:7px;padding:7px 12px;font-size:11.5px;font-weight:700;cursor:pointer;white-space:nowrap;font-family:inherit}
+      .ad-box .ds-use:hover{background:var(--green)}
+
+      /* result card */
+      .ad-res-top{display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:12px;padding:14px}
+      .ad-res-score{width:62px;height:62px;flex:0 0 62px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:var(--green-light);color:var(--green-dark)}
+      .ad-res-score.mid{background:var(--amber-light);color:var(--amber)}
+      .ad-res-score.low{background:var(--red-light);color:var(--red)}
+      .ad-res-score b{font-size:1.3rem;line-height:1}
+      .ad-res-score span{font-size:8.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+      .ad-res-name{font-size:.98rem;font-weight:700;color:var(--navy)}
+      .ad-res-meta{font-size:12px;color:var(--slate-light);margin-top:2px}
+      .ad-res-verdict{font-size:11.5px;font-weight:700;margin-top:4px}
+      .ad-res-rows{margin-top:10px;border:1px solid var(--border);border-radius:12px;overflow:hidden}
+      .ad-res-row{display:flex;justify-content:space-between;gap:12px;padding:8px 12px;font-size:12px;border-bottom:.5px solid var(--border)}
+      .ad-res-row:last-child{border-bottom:none}
+      .ad-res-row span:first-child{color:var(--slate-light);font-weight:600}
+      .ad-res-row span:last-child{color:var(--navy);font-weight:600;text-align:right;min-width:0;overflow-wrap:anywhere}
+      .ad-note{font-size:11.5px;border-radius:9px;padding:9px 11px;margin-top:10px;line-height:1.5}
+      .ad-note.pin{background:var(--green-light);color:var(--green-dark)}
+      .ad-note.warn{background:var(--amber-light);color:var(--amber)}
+      .ad-actions{display:flex;gap:8px;margin-top:14px}
+      .ad-saving{display:none;align-items:center;gap:9px;margin-top:14px;font-size:.83rem;color:var(--slate)}
+      .ad-saving.on{display:flex}
+      .ad-actions .agency-btn{flex:1}
+      @media(max-width:520px){.ad-grid{grid-template-columns:1fr}.ad-box{padding:1.2rem}}
     </style>
     <section id="agency" class="section" style="display:none">
       <div class="section-head">
         <div class="section-title">Doctors <span class="tag new">Agency</span></div>
         <div class="agency-toolbar">
           <span id="agency-usage">&mdash;</span>
-          <button class="agency-btn" id="agency-add-btn" type="button" onclick="toggleAddForm(true)">+ Add doctor</button>
+          <button class="agency-btn" id="agency-add-btn" type="button" onclick="openAddDoctorModal()">+ Add doctor</button>
         </div>
       </div>
       <div id="agency-msg"></div>
-      <form id="agency-form" onsubmit="submitAddDoctor(event);return false">
-        <div class="af-row">
-          <input id="af-name" placeholder="Doctor name *" autocomplete="off" />
-          <input id="af-speciality" placeholder="Speciality" autocomplete="off" />
+      <!-- ADD-DOCTOR MODAL — the homepage scan, in a dialog.
+           A doctor is only ever created from a listing the scan actually resolved,
+           so the profile carries the real Google place_id and every later audit
+           runs against that exact listing instead of re-searching by name.
+           The field ids deliberately match the homepage's: /js/doctor-autocomplete.js
+           and /js/specialty-combobox.js auto-init against them, so the modal gets
+           the same verified-doctor suggestions with no duplicated code. -->
+      <div class="ad-modal" id="add-doctor-modal" role="dialog" aria-modal="true" aria-labelledby="ad-title">
+        <div class="ad-box">
+          <button class="ad-close" type="button" onclick="closeAddDoctorModal()" aria-label="Close">&times;</button>
+          <div class="ad-head">
+            <div class="ad-title" id="ad-title">Add a doctor</div>
+            <div class="ad-sub">We look this doctor up on Google exactly as a patient would. You pick the right listing, and we save it with the profile.</div>
+          </div>
+
+          <!-- STEP 1 — scan form -->
+          <div id="ad-form">
+            <div class="ad-grid">
+              <div class="name-ac" id="name-ac">
+                <div class="field" id="ff">
+                  <label for="fn">First name</label>
+                  <input type="text" id="fn" placeholder="e.g. Jayesh" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+                  <div class="field-err" id="ef" role="alert">Enter the first name</div>
+                </div>
+                <div class="field" id="fl">
+                  <label for="ln">Last name</label>
+                  <input type="text" id="ln" placeholder="e.g. Shrdhara" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="dr-ac-panel">
+                  <div class="field-err" id="el" role="alert">Enter the last name</div>
+                </div>
+                <input type="hidden" id="place-id">
+                <div class="dr-ac-panel" id="dr-ac-panel" role="listbox" aria-label="Matching doctors"></div>
+              </div>
+              <div class="field" id="fsp">
+                <label for="sp-input">Specialty</label>
+                <div class="sp-cb" id="sp-combobox">
+                  <input type="text" id="sp-input" class="sp-cb-input" placeholder="Search e.g. heart, skin, teeth&hellip;" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sp-cb-list">
+                  <input type="hidden" id="sp">
+                  <input type="hidden" id="sp-parent">
+                  <input type="hidden" id="detected-specialty">
+                  <div class="sp-cb-panel" id="sp-cb-list" role="listbox" aria-label="Medical specialties"></div>
+                </div>
+                <div class="field-err" id="esp" role="alert">Select a specialty</div>
+              </div>
+              <div class="field" id="fct">
+                <label for="ct">City</label>
+                <input type="text" id="ct" placeholder="e.g. Mumbai, MH" autocomplete="off">
+                <div class="field-err" id="ect" role="alert">Enter the city</div>
+              </div>
+            </div>
+            <button class="agency-btn ad-scan-btn" id="ad-scan-btn" type="button" onclick="adRunScan()">Show me what patients see</button>
+            <div class="ad-err" id="ad-tool-err" role="alert"></div>
+          </div>
+
+          <!-- STEP 2 — loading (same step driver as the homepage) -->
+          <div id="ad-loading" role="status" aria-live="polite">
+            <div class="loading-step" id="ads1"><div class="s-icon idle" id="adi1"></div>Locating the Google presence&hellip;</div>
+            <div class="loading-step" id="ads2"><div class="s-icon idle" id="adi2"></div>Reading the listing as a patient would&hellip;</div>
+            <div class="loading-step" id="ads3"><div class="s-icon idle" id="adi3"></div>Comparing against nearby competitors&hellip;</div>
+            <div class="loading-step" id="ads4"><div class="s-icon idle" id="adi4"></div>Analysing rating and review signals&hellip;</div>
+            <div class="loading-step" id="ads5"><div class="s-icon idle" id="adi5"></div>Calculating the Doctor Visibility Score&hellip;</div>
+            <div class="ad-timeout" id="ad-tm">Taking a moment longer &mdash; almost there&hellip;</div>
+          </div>
+
+          <!-- STEP 3a — more than one listing matched: pick the right one -->
+          <div id="ad-ds">
+            <div class="ad-step-title">Which listing is this doctor?</div>
+            <div class="ad-sub" id="ad-ds-body"></div>
+            <div id="ad-ds-list"></div>
+            <div class="ad-actions">
+              <button class="ad-ghost" type="button" onclick="adNoneOfThese()">None of these</button>
+              <button class="ad-ghost" type="button" onclick="adBackToForm()">&larr; Change the details</button>
+            </div>
+          </div>
+
+          <!-- STEP 3b — could not confirm the listing -->
+          <div id="ad-vf" role="alert">
+            <div class="ad-step-title" id="ad-vf-title">We couldn&rsquo;t confirm this listing</div>
+            <p class="ad-sub" id="ad-vf-msg"></p>
+            <div class="ad-actions">
+              <button class="ad-ghost" type="button" onclick="adBackToForm()">&larr; Try a different name</button>
+            </div>
+          </div>
+
+          <!-- STEP 4 — the scan result, and the only place a profile is created -->
+          <div id="ad-result">
+            <div class="ad-step-title">This is what patients see</div>
+            <div class="ad-res-top">
+              <div class="ad-res-score" id="ad-res-score"><b id="ad-res-num">0</b><span>Score</span></div>
+              <div style="min-width:0">
+                <div class="ad-res-name" id="ad-res-name"></div>
+                <div class="ad-res-meta" id="ad-res-meta"></div>
+                <div class="ad-res-verdict" id="ad-res-verdict"></div>
+              </div>
+            </div>
+            <div class="ad-res-rows" id="ad-res-rows"></div>
+            <div class="ad-note" id="ad-res-note"></div>
+            <div class="ad-actions" id="ad-actions">
+              <button class="agency-btn" id="ad-add-btn" type="button" onclick="addScannedDoctor()">Add this doctor</button>
+              <button class="ad-ghost" type="button" onclick="adBackToForm()">Scan a different doctor</button>
+            </div>
+            <div class="ad-saving" id="ad-saving" role="status" aria-live="polite">
+              <div class="s-icon spin"></div><span id="ad-saving-text"></span>
+            </div>
+            <div class="ad-err" id="ad-add-err" role="alert"></div>
+          </div>
         </div>
-        <div class="af-row">
-          <input id="af-city" placeholder="City" autocomplete="off" />
-          <input id="af-website" placeholder="Website (https://…)" autocomplete="off" />
-        </div>
-        <div style="display:flex;gap:8px">
-          <button class="agency-btn" id="af-submit" type="submit">Add doctor</button>
-          <button type="button" onclick="toggleAddForm(false)" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 16px;font-size:.85rem;cursor:pointer;font-family:inherit">Cancel</button>
-        </div>
-      </form>
+      </div>
       <div class="agency-grid" id="agency-grid"></div>
     </section>
 
@@ -818,7 +1040,11 @@ async function checkAuth() {
   // (isMultiProfile false / absent) never trigger this, so their dashboard is
   // byte-for-byte unchanged and the #agency section stays display:none.
   if (_ent && _ent.isMultiProfile === true) {
-    try { populateAgency(_ent, reports); } catch (e) { console.warn('[agency] init failed', e); }
+    _allReports = reports;   // keep the full set for per-profile filtering
+    try {
+      await populateAgency(_ent, reports);   // loads profiles + renders the grid
+      enterOrgLanding();                      // start in Mode 1 (org landing)
+    } catch (e) { console.warn('[agency] init failed', e); }
   }
 }
 
@@ -877,6 +1103,10 @@ function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 // over the already-secure /api/profiles endpoints. Nothing here changes the solo
 // experience — populateAgency is only ever called for isMultiProfile orgs.
 var _agencyEnt = null, _agencyReportsByProfile = {};
+// Multi-doctor mode state (only ever set for isMultiProfile orgs).
+var _agencyProfiles = [];   // the org's active doctor profiles
+var _allReports = [];       // this user's full reports array (for per-profile filtering)
+var _activeProfileId = null;// which doctor's dashboard is open (Mode 2), or null (Mode 1)
 
 // Attribute-safe escape (escH doesn't cover quotes; needed for href/attributes).
 function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
@@ -949,6 +1179,7 @@ async function loadAgencyProfiles() {
     return;
   }
   var profiles = (res.body && res.body.profiles) || [];
+  _agencyProfiles = profiles;   // remember for the switcher + per-profile audit lookup
   if (!profiles.length) {
     grid.innerHTML = '<div class="empty-card"><div class="empty-title">No doctors yet</div>' +
       '<div class="empty-sub">Add your first doctor profile to start tracking.</div></div>';
@@ -963,58 +1194,324 @@ function agencyCardHtml(p) {
   var scoreTxt = last && last.score != null ? (last.score + '/100') : '&mdash;';
   var meta = [p.speciality, p.city].filter(Boolean).map(escH).join(' · ');
   var site = p.website
-    ? '<a href="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" style="color:var(--green-dark);font-size:12px;text-decoration:none">' + escH(p.website) + '</a>'
+    ? '<a href="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--green-dark);font-size:12px;text-decoration:none">' + escH(p.website) + '</a>'
     : '<span style="color:var(--slate-light);font-size:12px">No website</span>';
+  // Clicking the card opens that doctor's dashboard (Mode 2); the buttons/link
+  // stop propagation so they don't also trigger the open.
   return '<div class="agency-card" data-id="' + escAttr(p.id) + '"' +
-      ' data-name="' + escAttr(p.name || '') + '" data-speciality="' + escAttr(p.speciality || '') + '" data-city="' + escAttr(p.city || '') + '">' +
+      ' data-name="' + escAttr(p.name || '') + '" data-speciality="' + escAttr(p.speciality || '') + '" data-city="' + escAttr(p.city || '') + '"' +
+      ' onclick="openProfile(\'' + escAttr(p.id) + '\')">' +
       '<div class="agency-card-top">' +
         '<div><div class="agency-name">' + escH(p.name || 'Unnamed') + '</div>' +
           '<div class="agency-meta">' + (meta || '&mdash;') + '</div>' + site + '</div>' +
-        '<button class="agency-archive" type="button" onclick="archiveDoctor(\'' + escAttr(p.id) + '\')">Archive</button>' +
+        '<button class="agency-archive" type="button" onclick="event.stopPropagation();archiveDoctor(\'' + escAttr(p.id) + '\')">Archive</button>' +
       '</div>' +
       '<div class="agency-card-bottom">' +
         '<div class="agency-stat"><span class="agency-stat-l">Last audit</span><span class="agency-stat-v">' + lastTxt + '</span></div>' +
         '<div class="agency-stat"><span class="agency-stat-l">Score</span><span class="agency-stat-v">' + scoreTxt + '</span></div>' +
-        '<button class="agency-run" type="button" onclick="runProfileAudit(this,\'' + escAttr(p.id) + '\')">Run audit</button>' +
+        '<button class="agency-run" type="button" onclick="event.stopPropagation();runProfileAudit(this,\'' + escAttr(p.id) + '\')">Run audit</button>' +
       '</div>' +
     '</div>';
 }
 
-function toggleAddForm(show) {
-  var f = el('agency-form'); if (!f) return;
-  f.style.display = show ? 'block' : 'none';
-  if (show) { agencyMsg(''); var n = el('af-name'); if (n) n.focus(); }
+// ── ADD-DOCTOR MODAL ────────────────────────────────────────────────────────
+// Runs the SAME scan as the homepage (/js/scan-widget.js), so a doctor is only
+// ever created from a Google listing the scan actually resolved. That listing's
+// place_id is saved with the profile, which is what stops the old failure mode:
+// "Several Google listings match …" on a later Run audit, because the audit no
+// longer has to re-guess which listing this doctor is.
+//
+// NOTHING is written until "Add this doctor" is pressed — closing the modal at
+// any point (including after a completed scan) saves nothing.
+var _adScan = null;          // the TDMScan instance (created on first open)
+var _adResult = null;        // the audit data the scan returned
+var _adParams = null;        // the params that produced it (carries spp)
+var _adPollCancelled = false; // stop watching for the report when the modal closes
+
+function adEl(id) { return document.getElementById(id); }
+
+// Show exactly one step inside the modal.
+function adStep(which) {
+  adEl('ad-form').style.display = which === 'form' ? 'block' : 'none';
+  ['ad-loading', 'ad-ds', 'ad-vf', 'ad-result'].forEach(function (id) {
+    adEl(id).classList.toggle('active', id === 'ad-' + which);
+  });
 }
 
-async function submitAddDoctor(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  var name = (el('af-name').value || '').trim();
-  if (!name) { agencyMsg('Doctor name is required.', true); return; }
-  var body = {
-    name: name,
-    website:    (el('af-website').value || '').trim(),
-    speciality: (el('af-speciality').value || '').trim(),
-    city:       (el('af-city').value || '').trim()
-  };
-  var btn = el('af-submit'); btn.disabled = true; var old = btn.textContent; btn.textContent = 'Adding…';
-  var res = await agencyApi('POST', '/api/profiles', body);
-  btn.disabled = false; btn.textContent = old;
-  if (res.status === 201) {
-    ['af-name','af-website','af-speciality','af-city'].forEach(function(id){ var i = el(id); if (i) i.value = ''; });
-    toggleAddForm(false);
-    agencyMsg('Doctor added.', false);
-    await refreshAgency();
-  } else if (res.status === 403) {
-    // Limit or no-org — show the server's clear message, never a silent fail.
-    agencyMsg((res.body && res.body.error) || 'Profile limit reached.', true);
-  } else if (res.status === 400) {
-    agencyMsg((res.body && res.body.error) || 'Please check the form.', true);
-  } else if (res.status === 401) {
-    agencyMsg('Session expired — please refresh and sign in again.', true);
+function adErr(id, text) {
+  var e = adEl(id); if (!e) return;
+  e.textContent = text || '';
+  e.classList.toggle('on', !!text);
+}
+
+// The scan widget, wired to this modal. Field ids are the homepage's (so the
+// shared autocomplete/combobox modules auto-init); the state ids are the
+// modal's. The three outcomes are handled here instead of navigating away.
+function adGetScan() {
+  if (_adScan) return _adScan;
+  _adScan = TDMScan.create({
+    ids: {
+      form: 'ad-form', loading: 'ad-loading', timeoutMsg: 'ad-tm', toolErr: 'ad-tool-err',
+      selection: 'ad-ds', selectionBody: 'ad-ds-body', selectionList: 'ad-ds-list',
+      verifyFail: 'ad-vf', vfTitle: 'ad-vf-title', vfMsg: 'ad-vf-msg',
+      stepPrefix: 'ads', iconPrefix: 'adi',
+      // not present in the modal — null-safe in the widget
+      scrollTarget: '', waitlist: '', urlInput: '', urlPanel: '', demoStrip: ''
+    },
+    resetStates: ['ad-loading', 'ad-ds', 'ad-vf', 'ad-result'],
+    // The modal must never touch the homepage's stored preview report.
+    staleKeys: [],
+    onSuccess:      adOnScanResult,
+    onSelection:    adOnSelection,
+    onVerifyFail:   adOnVerifyFail,
+    onNetworkError: adOnNetworkError
+  });
+  return _adScan;
+}
+
+function openAddDoctorModal() {
+  // Limit is enforced server-side too; this is the friendly stop before the trip.
+  if (_agencyEnt && !_agencyEnt.canCreateProfile) {
+    agencyMsg('Profile limit reached (' + _agencyEnt.profilesUsed + '/' + _agencyEnt.profileLimit +
+      '). Archive a doctor or upgrade to add another.', true);
+    return;
+  }
+  agencyMsg('');
+  adGetScan();
+  adResetModal();
+  adEl('add-doctor-modal').classList.add('show');
+  var fn = adEl('fn'); if (fn) fn.focus();
+}
+
+// Clear every field and step. Called on open and on close, so a half-finished
+// scan is never left lying around for the next open.
+function adResetModal() {
+  _adResult = null; _adParams = null;
+  ['fn', 'ln', 'ct', 'sp-input', 'sp', 'sp-parent', 'place-id', 'detected-specialty']
+    .forEach(function (id) { var e = adEl(id); if (e) e.value = ''; });
+  if (window.__spCombobox && window.__spCombobox.reset) window.__spCombobox.reset();
+  if (_adScan) _adScan.clearErrors();
+  adErr('ad-tool-err', ''); adErr('ad-add-err', '');
+  adEl('ad-tm').classList.remove('on');
+  adEl('ad-ds-list').innerHTML = '';
+  adBusy(false);
+  var add = adEl('ad-add-btn'); add.disabled = false; add.textContent = 'Add this doctor';
+  adStep('form');
+}
+
+// Closing saves NOTHING — any in-flight audit is abandoned and the scan result
+// is dropped on the floor.
+function closeAddDoctorModal() {
+  _adPollCancelled = true;
+  if (_adScan) _adScan.abort();
+  adEl('add-doctor-modal').classList.remove('show');
+  adResetModal();
+}
+
+function adRunScan()   { adGetScan().run(); }
+function adNoneOfThese() { adGetScan().noneOfThese(); }
+function adBackToForm() {
+  _adResult = null; _adParams = null;
+  adErr('ad-tool-err', ''); adErr('ad-add-err', '');
+  adEl('ad-tm').classList.remove('on');
+  adStep('form');
+  var fn = adEl('fn'); if (fn) fn.focus();
+}
+
+// ── scan outcomes ───────────────────────────────────────────────────────────
+// More than one listing matched. This is a STEP, not an error: the cards are
+// built by the shared widget (same markup as the homepage), and picking one
+// re-runs the audit pinned to that exact placeId.
+function adOnSelection(matches, params, data) {
+  var scan = adGetScan();
+  adEl('ad-ds-body').textContent = (data && data.message) || 'We found more than one listing. Please pick the right one.';
+  var list = adEl('ad-ds-list');
+  list.innerHTML = '';
+  matches.forEach(function (m) {
+    list.appendChild(scan.buildMatchItem(m, function () { scan.selectMatch(m, params); }));
+  });
+  adStep('ds');
+}
+
+function adOnVerifyFail(d) {
+  var reason = (d && d.reason) || '';
+  adEl('ad-vf-title').textContent = reason === 'city_mismatch'
+    ? "We couldn't find this doctor in that city"
+    : "We couldn't confirm this listing";
+  adEl('ad-vf-msg').textContent = (d && d.message) ||
+    'Please double-check the name, city and specialty, then try again.';
+  adStep('vf');
+}
+
+function adOnNetworkError() {
+  adStep('form');
+  adErr('ad-tool-err', 'Could not reach the server. Please try again in a moment.');
+}
+
+// The scan came back. Show what it found and offer to save it — this is the
+// only screen with an "Add this doctor" button.
+function adOnScanResult(d, p) {
+  _adResult = d; _adParams = p || {};
+
+  var score = typeof d.score === 'number' ? d.score : 0;
+  var ring = adEl('ad-res-score');
+  ring.className = 'ad-res-score' + (score >= 70 ? '' : score >= 50 ? ' mid' : ' low');
+  adEl('ad-res-num').textContent = score;
+
+  adEl('ad-res-name').textContent = d.doctorName || d.doctorNameClean || 'This doctor';
+  var city = adCity(d);
+  adEl('ad-res-meta').textContent = [d.specialty || d.googleSpecialty, city].filter(Boolean).join(' · ') || '—';
+  var verdict = adEl('ad-res-verdict');
+  verdict.textContent = d.verdictLabel || '';
+  verdict.style.color = d.verdictColor || 'var(--slate-light)';
+
+  // Only real, returned values — never a placeholder presented as data.
+  var rows = [];
+  if (d.businessName)             rows.push(['Google listing', d.businessName]);
+  if (d.address)                  rows.push(['Address', d.address]);
+  if (typeof d.rating === 'number' && d.rating > 0)
+                                  rows.push(['Rating', d.rating.toFixed(1) + ' ★ (' + (d.reviewCount || 0) + ' reviews)']);
+  else if (d.reviewCount != null) rows.push(['Reviews', (d.reviewCount || 0) + '']);
+  if (d.photoCount != null)       rows.push(['Photos', d.photoCount + '']);
+  rows.push(['Hours', d.hasHours ? (d.hoursText || 'Listed') : 'Not listed']);
+  if (d.website)                  rows.push(['Website', d.website]);
+  adEl('ad-res-rows').innerHTML = rows.map(function (r) {
+    return '<div class="ad-res-row"><span>' + escH(r[0]) + '</span><span>' + escH(r[1]) + '</span></div>';
+  }).join('');
+
+  // Say plainly whether future audits will be pinned to a listing or not.
+  var note = adEl('ad-res-note');
+  if (d.placeId) {
+    note.className = 'ad-note pin';
+    note.textContent = 'We’ll save this exact Google listing with the profile, so every future audit runs against it instead of searching by name.';
   } else {
-    agencyMsg((res.body && res.body.error) || ('Could not add doctor (HTTP ' + res.status + ').'), true);
+    note.className = 'ad-note warn';
+    note.textContent = d.source === 'organic_profile'
+      ? 'Found in organic search, but there is no Google Business Profile to pin. You can still add this doctor — audits will search by name.'
+      : 'No public Google Business Profile found. You can still add this doctor — audits will search by name until a listing exists.';
+  }
+  adStep('result');
+}
+
+function adCity(d) {
+  return d.city || String(d.cityState || '').split(',')[0].trim() || '';
+}
+
+// ── create the profile, then generate its first report ──────────────────────
+// Every value comes from the SCAN result, not from what was typed: the name,
+// specialty, city and website are the ones Google actually returned for the
+// listing that was verified. place_id / google_maps_url pin it. A doctor with
+// no listing (organic or GMB-missing) is still allowed through — place_id just
+// goes NULL and audits fall back to searching by name.
+//
+// After the profile exists we run the SAME pipeline "Run audit" uses
+// (/api/generate-report-entitled, bound to this doctor_profile_id), so the score
+// is written to the DB and survives a reload. That pipeline runs server-side
+// after the response, so we poll until the report row appears.
+//
+// The profile is NEVER rolled back if the report fails: an added doctor stays
+// added, and its card simply reads "No audits yet" with a Run audit button.
+async function addScannedDoctor() {
+  var d = _adResult;
+  if (!d) { adErr('ad-add-err', 'Run the scan first.'); return; }
+
+  var body = {
+    name:              d.doctorName || d.doctorNameClean || '',
+    speciality:        d.specialty || d.googleSpecialty || '',
+    city:              adCity(d),
+    website:           d.website || '',
+    place_id:          d.placeId || '',
+    google_maps_url:   d.googleMapsUrl || '',
+    parent_speciality: (_adParams && _adParams.spp) || ''
+  };
+  if (!body.name) { adErr('ad-add-err', 'The scan returned no doctor name — try again.'); return; }
+
+  adErr('ad-add-err', '');
+  adBusy(true, 'Adding the doctor…');
+  var res = await agencyApi('POST', '/api/profiles', body);
+
+  if (res.status !== 201) {
+    adBusy(false);
+    if (res.status === 403)      adErr('ad-add-err', (res.body && res.body.error) || 'Profile limit reached.');
+    else if (res.status === 400) adErr('ad-add-err', (res.body && res.body.error) || 'Please check the details and try again.');
+    else if (res.status === 401) adErr('ad-add-err', 'Session expired — please refresh and sign in again.');
+    else                         adErr('ad-add-err', (res.body && res.body.error) || ('Could not add doctor (HTTP ' + res.status + ').'));
+    return;
+  }
+
+  // ── The profile now exists. Nothing below may delete it. ─────────────────
+  var prof = (res.body && res.body.profile) || {};
+  var added = 'Added ' + (prof.name || 'doctor') +
+    (prof.place_id ? ' — pinned to their Google listing.' : ' — no Google listing to pin; audits will search by name.');
+
+  adBusy(true, 'Generating the full report — this can take up to a minute…');
+  var reportState = 'failed';   // 'done' | 'pending' | 'failed'
+  try {
+    var g = await agencyApi('POST', '/api/generate-report-entitled',
+      { auditData: d, doctorProfileId: prof.id });
+    if (g.body && g.body.entitled && g.body.generating) {
+      reportState = (await adWaitForReport(prof.id, 90000)) ? 'done' : 'pending';
+    } else if (g.body && g.body.entitled) {
+      // Entitled but nothing queued (rate limited, or no cacheable audit data).
+      reportState = 'pending';
+    }
+  } catch (e) { reportState = 'failed'; }
+
+  adBusy(false);
+  closeAddDoctorModal();
+  // refreshAgency() re-renders the header, which clears agency-msg — so the
+  // confirmation is written after it, not before.
+  await refreshAgency();
+
+  if (reportState === 'done') {
+    agencyMsg(added + ' Report generated — the score is on the card.', false);
+  } else if (reportState === 'pending') {
+    agencyMsg(added + ' The report is still generating — reload in a minute to see the score.', false);
+  } else {
+    agencyMsg(added + ' The report could not be generated — the doctor was still added; use “Run audit” on the card to try again.', true);
   }
 }
+
+// Lock the result step while we create + generate. Closing stays available: the
+// server-side pipeline keeps running, we just stop watching for it.
+function adBusy(on, text) {
+  var acts = adEl('ad-actions'), save = adEl('ad-saving');
+  if (acts) acts.style.display = on ? 'none' : 'flex';
+  if (save) save.classList.toggle('on', !!on);
+  if (on && text) adEl('ad-saving-text').textContent = text;
+}
+
+// The report pipeline runs after the API response returns, so the row appears a
+// little later. Poll the user's reports until this profile has one. Returns true
+// only when the row is actually there — never guesses.
+async function adWaitForReport(profileId, timeoutMs) {
+  _adPollCancelled = false;
+  var deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    await new Promise(function (r) { setTimeout(r, 3000); });
+    if (_adPollCancelled) return false;
+    try {
+      var reps = await api('/api/user/reports');
+      if (Array.isArray(reps) && reps.some(function (r) { return r.doctor_profile_id === profileId; })) {
+        // Adopt the DB truth — this is what survives a reload.
+        _allReports = reps;
+        _agencyReportsByProfile = buildReportsByProfile(reps);
+        return true;
+      }
+    } catch (e) { /* transient — keep polling until the deadline */ }
+  }
+  return false;
+}
+
+// Backdrop click + Escape close the modal (and therefore save nothing).
+document.addEventListener('click', function (e) {
+  var m = adEl('add-doctor-modal');
+  if (m && e.target === m) closeAddDoctorModal();
+});
+document.addEventListener('keydown', function (e) {
+  var m = adEl('add-doctor-modal');
+  if (e.key === 'Escape' && m && m.classList.contains('show')) closeAddDoctorModal();
+});
 
 async function archiveDoctor(id) {
   var card = document.querySelector('.agency-card[data-id="' + id + '"]');
@@ -1047,10 +1544,13 @@ async function refreshAgency() {
 // pipeline runs in the background under waitUntil). The report is bound to this
 // doctor_profile_id server-side; the DB verifies the profile is in the caller's org.
 async function runProfileAudit(btn, profileId) {
-  var card = btn.closest('.agency-card');
-  var name = (card.getAttribute('data-name') || '').trim();
-  var speciality = (card.getAttribute('data-speciality') || '').trim();
-  var city = (card.getAttribute('data-city') || '').trim();
+  // Look the profile up by id (works from a card in Mode 1 AND the "Run audit"
+  // prompt in Mode 2, where there is no card).
+  var card = btn && btn.closest ? btn.closest('.agency-card') : null;
+  var prof = (_agencyProfiles || []).filter(function(p){ return p.id === profileId; })[0] || {};
+  var name = (prof.name || '').trim();
+  var speciality = (prof.speciality || '').trim();
+  var city = (prof.city || '').trim();
   if (!name || !city) { agencyMsg('Add a name and city to this profile before running an audit.', true); return; }
 
   // /api/audit expects fn + ln; split the stored full name (strip a leading "Dr").
@@ -1058,16 +1558,25 @@ async function runProfileAudit(btn, profileId) {
   var fn = parts.shift() || '';
   var ln = parts.join(' ') || fn;
 
+  // Pinned profiles (added through the scan modal) carry the exact Google
+  // place_id. /api/audit skips its text search entirely when one is supplied, so
+  // there is nothing left to be ambiguous about — the "several listings" branch
+  // is unreachable for them. Only legacy name-only profiles still search by name.
+  var auditBody = { fn: fn, ln: ln, sp: speciality, ct: city };
+  if (prof.place_id)          auditBody.placeId = prof.place_id;
+  if (prof.parent_speciality) auditBody.spp     = prof.parent_speciality;
+
   btn.disabled = true; var old = btn.textContent; btn.textContent = 'Running…';
   agencyMsg('');
   try {
     var aRes = await fetch('/api/audit', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fn: fn, ln: ln, sp: speciality, ct: city })
+      body: JSON.stringify(auditBody)
     });
     var audit = await aRes.json().catch(function(){ return {}; });
     if (!aRes.ok) { agencyMsg('Audit service error (HTTP ' + aRes.status + '). Try again.', true); btn.disabled = false; btn.textContent = old; return; }
-    if (audit.needsSelection) { agencyMsg('Several Google listings match “' + name + '”. Refine the profile name or city.', true); btn.disabled = false; btn.textContent = old; return; }
+    // Only reachable for a profile with no place_id (added before the scan modal).
+    if (audit.needsSelection) { agencyMsg('Several Google listings match “' + name + '”. Archive this profile and re-add it with “+ Add doctor” to pin its exact listing.', true); btn.disabled = false; btn.textContent = old; return; }
     if (audit.notFound || audit.verified === false) { agencyMsg('Couldn’t verify “' + name + '” on Google for ' + city + '. Check the name and city.', true); btn.disabled = false; btn.textContent = old; return; }
 
     // Generate the report bound to this profile (server re-checks org ownership).
@@ -1075,9 +1584,9 @@ async function runProfileAudit(btn, profileId) {
     if (gRes.status === 403) { agencyMsg((gRes.body && gRes.body.error) || 'You can only audit profiles in your own organization.', true); btn.disabled = false; btn.textContent = old; return; }
     if (!(gRes.body && gRes.body.entitled)) { agencyMsg((gRes.body && gRes.body.error) || ('Could not start generation (HTTP ' + gRes.status + ').'), true); btn.disabled = false; btn.textContent = old; return; }
 
-    // Card shows the fresh audit result immediately; the full PDF finishes in the
-    // background and lands in Reports & PDFs within ~60s.
-    updateCardResult(card, audit.score);
+    // Card shows the fresh audit result immediately (Mode 1); in Mode 2 there's no
+    // card. Full PDF finishes in the background and lands in Reports & PDFs ~60s.
+    if (card) updateCardResult(card, audit.score);
     agencyMsg('Audit complete for ' + name + '. The full PDF report will appear in Reports & PDFs shortly.', false);
     btn.textContent = 'Done ✓';
     setTimeout(function(){ btn.disabled = false; btn.textContent = old; }, 5000);
@@ -1093,6 +1602,105 @@ function updateCardResult(card, score) {
   var vals = card.querySelectorAll('.agency-stat-v');
   if (vals[0]) vals[0].textContent = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   if (vals[1] && typeof score === 'number') vals[1].textContent = score + '/100';
+}
+
+// ── MULTI-DOCTOR MODES (Mode 1 org landing ⇄ Mode 2 profile dashboard) ───────
+// Solo users never enter here — these run only for isMultiProfile orgs, and the
+// <body> class is what shows/hides sections (see CSS). No page reloads.
+
+// This user's reports for one profile, newest first.
+function reportsForProfile(profileId) {
+  return (_allReports || [])
+    .filter(function (r) { return r.doctor_profile_id === profileId; })
+    .sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+}
+
+// MODE 1 — org landing: only the Doctors grid. Sections + section-nav hidden (CSS).
+function enterOrgLanding() {
+  _activeProfileId = null;
+  document.body.classList.remove('tdm-profile');
+  document.body.classList.add('tdm-org-landing');
+  var pn = el('practice-name'); if (pn) pn.textContent = 'Your doctors';
+  var ps = el('practice-sub');
+  if (ps) ps.textContent = (_agencyEnt ? (_agencyEnt.profilesUsed + ' of ' + _agencyEnt.profileLimit + ' profiles') : 'Agency') + ' · Monitor active';
+  buildProfileSwitcher();
+  window.scrollTo(0, 0);
+}
+
+// MODE 2 — open one doctor's dashboard (no reload).
+function openProfile(profileId) {
+  _activeProfileId = profileId;
+  document.body.classList.remove('tdm-org-landing');
+  document.body.classList.add('tdm-profile');
+  buildProfileSwitcher();
+  renderProfileDashboard(profileId);
+  window.scrollTo(0, 0);
+}
+
+// Fill the existing dashboard sections with ONE profile's latest report by reusing
+// the same populate functions initDashboard uses (they overwrite section content).
+function renderProfileDashboard(profileId) {
+  var prof = (_agencyProfiles || []).filter(function (p) { return p.id === profileId; })[0] || {};
+  var reps = reportsForProfile(profileId);
+  var latest = reps[0] || null;
+  var prev   = reps[1] || null;
+  var insights = (latest && latest.insights) ? latest.insights : null;
+  var doctorName = prof.name || (latest && latest.doctor_name) || 'Doctor';
+  var specialty  = prof.speciality || (latest && latest.specialty) || '';
+  var city       = prof.city || (latest && latest.city) || '';
+
+  var parts = doctorName.split(' ').filter(Boolean);
+  var initials = parts.length >= 2
+    ? (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
+    : (doctorName.slice(0, 2).toUpperCase() || 'DR');
+
+  if (el('practice-name')) el('practice-name').textContent = doctorName;
+  if (el('practice-sub'))  el('practice-sub').textContent  = ([specialty, city].filter(Boolean).join(' · ') || 'Monitor') + ' · Monitor active';
+  if (el('topbar-av'))     { el('topbar-av').textContent = initials; el('topbar-av').title = doctorName; }
+  if (el('doc-av'))   el('doc-av').textContent   = initials;
+  if (el('doc-name')) el('doc-name').textContent = doctorName;
+  if (el('doc-spec')) el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
+
+  // Same population path as the solo dashboard, scoped to this profile's reports.
+  try {
+    populateScore(latest, prev);
+    populateTrend(reps);
+    populateReports(reps);
+    populateSeoHealth(latest);
+    populateExecSummary(insights, latest);
+    populateAiTracker(specialty, city, latest);
+    populateCompetitors(latest, 'monitor', insights);
+    populateAlerts(latest);
+    populateJourney(insights);
+    populateTasks(insights);
+    populateContent(specialty, insights);
+    populateReviews(latest);
+    populateReputation(insights);
+    populateKeywords(insights);
+    populateRoadmap(latest, insights);
+  } catch (e) { console.warn('[profile] populate failed', e); }
+
+  // No report for this doctor yet → clear "No audits yet" + Run audit prompt in the
+  // exec area (the other sections already show their own empty states).
+  if (!latest) {
+    var ec = el('exec-content');
+    if (ec) ec.innerHTML =
+      '<div class="empty-card"><div class="empty-title">No audits yet for ' + escH(doctorName) + '</div>' +
+      '<div class="empty-sub">Run the first audit to populate this dashboard.</div>' +
+      '<button class="agency-btn" style="margin-top:12px" type="button" onclick="runProfileAudit(this,\'' + escAttr(profileId) + '\')">Run audit</button></div>';
+  }
+}
+
+// Sidebar switcher: "← All doctors" + every doctor, active one highlighted.
+function buildProfileSwitcher() {
+  var sw = el('profile-switcher'); if (!sw) return;
+  var items = (_agencyProfiles || []).map(function (p) {
+    var active = (p.id === _activeProfileId) ? ' active' : '';
+    return '<button class="ps-item' + active + '" type="button" onclick="openProfile(\'' + escAttr(p.id) + '\')">' + escH(p.name || 'Unnamed') + '</button>';
+  }).join('');
+  sw.innerHTML =
+    '<a class="ps-back" href="#" onclick="event.preventDefault();enterOrgLanding()">&larr; All doctors</a>' +
+    '<div class="ps-label">Doctors</div>' + items;
 }
 
 // ── MAIN INIT ────────────────────────────────────────────────────────────
@@ -2031,6 +2639,11 @@ window.addEventListener('scroll', function(){
 
 checkAuth();
 </script>
+<script src="/js/medical-specialties.js" defer></script>
+<script src="/js/specialty-combobox.js" defer></script>
+<script src="/js/doctor-name-parser.js" defer></script>
+<script src="/js/doctor-autocomplete.js" defer></script>
+<script src="/js/scan-widget.js" defer></script>
 <script src="/js/branding.js" defer></script>
 </body>
 </html>

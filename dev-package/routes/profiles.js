@@ -21,16 +21,38 @@ const { getSupabaseClient } = require('../lib/supabase-client');
 const { getEntitlement } = require('../lib/entitlements');
 const { resolveOrgForUser } = require('../lib/org-resolve');
 
+// Two lists, deliberately different.
+//
+// EDITABLE_FIELDS — what a client may PATCH. place_id / google_maps_url /
+// parent_speciality are NOT here: the Google listing a profile is pinned to must
+// only ever come from a scan this server ran and verified. If a client could
+// patch place_id it could point any profile at any listing on Google and every
+// later audit would report that listing's data as this doctor's.
+//
+// CREATE_FIELDS — what POST /api/profiles may set. It is EDITABLE_FIELDS plus
+// the scan-derived listing identity, because create is the one moment we have a
+// just-completed /api/audit result to take it from.
 const EDITABLE_FIELDS = ['name', 'website', 'speciality', 'city'];
+const SCAN_FIELDS     = ['place_id', 'google_maps_url', 'parent_speciality'];
+const CREATE_FIELDS   = [...EDITABLE_FIELDS, ...SCAN_FIELDS];
 
-// Keep only editable fields; trim strings; allow explicit null to clear a value.
-function pickEditable(body) {
+// Keep only the allowed fields; trim strings; allow explicit null to clear a value.
+function pick(body, allowed) {
   const out = {};
-  for (const k of EDITABLE_FIELDS) {
+  for (const k of allowed) {
     if (!body || body[k] === undefined) continue;
     out[k] = body[k] === null ? null : String(body[k]).trim();
   }
   return out;
+}
+
+// Empty strings are stored as NULL for the scan columns — a profile with no
+// resolvable Google listing must read as "not pinned", not as pinned to ''.
+function normalizeScanFields(fields) {
+  for (const k of SCAN_FIELDS) {
+    if (fields[k] === '') fields[k] = null;
+  }
+  return fields;
 }
 
 // The DB limit trigger raises 'PROFILE_LIMIT_REACHED' when a create would exceed
@@ -55,7 +77,7 @@ async function create(req, res) {
     });
   }
 
-  const fields = pickEditable(req.body);
+  const fields = normalizeScanFields(pick(req.body, CREATE_FIELDS));
   if (!fields.name) return res.status(400).json({ error: 'name is required' });
 
   const supabase = getSupabaseClient();
@@ -83,7 +105,7 @@ async function list(req, res) {
   const supabase = getSupabaseClient();
   const { data, error } = await supabase
     .from('doctor_profiles')
-    .select('id, org_id, name, website, speciality, city, status, created_at')
+    .select('id, org_id, name, website, speciality, city, place_id, google_maps_url, parent_speciality, status, created_at')
     .eq('org_id', orgId)
     .eq('status', 'active')
     .order('created_at', { ascending: true });
@@ -100,7 +122,8 @@ async function update(req, res) {
   const { orgId } = await resolveOrgForUser(req.user.id);
   if (!orgId) return res.status(404).json({ error: 'Profile not found' });
 
-  const fields = pickEditable(req.body);
+  // EDITABLE_FIELDS only — a PATCH can never repoint place_id (see above).
+  const fields = pick(req.body, EDITABLE_FIELDS);
   if (Object.keys(fields).length === 0) {
     return res.status(400).json({ error: 'No editable fields provided (name, website, speciality, city)' });
   }
