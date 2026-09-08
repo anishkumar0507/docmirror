@@ -665,6 +665,11 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .stat-l{font-size:13px;color:var(--slate-light);margin-top:5px;line-height:1.45}
 .stat-src{font-size:10px;color:var(--slate-muted);margin-top:8px;font-style:italic}
 .pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin-top:2rem}
+/* Four plans in a 900px section: auto-fit would give 3 columns and strand the
+   4th card on its own row, so pin a balanced 2x2 above mobile. */
+.p-anchor{font-size:11px;color:var(--slate-muted);font-style:italic;margin-bottom:10px;padding:6px 8px;background:var(--warm-white);border-radius:6px;text-align:center}
+#pricing-cards{grid-template-columns:1fr}
+@media(min-width:640px){#pricing-cards{grid-template-columns:repeat(2,1fr);gap:1.25rem}}
 .p-card{border:1.5px solid var(--border);border-radius:16px;padding:1.75rem;background:#fff}
 .dfy-testimonial{background:var(--warm-white);border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:8px 10px;margin:10px 0}
 .dfy-quote{font-size:12px;color:var(--slate);line-height:1.5;font-style:italic;margin-bottom:3px}
@@ -672,8 +677,13 @@ nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,0.96);backdrop
 .p-card.feat{border-color:var(--navy);border-width:2px;position:relative}
 .p-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;font-size:11px;font-weight:700;padding:3px 14px;border-radius:20px;white-space:nowrap}
 .p-name{font-size:12px;font-weight:700;color:var(--slate-light);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
-.p-price{font-size:2.5rem;font-weight:800;color:var(--navy);letter-spacing:-.04em;line-height:1}
-.p-price span{font-size:14px;font-weight:400;color:var(--slate-light)}
+/* Matches the pricing page's .plan-amount / .plan-period so a plan reads the
+   same on both pages: 2.5rem/800 DM Mono for the amount, muted small for the
+   period. The [data-price] span is the amount, so it must inherit the big
+   weight — only the period span is stepped down. */
+.p-price{font-size:2.5rem;font-weight:800;color:var(--navy);letter-spacing:-.04em;line-height:1;font-family:'DM Mono',monospace;display:flex;align-items:flex-end;gap:4px;flex-wrap:wrap}
+.p-price [data-price],.p-price [data-price-symbol]{font-size:inherit;font-weight:inherit;color:inherit;font-family:inherit}
+.p-price>span:last-child{font-size:.9rem;font-weight:400;color:var(--slate-light);font-family:'DM Sans',sans-serif;letter-spacing:0;padding-bottom:5px}
 .p-desc{font-size:13px;color:var(--slate);margin:10px 0 1.25rem;line-height:1.55}
 .p-feats{list-style:none}
 .p-feats li{font-size:13px;color:var(--slate);padding:6px 0;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:flex-start;line-height:1.45}
@@ -1122,7 +1132,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(247,246,243,.82);backdrop-filter:blur(2px);border-radius:8px">
             <div style="text-align:center;padding:8px 14px">
               <p style="font-size:12px;color:var(--navy);font-weight:600;margin-bottom:5px">&#x1F512; AI visibility &amp; Directory pillars in the full report</p>
-              <button onclick="doOneTime()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" type="button">Unlock all 7 pillars &mdash; <span data-price="report">$19</span> &rarr;</button>
+              <button onclick="doOneTime()" style="background:var(--green);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif" type="button">Unlock all 7 pillars &mdash; <span data-price="report">—</span> &rarr;</button>
             </div>
           </div>
         </div>
@@ -1219,7 +1229,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         <div class="pl-label">Estimated missed patients per month</div>
         <div class="pl-headline"><span class="blur">27</span>&nbsp;&ndash;&nbsp;<span class="blur">54</span> patients</div>
         <div class="pl-sub">Patients searching for your specialty in your city <strong>who are choosing a competitor instead</strong> &mdash; based on local search volume and your visibility gap.</div>
-        <a class="pl-cta" href="#pricing" onclick="doOneTime();return false;">Unlock the number &mdash; <span data-price="report">$19</span> &rarr;</a>
+        <a class="pl-cta" href="#pricing" onclick="doOneTime();return false;">Unlock the number &mdash; <span data-price="report">—</span> &rarr;</a>
       </div>
 
       <!-- ── AI FIX ENGINE — Fix 1 free, Fix 2 email-gated, Fix 3-5 paid ── -->
@@ -1275,7 +1285,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
           </div>
         </div>
 
-        <!-- Fixes 3-5 — $19 gate shown as a block -->
+        <!-- Fixes 3-5 — paid-report gate shown as a block -->
         <div style="background:rgba(255,255,255,.06);border-radius:10px;padding:1rem;margin-top:4px;border:1px dashed rgba(255,255,255,.15)">
           <!-- Blurred previews of fixes 3-5 -->
           <div style="filter:blur(4px);pointer-events:none;margin-bottom:10px">
@@ -1303,14 +1313,14 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
               <strong style="color:#fff">3 more fixes</strong> with copy-paste steps &mdash; plus YouTube analysis, patient journey audit, and 90-day plan
             </p>
             <button onclick="doOneTime()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s" type="button">
-              Get full report &mdash; <span data-price="report">$19</span> &rarr;
+              Get full report &mdash; <span data-price="report">—</span> &rarr;
             </button>
             <p style="font-size:11px;color:rgba(255,255,255,.35);margin-top:6px">What marketing agencies charge &#x20B9;25,000 for &mdash; in 60 seconds</p>
           </div>
         </div>
       </div>
 
-      <!-- ── SENTIMENT HEATMAP — $19 and above ───────────────────────────── -->
+      <!-- ── SENTIMENT HEATMAP — paid report and above ───────────────────────────── -->
       <div class="sentiment-wrap" id="sentiment-section">
         <h4>What patients say about you</h4>
         <div class="sentiment-cols">
@@ -1336,7 +1346,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         <p style="font-size:11px;color:var(--slate-muted);margin-top:10px">Based on analysis of your Google reviews. Larger text = mentioned more often.</p>
       </div>
 
-      <!-- ── BRAND SEARCH TREND — $19 and above ────────────────────────── -->
+      <!-- ── BRAND SEARCH TREND — paid report and above ────────────────────────── -->
       <div class="brand-search" id="brand-search-section">
         <h4>Your brand search trend</h4>
         <div class="brand-metrics">
@@ -1359,7 +1369,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         <p style="font-size:11px;color:var(--slate-muted);line-height:1.5">Patients who search your name directly are already halfway through their decision. A declining trend means your PR and content activity has slowed — and patients are forgetting you exist.</p>
       </div>
 
-      <!-- ── YOUTUBE ANALYSIS — $19 and above ──────────────────────────── -->
+      <!-- ── YOUTUBE ANALYSIS — paid report and above ──────────────────────────── -->
       <div class="youtube-section" id="youtube-section">
         <h4>Your YouTube channel</h4>
         <div class="yt-found" id="yt-found-content">
@@ -1384,7 +1394,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         </div>
       </div>
 
-      <!-- ── SOCIAL PRESENCE AUDIT — $19 and above ─────────────────────── -->
+      <!-- ── SOCIAL PRESENCE AUDIT — paid report and above ─────────────────────── -->
       <div class="social-audit" id="social-audit-section">
         <h4>Your social &amp; directory presence</h4>
         <div class="social-rows">
@@ -1415,7 +1425,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         </div>
       </div>
 
-      <!-- ── COMPETITOR NARRATIVE — $19 and above ──────────────────────── -->
+      <!-- ── COMPETITOR NARRATIVE — paid report and above ──────────────────────── -->
       <div class="comp-narrative" id="comp-narrative-section">
         <h4>What the competition data means</h4>
         <p id="comp-narrative-text">
@@ -1425,7 +1435,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         </p>
       </div>
 
-      <!-- ── SEO KEYWORDS — $19 and above ──────────────────────────────── -->
+      <!-- ── SEO KEYWORDS — paid report and above ──────────────────────────────── -->
       <div class="seo-keywords" id="seo-section">
         <h4>Your SEO keyword strategy</h4>
         <div class="kw-group">
@@ -1455,7 +1465,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         <p style="font-size:11px;color:var(--slate-muted);margin-top:8px">Use these in your Google Business description, your website page titles, and your YouTube video titles.</p>
       </div>
 
-      <!-- ── CONTENT STRATEGY — $19 and above ─────────────────────────── -->
+      <!-- ── CONTENT STRATEGY — paid report and above ─────────────────────────── -->
       <div class="content-strategy" id="content-strategy-section">
         <h4>Your content strategy</h4>
         <div class="cs-grid">
@@ -1481,7 +1491,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         <div class="cs-cadence" id="cs-cadence">Recommended cadence: 3 Reels/week &middot; 1 carousel post/week &middot; 2 Stories/day &middot; 1 blog post/month</div>
       </div>
 
-      <!-- ── PATIENT JOURNEY — $19 and above ───────────────────────────── -->
+      <!-- ── PATIENT JOURNEY — paid report and above ───────────────────────────── -->
       <div class="patient-journey" id="patient-journey-section">
         <h4>Your patient journey audit</h4>
         <p class="pj-summary" id="pj-summary">Where you are winning and losing patients across their decision process</p>
@@ -1543,7 +1553,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
         </div>
       </div>
 
-      <!-- ── 90-DAY ACTION PLAN — $19 and above ────────────────────────── -->
+      <!-- ── 90-DAY ACTION PLAN — paid report and above ────────────────────────── -->
       <div class="plan-90" id="plan-section">
         <h4>Your 90-day action plan</h4>
         <p class="plan-headline" id="plan-headline">Every action is completable without hiring anyone. No agency needed.</p>
@@ -1655,7 +1665,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
           <div class="fg-lock">📍</div>
           <div class="fg-title">Patient Search Rank Tracker</div>
           <div class="fg-sub">See exactly where you appear when patients search your specialty in your city &mdash; and whether you&rsquo;re moving up or down week over week.</div>
-          <button class="fg-btn" onclick="doUpgrade('monitor')" type="button">Unlock rank tracking &mdash; <span data-price="monitor">$49</span>/mo &rarr;</button>
+          <button class="fg-btn" onclick="doUpgrade('monitor')" type="button">Unlock rank tracking &mdash; <span data-price="monitor">—</span>/mo &rarr;</button>
           <div class="fg-note">Cancel anytime &middot; One patient visit covers 4 months</div>
         </div>
       </div>
@@ -1702,7 +1712,7 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
           <div class="fg-lock">⚔️</div>
           <div class="fg-title">Competitor Deep Comparison</div>
           <div class="fg-sub">See your full score breakdown vs your top 3 local competitors &mdash; rating, reviews, photos, and rank &mdash; side by side every week.</div>
-          <button class="fg-btn" onclick="doUpgrade('monitor')" type="button">Unlock competitor data &mdash; <span data-price="monitor">$49</span>/mo &rarr;</button>
+          <button class="fg-btn" onclick="doUpgrade('monitor')" type="button">Unlock competitor data &mdash; <span data-price="monitor">—</span>/mo &rarr;</button>
           <div class="fg-note">Know exactly what gap to close and by how much</div>
         </div>
       </div>
@@ -1724,19 +1734,19 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
           <p>Get alerted the moment your score drops, a competitor gains, or a review needs a response. One patient visit covers 4 months.</p>
         </div>
         <div class="upgrade-r">
-          <div class="u-price"><span data-price="monitor">$49</span><span>/mo</span></div>
+          <div class="u-price"><span data-price="monitor">—</span><span>/mo</span></div>
           <button class="u-btn" onclick="doUpgrade('monitor')" type="button">Start monitoring &rarr;</button>
           <div class="u-cancel">Cancel anytime &middot; No contracts</div>
         </div>
       </div>
 
-      <!-- $19 one-time nudge -->
+      <!-- one-time report nudge -->
       <div style="border:1.5px solid var(--green);border-radius:12px;padding:1rem 1.25rem;margin-top:8px;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:var(--green-light)">
         <div>
           <p style="font-size:14px;font-weight:700;color:var(--green-dark);margin-bottom:2px">Not ready to subscribe?</p>
           <p style="font-size:13px;color:var(--green-dark);opacity:.8">Get the full 5-pillar audit as a PDF emailed to you. No subscription.</p>
         </div>
-        <button onclick="doOneTime()" type="button" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .15s" onmouseover="this.style.background='var(--green-dark)'" onmouseout="this.style.background='var(--green)'">Full PDF report &mdash; <span data-price="report">$19</span> &rarr;</button>
+        <button onclick="doOneTime()" type="button" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .15s" onmouseover="this.style.background='var(--green-dark)'" onmouseout="this.style.background='var(--green)'">Full PDF report &mdash; <span data-price="report">—</span> &rarr;</button>
       </div>
 
       <button class="reset-btn" onclick="resetTool()" type="button">&larr; Check a different doctor</button>
@@ -1795,65 +1805,10 @@ html.tdm-embed .tool-card{box-shadow:none!important;border:none!important;margin
       <p style="font-size:13px;color:var(--slate);line-height:1.55">A private practice physician earns an average of <strong style="color:var(--navy)">$391,000/year</strong>. One new patient is worth <strong style="color:var(--navy)">$200&ndash;500</strong> in revenue. Every plan below pays for itself with a single appointment.</p>
     </div>
 
-    <div class="pricing-grid" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
-
-      <!-- Free -->
-      <div class="p-card">
-        <div class="p-name">Free snapshot</div>
-        <div class="p-price">$0<span> forever</span></div>
-        <div class="p-desc">See exactly what patients see. Know your biggest issues. No commitment, no card.</div>
-        <ul class="p-feats">
-          <li>Patient view snapshot</li>
-          <li>3 critical issues identified</li>
-          <li>Competitor comparison</li>
-          <li>Personalised fix guide (email)</li>
-        </ul>
-        <button class="p-cta c-out" onclick="document.getElementById('tool').scrollIntoView({behavior:'smooth'})" type="button">Run free check &rarr;</button>
-      </div>
-
-      <!-- Full Audit Report — $19 -->
-      <div class="p-card" style="border-color:var(--green);border-width:1.5px">
-        <div class="p-name" style="color:var(--green-dark)">Full audit report</div>
-        <div class="p-price">$19<span> one-time</span></div>
-        <div class="p-desc">The complete picture. Every pillar scored. Specific fixes for your specialty and city. No subscription.</div>
-        <div style="font-size:11px;color:var(--slate-muted);font-style:italic;margin-bottom:10px;padding:6px 8px;background:var(--warm-white);border-radius:6px;text-align:center">What marketing agencies charge $150 to produce &mdash; in 60 seconds.</div>
-        <ul class="p-feats">
-          <li>All 7 visibility pillars scored</li>
-          <li>Brand search trend + YouTube analysis</li>
-          <li>Social &amp; directory presence audit</li>
-          <li>5 AI-written fixes with copy-paste steps</li>
-          <li>Competitor narrative &mdash; why they beat you</li>
-          <li>SEO keyword strategy for your specialty</li>
-          <li>Content strategy brief (Reels + blogs)</li>
-          <li>Patient journey audit &mdash; where you lose patients</li>
-          <li>90-day action plan with KPIs</li>
-          <li>PDF report &mdash; emailed in 60 seconds</li>
-        </ul>
-        <button class="p-cta c-green" onclick="doOneTime()" type="button">Get full report &mdash; $19 &rarr;</button>
-        <p style="font-size:11px;color:var(--slate-muted);text-align:center;margin-top:8px">One payment. No subscription. Instant delivery.</p>
-      </div>
-
-      <!-- Monitor — upgraded to $49 -->
-      <div class="p-card feat">
-        <div class="p-badge">Most popular</div>
-        <div class="p-name">Monthly monitor</div>
-        <div class="p-price">$49<span>/month</span></div>
-        <div class="p-desc">Weekly automated checks. Know instantly when something changes before patients notice.</div>
-        <ul class="p-feats">
-          <li>Everything in Full Audit</li>
-          <li>Live Visibility Dashboard &mdash; track scores, competitors, reviews &amp; AI rankings in real time</li>
-          <li>Weekly patient view report</li>
-          <li>Competitor rank tracking</li>
-          <li>AI-generated fix suggestions</li>
-          <li>Review sentiment heatmap</li>
-          <li>Patient search rank tracker</li>
-          <li>Email alerts when score drops</li>
-        </ul>
-        <button class="p-cta c-fill" onclick="doUpgrade('monitor')" type="button">Start monitoring &rarr;</button>
-        <p style="font-size:11px;color:var(--slate-muted);text-align:center;margin-top:8px">Cancel anytime &middot; One patient visit pays for 4 months</p>
-      </div>
-
-    </div>
+    <!-- Plan cards are rendered by /js/plan-cards.js so the homepage and the
+         pricing page cannot drift apart. Copy lives in that one file; prices come
+         from /api/client-config. Do not hand-write a card here. -->
+    <div class="pricing-grid" id="pricing-cards"></div>
 
     <!-- Value anchor -->
     <div style="text-align:center;margin-top:1.5rem;padding:1rem;background:var(--warm-white);border-radius:10px;max-width:520px;margin-left:auto;margin-right:auto">
@@ -1922,6 +1877,11 @@ window.toggleURL   = function(btn){ _scan.toggleUrlPanel(btn); };
 // (user_specialty + google_specialty are stored there for competitor analysis).
 // Kept as a no-op so existing callers (autocomplete handlers) don't break.
 window.__updateSpecialtyConflict=function(){ return false; };
+
+// Plan cards — same four plans, same copy, as the pricing page.
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.TDMPlans) window.TDMPlans.render('pricing-cards', 'compact');
+});
 
 
 
@@ -2021,7 +1981,7 @@ function showRes(d,p){
     populateSentiment(sentiment.negative,'neg-tags','s-tag-neg');
   }
 
-  // ── New $19 report sections ────────────────────────────────────────────────
+  // ── Paid-report sections ───────────────────────────────────────────────────
   populateBrandSearch(d.brandSearch||null);
   populateYoutube(d.youtube||null);
   populateAISnapshot(d.aiVisibility||null);
@@ -2033,7 +1993,7 @@ function showRes(d,p){
   populatePatientJourney(d.patientJourney||null);
   populate90DayPlan(d.ninetyDayPlan||null,sc);
 
-  // Gate new sections for free users — hide behind $19 upgrade prompt
+  // Gate new sections for free users — hide behind the paid-report prompt
   var isPaid=d.plan==='report'||d.plan==='monitor';
   var newSections=['brand-search-section','youtube-section','social-audit-section',
     'comp-narrative-section','seo-section','content-strategy-section',
@@ -2048,12 +2008,17 @@ function showRes(d,p){
         overlay.innerHTML='<div style="text-align:center;padding:1.5rem">'
           +'<div style="font-size:24px;margin-bottom:8px">🔒</div>'
           +'<p style="font-size:13px;font-weight:600;color:var(--navy);margin-bottom:4px">Included in the Full Report</p>'
-          +'<p style="font-size:12px;color:var(--slate-light);margin-bottom:12px">Get all 10 insights for $19 &mdash; emailed as a PDF in 60 seconds</p>'
-          +'<button onclick="doOneTime()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif" type="button">Get full report &mdash; $19 &rarr;</button></div>';
+          +'<p style="font-size:12px;color:var(--slate-light);margin-bottom:12px">Get all 10 insights for <span data-price="report">—</span> &mdash; emailed as a PDF in 60 seconds</p>'
+          +'<button onclick="doOneTime()" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:\'DM Sans\',sans-serif" type="button">Get full report &mdash; <span data-price="report">—</span> &rarr;</button></div>';
         el.style.position='relative';
         el.style.overflow='hidden';
         overlay.style.cssText='position:absolute;inset:0;background:rgba(247,246,243,.92);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;border-radius:12px;z-index:5';
         el.appendChild(overlay);
+        // Injected after boot — fill its [data-price] spans once prices are in.
+        if (window.TDMPricing) {
+          var fill = function () { window.TDMPricing.refresh(overlay); };
+          window.TDMPricing.ready ? window.TDMPricing.ready.then(fill) : fill();
+        }
       }
     }
   });
@@ -2422,7 +2387,7 @@ function doUpgrade(plan){
     return;
   }
   // Go straight to checkout — NO account is created before payment.
-  // The $49 account is created on successful subscription payment.
+  // The Monitor account is created on successful subscription payment.
   window.location.href='/pages/checkout-subscription.html';
 }
 function doOneTime(){
@@ -2430,7 +2395,7 @@ function doOneTime(){
     document.getElementById('tool').scrollIntoView({behavior:'smooth',block:'start'});
     return;
   }
-  // $19 is anonymous — pay and the PDF is emailed. No account created.
+  // The one-time report is anonymous — pay and the PDF is emailed. No account created.
   window.location.href='/pages/checkout.html';
 }
 
@@ -2467,6 +2432,8 @@ document.addEventListener("DOMContentLoaded", function () {
   });
 });
 </script>
+<script src="/js/pricing-display.js" defer></script>
+<script src="/js/plan-cards.js" defer></script>
 <script src="/js/medical-specialties.js" defer></script>
 <script src="/js/specialty-combobox.js" defer></script>
 <script src="/js/doctor-name-parser.js" defer></script>
@@ -2474,7 +2441,9 @@ document.addEventListener("DOMContentLoaded", function () {
 <script src="/js/layout.js" defer></script>
 <script src="/js/branding.js" defer></script>
 <script src="/js/mobile-carousel.js" defer></script>
-<!-- Prices shown as flat USD ($19/$49) sitewide; region/₹ conversion intentionally
-     not applied on marketing pages. Charge-side currency is handled at checkout. -->
+<!-- Prices are region-aware everywhere: every price on this page is a
+     [data-price] span filled by /js/pricing-display.js from /api/client-config,
+     so the amount shown is the amount charged (India sees ₹, US sees $). Never
+     hardcode a price here — add a span, or use TDMPricing.get() in JS. -->
 </body>
 </html>

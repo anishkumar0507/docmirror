@@ -997,7 +997,7 @@ async function checkAuth() {
   if (!_profile) _profile = { plan: 'free', email: _session.user.email };
 
   // Gate: only monitor plan users can access the dashboard.
-  // Only Monitor ($49) users get the dashboard. Audit ($19) and free users are
+  // Only Monitor/agency users get the dashboard. One-time Audit and free users are
   // shown an upgrade gate (not silently bounced) with a plan-specific message and
   // a CTA into the Monitor checkout, which reuses their account.
   var plan = _profile ? (_profile.plan || 'free') : 'free';
@@ -1009,8 +1009,8 @@ async function checkAuth() {
     var isAudit = (plan === 'audit');
     var headline = isAudit ? 'Upgrade to Unlock Your Dashboard' : 'Dashboard Requires Monitor Plan';
     var message = isAudit
-      ? 'Your current plan is <strong>Audit ($19)</strong>. Upgrade to <strong>Monitor ($49/month)</strong> to unlock weekly visibility tracking, competitor intelligence, review sentiment, alerts, and this live dashboard.'
-      : 'The dashboard is included in the Doctor Visibility Monitor ($49/month). Subscribe to unlock weekly monitoring, rank tracking, competitor alerts, and more.';
+      ? 'Your current plan is <strong>Audit (' + tdmPrice('report', '—') + ')</strong>. Upgrade to <strong>Monitor (' + tdmPrice('monitor', '—', true) + ')</strong> to unlock weekly visibility tracking, competitor intelligence, review sentiment, alerts, and this live dashboard.'
+      : 'The dashboard is included in the Doctor Visibility Monitor (' + tdmPrice('monitor', '—', true) + '). Subscribe to unlock weekly monitoring, rank tracking, competitor alerts, and more.';
     var em = _profile && _profile.email ? _profile.email : '';
     if (em) { try { localStorage.setItem('tdm_checkout_email', em); } catch(_) {} }
     var secondary = isAudit
@@ -1022,7 +1022,7 @@ async function checkAuth() {
       '<div class="logo">The Doc <span>Mirror</span></div>' +
       '<h2 style="color:#fff;margin-bottom:.5rem">' + headline + '</h2>' +
       '<p style="color:rgba(255,255,255,.7);max-width:380px;line-height:1.6;margin-bottom:1.5rem">' + message + '</p>' +
-      '<a href="/pages/checkout-subscription.html?upgrade=1" style="background:#00A878;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem">Upgrade to Monitor — $49/month →</a>' +
+      '<a href="/pages/checkout-subscription.html?upgrade=1" style="background:#00A878;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:.95rem">Upgrade to Monitor — ' + tdmPrice('monitor', '—', true) + ' →</a>' +
       secondary;
     document.getElementById('auth-gate').classList.add('show');
     return;
@@ -1097,6 +1097,14 @@ function doCancelSubscription() {
 }
 
 function escH(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Price as text, for labels this page builds in JS. Region-aware via
+// /js/pricing-display.js; falls back to the passed default until prices load.
+function tdmPrice(product, fallback, full) {
+  return (window.TDMPricing && window.TDMPricing.get)
+    ? window.TDMPricing.get(product, !!full, fallback)
+    : fallback;
+}
 
 // ── AGENCY: multi-doctor management (only runs when entitlement.isMultiProfile) ──
 // Server enforces everything (auth, org ownership, profile limit); this is pure UI
@@ -1768,7 +1776,10 @@ function initDashboard(profile, reports) {
 
   // Settings
   el('settings-email').textContent = email;
-  el('settings-plan').textContent  = 'Doctor Visibility Monitor — $49/month';
+  var _plan = (_profile && _profile.plan) || '';
+  el('settings-plan').textContent = (_plan === 'agency')
+    ? 'Clinic / Agency — ' + tdmPrice('agency', '—', true)
+    : 'Doctor Visibility Monitor — ' + tdmPrice('monitor', '—', true);
   // Self-serve cancel — only for active Monitor subscribers.
   if (_profile && _profile.plan === 'monitor') { var _cr = el('cancel-sub-row'); if (_cr) _cr.style.display = ''; }
 
@@ -2604,7 +2615,7 @@ function lockSection(contentId, title, desc) {
     '<div class="lock-icon">🔒</div>' +
     '<h3>' + escH(title) + '</h3>' +
     '<p>' + escH(desc) + '</p>' +
-    '<a href="/pages/checkout-subscription.html" class="locked-btn">Upgrade to Monitor $49/mo →</a>' +
+    '<a href="/pages/checkout-subscription.html" class="locked-btn">Upgrade to Monitor ' + tdmPrice('monitor', '—', false) + '/mo →</a>' +
     '</div>';
 }
 
@@ -2639,6 +2650,7 @@ window.addEventListener('scroll', function(){
 
 checkAuth();
 </script>
+<script src="/js/pricing-display.js" defer></script>
 <script src="/js/medical-specialties.js" defer></script>
 <script src="/js/specialty-combobox.js" defer></script>
 <script src="/js/doctor-name-parser.js" defer></script>

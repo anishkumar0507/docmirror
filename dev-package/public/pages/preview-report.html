@@ -460,7 +460,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
     </div>
     <div id="leaderboard-footer" style="padding:1rem 1.5rem 1.25rem;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
       <span style="font-size:.78rem;color:var(--slate-muted)">&#x1F512; Google, ChatGPT, Gemini &amp; Claude scores locked</span>
-      <button class="lock-cta" style="margin-top:0;font-size:.8rem;padding:7px 16px" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+      <button class="lock-cta" style="margin-top:0;font-size:.8rem;padding:7px 16px" onclick="doCheckout()">Unlock Full Report &mdash; <span data-price="report">—</span> &rarr;</button>
     </div>
   </div>
 
@@ -483,7 +483,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
       <div class="lock-icon">&#x1F512;</div>
       <div class="lock-title">Potential Patient Loss</div>
       <div class="lock-sub">See your estimated monthly patient loss and recovery potential</div>
-      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; <span data-price="report">—</span> &rarr;</button>
     </div>
   </div>
 
@@ -507,7 +507,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
       <div class="lock-icon">&#x1F512;</div>
       <div class="lock-title">Search &amp; AI Result Simulation</div>
       <div class="lock-sub">See exactly how you appear in Google and AI searches, versus competitors</div>
-      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; <span data-price="report">—</span> &rarr;</button>
     </div>
   </div>
 
@@ -532,7 +532,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
       <div class="lock-icon">&#x1F512;</div>
       <div class="lock-title">7-Pillar Visibility Breakdown</div>
       <div class="lock-sub">Full breakdown across every signal Google and AI use to surface doctors</div>
-      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; <span data-price="report">—</span> &rarr;</button>
     </div>
   </div>
 
@@ -556,7 +556,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
       <div class="lock-icon">&#x1F512;</div>
       <div class="lock-title">Personalized Action Plan</div>
       <div class="lock-sub">Your custom step-by-step fix plan, prioritized by patient impact</div>
-      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; $19 &rarr;</button>
+      <button class="lock-cta" onclick="doCheckout()">Unlock Full Report &mdash; <span data-price="report">—</span> &rarr;</button>
     </div>
   </div>
 
@@ -567,10 +567,10 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
 
     <div class="cta-plans">
 
-      <!-- $19 One-time Audit -->
+      <!-- One-time Audit -->
       <div class="cta-plan-card">
         <div class="cta-plan-tier">Visibility Audit</div>
-        <div class="cta-plan-price">$19</div>
+        <div class="cta-plan-price"><span data-price="report">—</span></div>
         <div class="cta-plan-sub">one-time &middot; no subscription</div>
         <ul class="cta-plan-features">
           <li>Full 15-page PDF report</li>
@@ -582,15 +582,15 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
         <div class="cta-plan-note">No dashboard &middot; No account &middot; One-time only</div>
         <button class="cta-plan-btn" type="button" onclick="doCheckout()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Get Report &mdash; $19
+          Get Report &mdash; <span data-price="report">—</span>
         </button>
       </div>
 
-      <!-- $49 Monitor Subscription -->
+      <!-- Monitor Subscription -->
       <div class="cta-plan-card cta-plan-featured">
         <div class="cta-plan-popular">Most Popular</div>
         <div class="cta-plan-tier">Doctor Visibility Monitor</div>
-        <div class="cta-plan-price">$49<span class="cta-plan-freq">/mo</span></div>
+        <div class="cta-plan-price"><span data-price="monitor">—</span><span class="cta-plan-freq">/mo</span></div>
         <div class="cta-plan-sub">cancel anytime</div>
         <ul class="cta-plan-features">
           <li>Everything in Audit</li>
@@ -602,7 +602,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
         </ul>
         <button class="cta-plan-btn cta-plan-btn-featured" type="button" onclick="doMonitorCheckout()">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          Start Monitor &mdash; $49/mo
+          Start Monitor &mdash; <span data-price="monitor">—</span>/mo
         </button>
       </div>
 
@@ -661,7 +661,7 @@ table.ldr-table td:first-child{font-family:'DM Sans',sans-serif;font-weight:600;
   // If the visitor arrived from a Pricing CTA (a plan was selected before the
   // visibility form), continue straight to THAT plan's checkout instead of the
   // generic "Choose your plan" step — so a Monitor selection is never dropped to
-  // the $19 Audit flow. Organic homepage visitors (no selected plan) fall
+  // the one-time Audit flow. Organic homepage visitors (no selected plan) fall
   // through and see the report + plan choice exactly as before.
   // Uses location.replace so this page is not left in history (no back-loop;
   // Back from checkout returns to Pricing). Razorpay flow is chosen by the
@@ -916,9 +916,18 @@ function doMonitorCheckout() {
   window.location.href = 'checkout-subscription.html?upgrade=1';
 }
 
-// ── Premium upgrade section (shown to $19 Audit buyers on the report) ────────
+// Price as text, for labels this page builds in JS. Region-aware via
+// /js/pricing-display.js; falls back to the passed default if prices have not
+// loaded yet, so a button is never rendered with an empty price.
+function tdmPrice(product, fallback, full) {
+  return (window.TDMPricing && window.TDMPricing.get)
+    ? window.TDMPricing.get(product, !!full, fallback)
+    : fallback;
+}
+
+// ── Premium upgrade section (shown to one-time Audit buyers on the report) ──
 // Lists the Monitor-only features that stay locked on the Audit plan and drives
-// the $49 upgrade. Inline-styled so it renders identically wherever it's injected.
+// the Monitor upgrade. Inline-styled so it renders identically wherever it's injected.
 var MONITOR_LOCKED_FEATURES = [
   'Weekly Visibility Tracking', 'Competitor Intelligence', 'Review Sentiment Analysis',
   'Weekly Reports Dashboard', 'Alerts & Notifications', 'AI Content Strategy',
@@ -944,7 +953,7 @@ function upgradeSectionHtml() {
     'style="display:inline-flex;align-items:center;gap:8px;background:#00A878;color:#fff;border:none;' +
     'border-radius:10px;padding:14px 28px;font-size:1rem;font-weight:700;cursor:pointer;' +
     'font-family:\'DM Sans\',sans-serif;box-shadow:0 4px 14px rgba(0,168,120,.35)">' +
-    'Upgrade to Monitor — $49/month →</button>' +
+    'Upgrade to Monitor — <span data-price="monitor" data-price-full>—</span> →</button>' +
     '<p style="color:rgba(255,255,255,.45);font-size:.75rem;margin:12px 0 0">Cancel anytime · Keeps your existing report &amp; account</p>' +
     '</div>';
 }
@@ -1135,19 +1144,19 @@ function doActualCheckout() {
         // Payment modal closed without completing
         modal: {
           ondismiss: function() {
-            if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+            if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — ' + tdmPrice('report', '—'); }
           }
         }
       };
 
       var rzp = new window.Razorpay(options);
       rzp.open();
-      if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — ' + tdmPrice('report', '—'); }
     });
   })
   .catch(function(err) {
     if (errEl) errEl.textContent = err.message || 'Something went wrong. Please try again.';
-    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — $19'; }
+    if (btn) { btn.disabled = false; btn.textContent = 'Unlock Full Report — ' + tdmPrice('report', '—'); }
   });
 }
 
@@ -1432,6 +1441,12 @@ function unlockFullReport(opts) {
     downloadBtnHtml() +
     upgradeSectionHtml() +
     '</div>';
+  // The block above was injected after boot, so its [data-price] spans still
+  // hold the in-HTML default — fill them once prices are in.
+  if (window.TDMPricing) {
+    var fill = function () { window.TDMPricing.refresh(cta); };
+    window.TDMPricing.ready ? window.TDMPricing.ready.then(fill) : fill();
+  }
 }
 
 // ── Page load: paid vs free decided ONLY by backend-verified status ──────────
@@ -1518,7 +1533,7 @@ function unlockFullReport(opts) {
   }
 
   withToken(function (token) {
-    // CASE A — a concrete report id (a $19 report re-opened, or a shared link).
+    // CASE A — a concrete report id (a paid report re-opened, or a shared link).
     // payment-status is the source of truth: it covers both the one-time paid
     // report AND an entitled subscriber viewing it.
     if (reportId) {
@@ -1555,6 +1570,7 @@ function unlockFullReport(opts) {
 })();
 </script>
 
+<script src="/js/pricing-display.js" defer></script>
 <script src="/js/layout.js" defer></script>
 <script src="/js/branding.js" defer></script>
 </body>

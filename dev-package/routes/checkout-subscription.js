@@ -6,6 +6,7 @@ const pricing    = require('../lib/pricing');
 const payments   = require('../lib/payments');
 const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
+const planGuard  = require('../lib/payments/plan-guard');
 
 // $49 Monitor subscription — ANONYMOUS at this stage.
 // No account is created before payment. The account is created in
@@ -65,6 +66,13 @@ async function handler(req, res) {
         `[checkout-sub] region=${region.tier} country=${region.country || '?'} expects ` +
         `${expectedCurr}, but the Razorpay plan charges INR — attempting anyway (provider routing pending)`
       );
+    }
+
+    // Mode + price guard (lib/payments/plan-guard.js). Runs before any subscription
+    // exists, so a misconfigured plan is a clear config error, never a bad charge.
+    const check = await planGuard.verifyPlan(planId, expectedUnits, expectedCurr, 'checkout-sub');
+    if (!check.ok) {
+      return res.status(503).json({ error: planGuard.blockedMessage(check.reason), code: check.reason });
     }
 
     // Subscription creation now lives in lib/payments/razorpay.js (same SDK call,

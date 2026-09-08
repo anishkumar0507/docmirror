@@ -118,7 +118,7 @@ main{flex:1;width:100%;max-width:860px;margin:0 auto;padding:2.5rem clamp(1rem,4
       <li>Weekly action tasks</li><li>Content pack &amp; SEO keywords</li>
       <li>Review growth engine</li><li>90-day growth plan</li>
     </ul>
-    <a class="cta" href="/pages/checkout-subscription.html">Upgrade to Monitor — $49/month →</a>
+    <a class="cta" href="/pages/checkout-subscription.html">Upgrade to Monitor — <span data-price="monitor" data-price-full>—</span> →</a>
   </div>
 </main>
 </div>
@@ -177,8 +177,13 @@ function render(reports){
   var list=el('reports-list');
   if(!reports.length){
     list.innerHTML='<div class="empty"><div class="i">📄</div><h3>No reports yet</h3>'+
-      '<p>Run a free visibility check, then unlock your full $19 audit report — it will appear here and be emailed to you.</p>'+
+      '<p>Run a free visibility check, then unlock your full <span data-price="report">—</span> audit report — it will appear here and be emailed to you.</p>'+
       '<a class="btn-primary" href="/">Run a free check →</a></div>';
+    // Injected after boot — fill its [data-price] span once prices are in.
+    if (window.TDMPricing) {
+      var fill=function(){ window.TDMPricing.refresh(list); };
+      window.TDMPricing.ready ? window.TDMPricing.ready.then(fill) : fill();
+    }
     return;
   }
   list.innerHTML=reports.map(function(r){
@@ -201,6 +206,7 @@ async function doLogout(){
 
 init();
 </script>
+<script src="/js/pricing-display.js" defer></script>
 <script src="/js/branding.js" defer></script>
 </body>
 </html>

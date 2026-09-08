@@ -14,6 +14,11 @@
 // same source of truth end to end.
 //
 // Rules:
+//   agency  (multi-doctor org sub) → everything monitor gets. The ONLY thing
+//                                   that makes it different is the org's
+//                                   profile_limit, which is org data, not a
+//                                   plan capability — so the capability flags
+//                                   are deliberately identical to monitor's.
 //   monitor (active subscription) → unlimited generation + full PDF + Monitor
 //                                   features. Never a payment prompt.
 //   audit   (one-time $19 buyer)  → download access to their purchased report(s);
@@ -78,6 +83,19 @@ async function resolvePlanEntitlement(supabase, userId) {
   }
 
   const plan = (profile && profile.plan) || 'free';
+
+  // An agency subscriber gets every monitor capability. Without this branch they
+  // would fall through to 'free' and be locked out of the dashboard they just
+  // paid for — the profile_limit alone does not grant access, the plan does.
+  if (plan === 'agency') {
+    return {
+      tier: 'agency',
+      canGenerateReport: true,
+      canDownloadPdf: true,
+      hasMonitorFeatures: true,
+      reason: 'active_agency_subscription',
+    };
+  }
 
   if (plan === 'monitor') {
     return {

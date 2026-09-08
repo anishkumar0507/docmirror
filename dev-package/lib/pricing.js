@@ -24,8 +24,8 @@ const TIERS = {
   // India — charged in INR via Razorpay (live mode today).
   IN: {
     currency: 'INR', symbol: '₹',
-    report:  { amount: 182800, display: '₹1,828' },        // one-time report (paise)
-    monitor: { amount: 471500, display: '₹4,715/month' },  // subscription (paise)
+    report:  { amount: 99900,  display: '₹999' },          // one-time report (paise)
+    monitor: { amount: 199900, display: '₹1,999/month' },  // subscription (paise)
     provider: { oneTime: 'razorpay', subscription: 'razorpay' },
   },
   // US + Canada — charged in USD.
@@ -49,25 +49,32 @@ const PRODUCTS = ['report', 'monitor'];
 
 // ── Organization plan tiers (multi-doctor) — CONSTANTS ONLY ──────────────────
 // profileLimit = how many doctor_profiles an org on this plan may hold.
-// These are PLACEHOLDER prices (TBD) and are NOT wired to any checkout or UI —
-// nothing reads them yet. The existing $19 report / $49 monitor flows (TIERS
-// above) are untouched. Amounts here are MAJOR units (whole dollars / rupees),
-// unlike TIERS which are minor units; they'll be normalized when a real
-// multi-doctor checkout is wired in a later phase.
-// inr is HAND-SET, never converted from usd — display currency must equal the
+// NOT wired to any checkout, route or UI yet — nothing reads these. The report /
+// monitor flows (TIERS above) are untouched. The agency checkout is a later phase;
+// this block exists so the price has ONE home when that phase arrives.
+//
+// SAME SHAPE AND UNITS AS TIERS: keyed by currency, { amount, display }, amount in
+// MINOR units (paise/cents). This used to be `{ usd: 450, inr: 35999 }` in MAJOR
+// units — two shapes for the same concept is how a display/charge mismatch gets
+// in, so the two now match and a value can move between them without conversion.
+//
+// INR is HAND-SET, never converted from USD — display currency must equal the
 // charged currency (a USD-priced-but-INR-charged order fails 3DS on US banks).
-// PLACEHOLDER prices live in ONE place (CLINIC_PRICING); clinic + agency SPREAD a
-// copy of it — separate objects, so changing one tier's limit/label never leaks
-// into the other (which an `agency: ORG_PLANS.clinic` reference alias would).
-// PLACEHOLDER (both still TBD). inr is HAND-SET, never a conversion of usd — a
-// converted number ($450 ≈ ₹37,xxx) reads badly and would break display=charge;
-// 35999 is a deliberate, marketable INR price point, NOT math on 450.
-const CLINIC_PRICING = { usd: 450, inr: 35999 };
+// USD is still the PLACEHOLDER $450/month from before, unchanged in value and
+// pending the next phase; only its units were normalised (450 → 45000 cents).
+//
+// clinic + agency each SPREAD a FRESH copy (clinicPricing() is a factory, not a
+// shared object) — separate objects, so editing one plan's price or limit can
+// never leak into the other, which `agency: ORG_PLANS.clinic` would.
+const clinicPricing = () => ({
+  INR: { amount: 799900, display: '₹7,999/month' },  // ₹7,999/month (paise)
+  USD: { amount:  45000, display: '$450/month'  },   // PLACEHOLDER, TBD (cents)
+});
 const ORG_PLANS = {
-  solo:     { profileLimit: 1,  usd: null, inr: null, label: 'Solo' },      // existing free/solo
-  clinic:   { profileLimit: 10, ...CLINIC_PRICING, label: 'Clinic' },       // PLACEHOLDER, TBD
-  hospital: { profileLimit: 25, usd: null, inr: null, label: 'Hospital' },  // Phase 4
-  agency:   { profileLimit: 10, ...CLINIC_PRICING, label: 'Agency' },       // PLACEHOLDER, TBD (shares clinic pricing)
+  solo:     { profileLimit: 1,  INR: null, USD: null, label: 'Solo' },      // existing free/solo
+  clinic:   { profileLimit: 10, ...clinicPricing(), label: 'Clinic' },
+  hospital: { profileLimit: 25, INR: null, USD: null, label: 'Hospital' },  // Phase 4
+  agency:   { profileLimit: 10, ...clinicPricing(), label: 'Agency' },      // same price as clinic, own objects
 };
 
 /** First positive integer among the given env var names, else null. */
@@ -137,13 +144,41 @@ function displayPrices(tier) {
   assertTier(tier);
   const report  = priceFor(tier, 'report');
   const monitor = priceFor(tier, 'monitor');
-  return {
+  const out = {
     tier,
     currency: TIERS[tier].currency,
     symbol:   TIERS[tier].symbol,
     report:  { amount: report.amount,  display: report.display,  bare: report.display.split('/')[0] },
     monitor: { amount: monitor.amount, display: monitor.display, bare: monitor.display.split('/')[0] },
   };
+  // Agency (multi-doctor) plan, in this tier's currency, straight from ORG_PLANS
+  // so the pricing page never hardcodes it. Omitted for a currency the plan has
+  // no price in yet — the card then keeps its in-HTML default rather than
+  // showing a wrong or empty number.
+  const agency = orgPlanPrice('agency', TIERS[tier].currency);
+  if (agency) {
+    out.agency = {
+      amount:       agency.amount,
+      display:      agency.display,
+      bare:         agency.display.split('/')[0],
+      profileLimit: ORG_PLANS.agency.profileLimit,
+    };
+  }
+  return out;
+}
+
+/**
+ * Price of an org (multi-doctor) plan in one currency, or null if that plan has
+ * no price set for it. Same { amount, display } shape as priceFor(); amount is
+ * in MINOR units. This is the ONLY way anything outside this file should read an
+ * ORG_PLANS price — checkout and UI both go through it, so the number has one home.
+ */
+function orgPlanPrice(plan, currency) {
+  const p = ORG_PLANS[plan];
+  if (!p) throw new Error(`unknown org plan: ${plan}`);
+  const price = p[currency];
+  if (!price || typeof price.amount !== 'number') return null;
+  return { amount: price.amount, display: price.display, currency, profileLimit: p.profileLimit };
 }
 
 // ── Backward-compat shims ────────────────────────────────────────────────────
@@ -161,6 +196,7 @@ module.exports = {
   ORG_PLANS,          // multi-doctor org plan constants (not wired yet)
   priceFor,
   providerFor,
+  orgPlanPrice,
   displayPrices,
   envUnits,
   // backward-compatible shims (India tier)

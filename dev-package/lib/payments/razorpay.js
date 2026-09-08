@@ -79,17 +79,23 @@ async function verifyOrder({ orderId, paymentId, signature, clientAuditId }) {
 // Mirrors routes/checkout-subscription.js razorpay.subscriptions.create(...).
 // planId + expected price are resolved by the caller (kept there so the plan-not-
 // configured guard and diagnostics log stay byte-for-byte); passed in here.
-async function createSubscription({ email, auditId, regionTier, country, planId, expectedUnits, expectedCurrency }) {
+// `planKind` names the product ('monitor' by default, 'agency' for the org plan)
+// and `userId`, when given, BINDS the subscription to one account: notes are set
+// here server-side and read back from Razorpay at verification, so a browser can
+// never claim someone else's subscription. Both default to today's behaviour, so
+// the monitor flow is unchanged.
+async function createSubscription({ email, auditId, regionTier, country, planId, expectedUnits, expectedCurrency, planKind, userId }) {
   const sub = await client().subscriptions.create({
     plan_id:         planId,
     total_count:     120, // up to 10 years, cancel anytime
     quantity:        1,
     customer_notify: 1,
     notes: {
-      plan:        'monitor',
+      plan:        planKind || 'monitor',
       paymentType: 'subscription',
       email,
       auditId: auditId || '',
+      userId:  userId  || '',
       region:  regionTier,
       country: country || '',
       expected_amount_units: String(expectedUnits),
@@ -97,6 +103,22 @@ async function createSubscription({ email, auditId, regionTier, country, planId,
     },
   });
   return { subscriptionId: sub.id, shortUrl: sub.short_url || null, raw: sub };
+}
+
+// ── fetch a subscription plan (read-only) ────────────────────────────────────
+// Used by the checkout pre-flight to prove the configured plan exists in the
+// CURRENT key's mode and bills what we think it bills. Razorpay test and live
+// are separate worlds — a plan id from one is simply absent in the other.
+async function fetchPlan(planId) {
+  return client().plans.fetch(planId);
+}
+
+// ── fetch a subscription (read-only) ─────────────────────────────────────────
+// Used by post-payment verification to check the subscription's real state at
+// Razorpay — its status, and the plan it is actually bound to — instead of
+// trusting anything the browser posted back.
+async function fetchSubscription(subscriptionId) {
+  return client().subscriptions.fetch(subscriptionId);
 }
 
 // ── verify a subscription's first payment ────────────────────────────────────
@@ -179,6 +201,8 @@ module.exports = {
   name,
   createOrder,
   verifyOrder,
+  fetchPlan,
+  fetchSubscription,
   createSubscription,
   verifySubscription,
   cancelSubscription,

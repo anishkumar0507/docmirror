@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#0A2540">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Start the Clinic / Agency plan — The Doc Mirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-dark:#007a57;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;--red:#DC2626;--red-light:#FEF2F2}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+nav{background:#fff;border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2rem);height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.logo-word span{color:var(--green)}
+.back-link{font-size:.85rem;color:var(--slate-light);text-decoration:none}
+.back-link:hover{color:var(--navy)}
+main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2.5rem clamp(1rem,4vw,2rem) 4rem;gap:2rem;flex-wrap:wrap}
+.col{width:100%;max-width:420px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.75rem}
+h1{font-size:1.4rem;color:var(--navy);letter-spacing:-.02em;margin-bottom:6px}
+.subtitle{font-size:.9rem;color:var(--slate-light);line-height:1.6;margin-bottom:1.25rem}
+.field{margin-bottom:14px}
+label{display:block;font-size:11px;font-weight:700;color:var(--slate);text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px}
+input{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:9px;font-size:.9rem;font-family:inherit;color:var(--navy)}
+input:focus{outline:none;border-color:var(--green)}
+input.err{border-color:var(--red);background:var(--red-light)}
+.hint{font-size:11.5px;color:var(--slate-light);margin-top:4px}
+.err-box{display:none;background:var(--red-light);border:1px solid #fecaca;color:#991b1b;border-radius:9px;padding:10px 12px;font-size:.82rem;line-height:1.5;margin-bottom:12px}
+.err-box.on{display:block}
+.err-box a{color:#991b1b;font-weight:700}
+.pay-btn{width:100%;display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--green);color:#fff;border:none;border-radius:10px;padding:13px 20px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:inherit;margin-top:6px}
+.pay-btn:hover:not(:disabled){background:var(--green-dark)}
+.pay-btn:disabled{opacity:.6;cursor:not-allowed}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;display:inline-block;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.foot{font-size:11.5px;color:var(--slate-light);text-align:center;margin-top:12px;line-height:1.6}
+.foot a{color:var(--green-dark)}
+.summary{background:#fff;border:2px solid var(--green);border-radius:16px;padding:1.5rem}
+.summary .badge{display:inline-block;background:var(--green-light);color:var(--green-dark);font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px;margin-bottom:10px}
+.summary h2{font-size:1.05rem;color:var(--navy);margin-bottom:4px}
+.summary .price{font-size:1.9rem;font-weight:800;color:var(--navy);font-family:'DM Mono',monospace;margin:10px 0 2px}
+.summary .per{font-size:.82rem;color:var(--slate-light);margin-bottom:14px}
+.summary ul{list-style:none;display:flex;flex-direction:column;gap:9px}
+.summary li{display:flex;gap:9px;font-size:.85rem;color:var(--slate);line-height:1.5}
+.summary .tick{color:var(--green);font-weight:700;flex-shrink:0}
+.ok-state{display:none;text-align:center;padding:1rem 0}
+.ok-state.on{display:block}
+.ok-state .big{font-size:2.4rem;margin-bottom:10px}
+.ok-state h2{color:var(--navy);font-size:1.2rem;margin-bottom:8px}
+.ok-state p{font-size:.88rem;color:var(--slate-light);line-height:1.6;margin-bottom:16px}
+.ok-state a{display:inline-block;background:var(--green);color:#fff;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:.9rem}
+@media(max-width:900px){main{flex-direction:column-reverse;align-items:center}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">
+    <span class="logo-mark"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></span>
+    <span class="logo-word">The Doc <span>Mirror</span></span>
+  </a>
+  <a class="back-link" href="/pricing">← Back to pricing</a>
+</nav>
+
+<main>
+  <div class="col">
+    <div class="card" id="form-card">
+      <h1>Create your agency account</h1>
+      <p class="subtitle">One login for your whole practice. You&rsquo;ll add each doctor after checkout &mdash; no scan needed to get started.</p>
+
+      <div class="err-box" id="err-box" role="alert"></div>
+      <button class="pay-btn" id="retry-btn" type="button" onclick="retryAgencySetup()"
+              style="display:none;margin-bottom:12px">Retry setup</button>
+
+      <div class="field">
+        <label for="ag-name">Practice or clinic name</label>
+        <input type="text" id="ag-name" placeholder="e.g. Sunrise Multispeciality" autocomplete="organization">
+      </div>
+      <div class="field">
+        <label for="ag-email">Work email</label>
+        <input type="email" id="ag-email" placeholder="you@clinic.com" autocomplete="email">
+      </div>
+      <div class="field">
+        <label for="ag-pass">Password</label>
+        <input type="password" id="ag-pass" placeholder="At least 8 characters" autocomplete="new-password">
+        <div class="hint">You&rsquo;ll use this to sign in to your dashboard.</div>
+      </div>
+
+      <button class="pay-btn" id="pay-btn" type="button" onclick="startAgencySignup()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Continue to payment
+      </button>
+      <div class="foot">
+        Already have an account? <a href="/pages/auth.html?return_to=dashboard">Sign in</a><br>
+        Secure payment by Razorpay · Cancel anytime
+      </div>
+    </div>
+
+    <div class="card ok-state" id="ok-card">
+      <div class="big">✅</div>
+      <h2>Your agency workspace is ready</h2>
+      <p id="ok-msg">You can now add your doctors from the dashboard.</p>
+      <a href="/dashboard">Open dashboard →</a>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="summary">
+      <span class="badge">Multi-doctor</span>
+      <h2>Clinic / Agency</h2>
+      <div class="price"><span data-price="agency">—</span></div>
+      <div class="per">per month · cancel anytime</div>
+      <ul>
+        <li><span class="tick">✓</span> Add up to <span data-plan-limit="agency">—</span> doctors</li>
+        <li><span class="tick">✓</span> Each doctor gets their own dashboard</li>
+        <li><span class="tick">✓</span> Everything in Monthly Monitor, for every doctor</li>
+        <li><span class="tick">✓</span> Switch between doctors instantly</li>
+      </ul>
+    </div>
+  </div>
+</main>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Agency signup: create the account FIRST, then pay.
+//
+// The account belongs to whoever completes this form, before any money moves, so
+// an existing email is never touched — the server answers 409 and we send them
+// to sign in. Checkout and verification both run with that account's own token,
+// so the server never has to take an email from a request body on trust.
+// ─────────────────────────────────────────────────────────────────────────────
+var _supabase = null;
+var _token    = null;
+// The payment ids of the completed Razorpay payment. Kept so "Retry setup" can
+// re-run verification for THAT payment instead of asking the user to pay again —
+// /api/agency/verify is idempotent, so replaying it is safe.
+var _lastPayment = null;
+
+function el(id){ return document.getElementById(id); }
+function showErr(html){ var b = el('err-box'); b.innerHTML = html || ''; b.classList.toggle('on', !!html); }
+function showRetry(on){ el('retry-btn').style.display = on ? 'block' : 'none'; }
+function busy(text){
+  var b = el('pay-btn'); b.disabled = true;
+  b.innerHTML = '<span class="spinner"></span> ' + text;
+}
+function ready(){
+  var b = el('pay-btn'); b.disabled = false;
+  b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
+    '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Continue to payment';
+}
+
+// The doctor limit shown on this page comes from ORG_PLANS, same as the price.
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.TDMPricing || !window.TDMPricing.ready) return;
+  window.TDMPricing.ready.then(function (cfg) {
+    var a = cfg && cfg.prices && cfg.prices.agency;
+    if (!a || a.profileLimit == null) return;
+    var els = document.querySelectorAll('[data-plan-limit="agency"]');
+    for (var i = 0; i < els.length; i++) els[i].textContent = a.profileLimit;
+  });
+});
+
+function loadRzp(cb) {
+  if (window.Razorpay) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://checkout.razorpay.com/v1/checkout.js';
+  s.onload = cb;
+  s.onerror = function(){ showErr('Could not load the payment SDK. Please refresh.'); ready(); };
+  document.head.appendChild(s);
+}
+
+async function supa() {
+  if (_supabase) return _supabase;
+  var cfg = await fetch('/api/client-config').then(function(r){ return r.json(); });
+  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) throw new Error('Auth is not configured');
+  _supabase = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  return _supabase;
+}
+
+// Replay verification for a payment that already went through. Safe to press
+// repeatedly: /api/agency/verify re-reads the subscription from Razorpay and
+// provisionAgencyOrg() finishes only whatever is still missing.
+async function retryAgencySetup() {
+  if (!_lastPayment) { showErr('Nothing to retry — please sign in and contact support.'); return; }
+  if (!_token) {
+    try { _token = localStorage.getItem('tdm_access_token') || ''; } catch (_) {}
+  }
+  showErr(''); showRetry(false); busy('Retrying setup…');
+  try {
+    var r = await fetch('/api/agency/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+      body: JSON.stringify(_lastPayment)
+    });
+    var v = await r.json().catch(function(){ return {}; });
+    if (v.ok) {
+      el('ok-msg').textContent =
+        'Add up to ' + v.profileLimit + ' doctors from your dashboard — each one gets their own view.';
+      el('form-card').style.display = 'none';
+      el('ok-card').classList.add('on');
+      setTimeout(function(){ window.location.href = v.redirect || '/dashboard'; }, 2000);
+      return;
+    }
+    var msg = v.error || 'Setup is still failing.';
+    if (v.failedStep) msg += '<br><small>Step: ' + v.failedStep + '</small>';
+    if (v.subscriptionId) msg += '<br><small>Reference: ' + v.subscriptionId + '</small>';
+    msg += '<br><small>Support: <a href="mailto:thedocmirror@gmail.com">thedocmirror@gmail.com</a></small>';
+    showErr(msg); showRetry(true); ready();
+  } catch (e) {
+    showErr('Retry failed — please contact support.'); showRetry(true); ready();
+  }
+}
+
+async function startAgencySignup() {
+  var name  = el('ag-name').value.trim();
+  var email = el('ag-email').value.trim().toLowerCase();
+  var pass  = el('ag-pass').value;
+
+  ['ag-email','ag-pass'].forEach(function(id){ el(id).classList.remove('err'); });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showErr('Please enter a valid email address.'); el('ag-email').classList.add('err'); el('ag-email').focus(); return;
+  }
+  if (!pass || pass.length < 8) {
+    showErr('Create a password of at least 8 characters.'); el('ag-pass').classList.add('err'); el('ag-pass').focus(); return;
+  }
+  showErr('');
+
+  try {
+    // ── 1. Create the account (before any payment) ──────────────────────────
+    busy('Creating your account…');
+    var sres = await fetch('/api/agency/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pass, name: name })
+    });
+    var sbody = await sres.json().catch(function(){ return {}; });
+    if (sres.status === 409) {
+      showErr((sbody.error || 'That email already has an account.') +
+        ' <a href="/pages/auth.html?return_to=dashboard">Sign in →</a>');
+      ready(); return;
+    }
+    if (!sres.ok) { showErr(sbody.error || 'Could not create the account.'); ready(); return; }
+
+    // ── 2. Sign in to get a token — every later call is authenticated ───────
+    busy('Signing you in…');
+    var sb = await supa();
+    var auth = await sb.auth.signInWithPassword({ email: email, password: pass });
+    if (auth.error || !auth.data || !auth.data.session) {
+      showErr('Account created, but sign-in failed. Please <a href="/pages/auth.html?return_to=dashboard">sign in</a> and start the plan from your dashboard.');
+      ready(); return;
+    }
+    _token = auth.data.session.access_token;
+    try {
+      localStorage.setItem('tdm_access_token',  auth.data.session.access_token);
+      localStorage.setItem('tdm_refresh_token', auth.data.session.refresh_token);
+      localStorage.setItem('tdm_user_email', email);
+    } catch (_) {}
+
+    // ── 3. Create the subscription (server picks plan + amount) ─────────────
+    busy('Creating subscription…');
+    var cres = await fetch('/api/agency/checkout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token }
+    });
+    var sub = await cres.json().catch(function(){ return {}; });
+    if (!cres.ok || !sub.subscriptionId) { showErr(sub.error || 'Could not start the subscription.'); ready(); return; }
+
+    // ── 4. Razorpay ─────────────────────────────────────────────────────────
+    busy('Opening payment…');
+    loadRzp(function () {
+      var rzp = new Razorpay({
+        key:             sub.keyId,
+        subscription_id: sub.subscriptionId,
+        name:            'The Doc Mirror',
+        description:     'Clinic / Agency — ' + (sub.display || ''),
+        prefill:         { email: email },
+        theme:           { color: '#0A2540' },
+        handler: function (response) {
+          _lastPayment = {
+            subscriptionId: response.razorpay_subscription_id,
+            paymentId:      response.razorpay_payment_id,
+            signature:      response.razorpay_signature
+          };
+          busy('Setting up your workspace…');
+          fetch('/api/agency/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+            body: JSON.stringify({
+              subscriptionId: response.razorpay_subscription_id,
+              paymentId:      response.razorpay_payment_id,
+              signature:      response.razorpay_signature
+            })
+          })
+          .then(function(r){ return r.json().then(function(j){ j._status = r.status; return j; }); })
+          .then(function(v){
+            if (v.ok) {
+              // Redirect ONLY after provisioning actually succeeded. The agency
+              // dashboard opens on the org landing (the doctor card grid),
+              // because the org's profile_limit makes it a multi-profile org.
+              showRetry(false);
+              el('ok-msg').textContent =
+                'Add up to ' + v.profileLimit + ' doctors from your dashboard — each one gets their own view.';
+              el('form-card').style.display = 'none';
+              el('ok-card').classList.add('on');
+              setTimeout(function(){ window.location.href = v.redirect || '/dashboard'; }, 2500);
+              return;
+            }
+            // Failure is never silent: say which step broke, give the id support
+            // needs, and offer a retry that replays this same payment.
+            var msg = v.error || 'We could not confirm the payment.';
+            if (v.failedStep)     msg += '<br><small>Step: ' + v.failedStep + '</small>';
+            if (v.subscriptionId) msg += '<br><small>Reference: ' + v.subscriptionId + '</small>';
+            msg += '<br><small>Support: <a href="mailto:thedocmirror@gmail.com">thedocmirror@gmail.com</a></small>';
+            showErr(msg);
+            showRetry(!!v.retryable);
+            ready();
+          })
+          .catch(function(){
+            showErr('We could not confirm the payment. Press Retry setup, or email ' +
+                    '<a href="mailto:thedocmirror@gmail.com">thedocmirror@gmail.com</a> with your payment id.');
+            showRetry(true);
+            ready();
+          });
+        },
+        modal: { ondismiss: function(){ showErr('Payment cancelled — your account is saved, you can pay any time.'); ready(); } }
+      });
+      rzp.open();
+    });
+  } catch (e) {
+    showErr('Something went wrong. Please try again.');
+    ready();
+  }
+}
+</script>
+<script src="/js/pricing-display.js" defer></script>
+<script src="/js/branding.js" defer></script>
+</body>
+</html>

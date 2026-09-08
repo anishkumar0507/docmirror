@@ -43,10 +43,10 @@ main{flex:1;padding:4rem clamp(1rem,5vw,2rem) 5rem}
 .hero h1{font-size:clamp(1.8rem,4vw,2.6rem);font-weight:800;color:var(--navy);line-height:1.15;margin-bottom:.75rem}
 .hero p{font-size:1.05rem;color:var(--slate-light);max-width:480px;margin:0 auto}
 
-.cards{display:flex;gap:1.5rem;max-width:820px;margin:0 auto;align-items:stretch;flex-wrap:wrap;justify-content:center}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;max-width:1240px;margin:0 auto;align-items:stretch}
 
 /* ── Base card ── */
-.plan-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:2rem;flex:1;min-width:300px;max-width:380px;display:flex;flex-direction:column;position:relative}
+.plan-card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:1.75rem;display:flex;flex-direction:column;position:relative}
 .plan-badge{display:inline-block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;padding:3px 10px;border-radius:20px;margin-bottom:1rem}
 .badge-audit{background:var(--green-light);color:#065f46}
 .plan-name{font-size:1.25rem;font-weight:800;color:var(--navy);margin-bottom:.3rem}
@@ -55,6 +55,8 @@ main{flex:1;padding:4rem clamp(1rem,5vw,2rem) 5rem}
 .plan-amount{font-size:2.5rem;font-weight:800;color:var(--navy);font-family:'DM Mono',monospace;line-height:1}
 .plan-period{font-size:.9rem;color:var(--slate-light);margin-bottom:6px}
 .plan-note{font-size:.78rem;color:var(--slate-light);margin-bottom:1.75rem}
+.plan-anchor{font-size:.72rem;color:var(--slate-light);font-style:italic;padding:6px 8px;background:var(--warm);border-radius:6px;text-align:center;margin-bottom:1.25rem}
+.plan-card.monitor .plan-anchor{background:rgba(255,255,255,.08);color:rgba(255,255,255,.7)}
 .features{list-style:none;display:flex;flex-direction:column;gap:.6rem;margin-bottom:auto;padding-bottom:1.75rem}
 .features li{display:flex;align-items:flex-start;gap:9px;font-size:.875rem;color:var(--slate);line-height:1.45}
 .features li .ico{flex-shrink:0;margin-top:2px;width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800}
@@ -64,6 +66,8 @@ main{flex:1;padding:4rem clamp(1rem,5vw,2rem) 5rem}
 .cta-audit:hover{background:#ece9e4;border-color:var(--navy)}
 
 /* ── Monitor card (highlighted) ── */
+.plan-card.agency{border-color:var(--green);border-width:2px}
+.plan-card.agency .plan-badge{background:var(--green-light,#e6f7f2);color:var(--green-dark,#007a57)}
 .plan-card.monitor{background:var(--navy);border-color:var(--navy);color:#fff}
 .plan-card.monitor .plan-name,.plan-card.monitor .plan-amount{color:#fff}
 .plan-card.monitor .plan-tagline,.plan-card.monitor .plan-period,.plan-card.monitor .plan-note{color:rgba(255,255,255,.6)}
@@ -86,12 +90,15 @@ main{flex:1;padding:4rem clamp(1rem,5vw,2rem) 5rem}
 
 footer{text-align:center;padding:2rem;font-size:.78rem;color:var(--slate-light)}
 footer a{color:var(--slate-light);text-decoration:none;margin:0 6px}
+@media(min-width:561px) and (max-width:1080px){
+  .cards{grid-template-columns:repeat(2,1fr);max-width:800px}
+}
 @media(max-width:560px){
   nav{padding:0 1rem}
   .nav-right{gap:.65rem}
   main{padding:2rem 1rem 3rem}
-  .cards{flex-direction:column;align-items:stretch;gap:1rem}
-  .plan-card{max-width:100%;min-width:0;padding:1.5rem}
+  .cards{grid-template-columns:1fr;gap:1rem}
+  .plan-card{padding:1.5rem}
   .popular-tag{top:-10px}
 }
 </style>
@@ -128,62 +135,13 @@ body.tdm-modal-open{overflow:hidden}
 <main>
   <div class="hero">
     <h1>Simple, transparent pricing</h1>
-    <p>Start with a one-time audit, or subscribe to weekly monitoring — live alerts, competitor tracking, an AI growth engine, and recurring reports that keep you growing every month.</p>
+    <p>Start free, buy a one-time audit, or subscribe to weekly monitoring. Running a clinic or agency? Track every doctor from one account.</p>
   </div>
 
-  <div class="cards">
-
-    <!-- ── Plan 1: Visibility Audit $19 ── -->
-    <div class="plan-card">
-      <span class="plan-badge badge-audit">One-Time</span>
-      <div class="plan-name">Visibility Audit</div>
-      <div class="plan-tagline">Complete picture of your online presence — delivered once, instantly.</div>
-      <div class="plan-price">
-        <div class="plan-amount"><span data-price="report">$19</span></div>
-      </div>
-      <div class="plan-period">one-time payment</div>
-      <div class="plan-note">No subscription. No renewal.</div>
-      <ul class="features">
-        <li><span class="ico ico-check">✓</span> Full 15-page Audit Report</li>
-        <li><span class="ico ico-check">✓</span> AI Visibility Score (ChatGPT, Gemini, Claude)</li>
-        <li><span class="ico ico-check">✓</span> Competitor Snapshot (top 3)</li>
-        <li><span class="ico ico-check">✓</span> PDF Download + Email Delivery</li>
-        <li><span class="ico ico-check">✓</span> Audit History page (your past reports)</li>
-      </ul>
-      <a href="/?plan=audit#tool" class="plan-cta cta-audit js-plan-cta" data-plan="audit">Get My Report →</a>
-    </div>
-
-    <!-- ── Plan 2: Doctor Visibility Monitor $49/month ── -->
-    <div class="plan-card monitor">
-      <div class="popular-tag">Most Popular</div>
-      <span class="plan-badge badge-monitor">Subscription</span>
-      <div class="plan-name">Doctor Visibility Monitor</div>
-      <div class="plan-tagline">Weekly audits, live alerts, and an AI growth engine — every single month.</div>
-      <div class="plan-price">
-        <div class="plan-amount"><span data-price="monitor">$49</span></div>
-        <div class="plan-period">&nbsp;/ month</div>
-      </div>
-      <div class="plan-note">Cancel anytime. No contracts.</div>
-      <ul class="features">
-        <li><span class="ico ico-check">✓</span> Everything in Visibility Audit</li>
-        <li><span class="ico ico-check">✓</span> <span><strong>Live Visibility Dashboard</strong><br><span style="font-size:.8rem;opacity:.75">Track score changes, competitors, reviews, and AI rankings in real time.</span></span></li>
-        <li><span class="ico ico-check">✓</span> Weekly Visibility Audit</li>
-        <li><span class="ico ico-check">✓</span> AI Rank Tracker (ChatGPT, Claude, Gemini, Perplexity)</li>
-        <li><span class="ico ico-check">✓</span> Competitor Watchlist &amp; Change Alerts</li>
-        <li><span class="ico ico-check">✓</span> Weekly Personalized Action Tasks</li>
-        <li><span class="ico ico-check">✓</span> Monthly Content Pack</li>
-        <hr class="monitor-divider">
-        <li><span class="ico ico-check">✓</span> Review Growth Engine</li>
-        <li><span class="ico ico-check">✓</span> Reputation Monitor</li>
-        <li><span class="ico ico-check">✓</span> Local SEO Health</li>
-        <li><span class="ico ico-check">✓</span> 30/60/90-Day Growth Roadmap</li>
-        <li><span class="ico ico-check">✓</span> Historical Trend Tracking</li>
-        <li><span class="ico ico-check">✓</span> Weekly PDF Reports by Email</li>
-      </ul>
-      <a href="/?plan=monitor#tool" class="plan-cta cta-monitor js-plan-cta" data-plan="monitor">Start Monitoring →</a>
-    </div>
-
-  </div>
+  <!-- Plan cards are rendered by /js/plan-cards.js so this page and the homepage
+       cannot drift apart. Copy lives in that one file; prices come from
+       /api/client-config. Do not hand-write a card here. -->
+  <div class="cards" id="cards"></div>
 
   <div class="faq-section">
     <h2>Common questions</h2>
@@ -332,9 +290,19 @@ body.tdm-modal-open{overflow:hidden}
   } catch(e){}
 })();
 </script>
+<script src="/js/pricing-display.js" defer></script>
+<script src="/js/plan-cards.js" defer></script>
+<script>
+// Same four plans, same copy, as the homepage — see /js/plan-cards.js.
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.TDMPlans) window.TDMPlans.render('cards', 'full');
+});
+</script>
 <script src="/js/layout.js" defer></script>
 <script src="/js/branding.js" defer></script>
-<!-- Prices shown as flat USD ($19/$49); region/₹ conversion intentionally not
-     applied on this marketing page. Charge-side currency is handled at checkout. -->
+<!-- Every price on this page is a [data-price] span filled by
+     /js/pricing-display.js from /api/client-config, so the amount shown is the
+     amount charged (India sees ₹, US sees $). Never write a price into this
+     markup — the placeholder is an em dash on purpose. -->
 </body>
 </html>

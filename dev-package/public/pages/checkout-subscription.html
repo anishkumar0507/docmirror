@@ -142,7 +142,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
         <div class="price-note">Monthly · Cancel anytime</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount"><span data-price="monitor">$49</span></div>
+        <div class="price-amount"><span data-price="monitor">—</span></div>
         <div class="price-note">per month</div>
       </div>
     </div>
@@ -170,7 +170,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Subscribe — <span data-price="monitor">$49</span>/month
+      Subscribe — <span data-price="monitor">—</span>/month
     </button>
 
     <div class="pay-secure">
@@ -221,7 +221,7 @@ async function initPage() {
   var emailVal = savedEmail || (_session && _session.user && _session.user.email) || '';
   if (emailVal) document.getElementById('email-input').value = emailVal;
 
-  // ── Upgrade context (arriving from a $19 Audit report) ────────────────────
+  // ── Upgrade context (arriving from a one-time Audit report) ───────────────
   if (/[?&]upgrade=1/.test(window.location.search)) {
     var sub = document.querySelector('.subtitle');
     if (sub) sub.innerHTML = 'You\'re upgrading to <strong>Doctor Visibility Monitor</strong>. ' +
@@ -257,7 +257,7 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Subscribe — <span data-price="monitor">$49</span>/month';
+    ' Subscribe — <span data-price="monitor">—</span>/month';
   if (window.TDMPricing && window.TDM_PRICING) window.TDMPricing.apply(window.TDM_PRICING.prices);
 }
 
@@ -327,7 +327,7 @@ function startPayment() {
         key:             subRes.keyId,
         subscription_id: subRes.subscriptionId,
         name:            'The Doc Mirror',
-        description:     'Doctor Visibility Monitor — ' + ((window.TDM_PRICING && window.TDM_PRICING.prices && window.TDM_PRICING.prices.monitor.display) || '$49/month'),
+        description:     'Doctor Visibility Monitor — ' + (window.TDMPricing ? window.TDMPricing.get('monitor', true) : ''),
         prefill:         { email: email },
         theme:           { color: '#0A2540' },
 

@@ -41,6 +41,7 @@ const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
 const generateReportEntitledHandler = require('./routes/generate-report-entitled');
 const profilesRoute               = require('./routes/profiles');
+const agencyRoute                 = require('./routes/agency');
 const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
@@ -206,6 +207,15 @@ app.post('/api/notifications',            userNotificationsHandler); // mark rea
 // resolved server-side per request and ownership is enforced inside each query.
 app.post('/api/profiles',                 requireAuth, profilesRoute.create);
 app.get('/api/profiles',                  requireAuth, profilesRoute.list);
+
+// Agency (multi-doctor) plan. signup is public — it CREATES the account, before
+// any payment, and refuses to touch an email that already has one. checkout and
+// verify are requireAuth-gated, so both act on the user the token proves rather
+// than on an email in a request body. Provisioning (org, owner, profile_limit)
+// happens only inside verify, after three independent checks against Razorpay.
+app.post('/api/agency/signup',            agencyRoute.signup);
+app.post('/api/agency/checkout',          requireAuth, agencyRoute.checkout);
+app.post('/api/agency/verify',            requireAuth, agencyRoute.verify);
 app.patch('/api/profiles/:id',            requireAuth, profilesRoute.update);
 app.delete('/api/profiles/:id',           requireAuth, profilesRoute.archive);
 app.get('/api/weekly-update',             weeklyCheckHandler);      // alias for the weekly cron
