@@ -129,6 +129,10 @@ async function handler(req, res) {
         competitors:  (Array.isArray(row.competitors) && row.competitors.length) ? row.competitors : base.competitors,
         pdf_url:      pdfByAudit[id]   || row.pdf_url || null,
         insights:     ad.insights      || null,
+        // Additive (Phase 1B): expose the org linkage so the multi-doctor
+        // dashboard can map each report to its profile. No filter/gating change.
+        doctor_profile_id: row.doctor_profile_id || null,
+        org_id:            row.org_id            || null,
         created_at,
       };
     }).filter(r => r.score != null || r.doctor_name)
