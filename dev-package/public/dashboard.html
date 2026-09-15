@@ -511,8 +511,11 @@ main{padding:1.5rem 2rem 4rem;max-width:1200px}
       .agency-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(262px,1fr));gap:14px}
       .agency-card{background:#fff;border:.5px solid var(--border);border-radius:14px;padding:1rem 1.15rem;display:flex;flex-direction:column;gap:12px}
       .agency-card-top{display:flex;justify-content:space-between;gap:8px}
+      .agency-card-info{min-width:0}
       .agency-name{font-weight:700;color:var(--navy);font-size:.95rem}
       .agency-meta{font-size:12px;color:var(--slate-light);margin:2px 0 4px}
+      .agency-website{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--green-dark);font-size:12px;text-decoration:none}
+      .agency-website-empty{color:var(--slate-light);font-size:12px}
       .agency-archive{background:none;border:1px solid var(--border);color:var(--slate-light);border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;height:fit-content;white-space:nowrap}
       .agency-archive:hover{border-color:#B83260;color:#B83260}
       .agency-card-bottom{display:flex;align-items:center;gap:16px;border-top:.5px solid var(--border);padding-top:10px}
@@ -1119,6 +1122,31 @@ var _activeProfileId = null;// which doctor's dashboard is open (Mode 2), or nul
 // Attribute-safe escape (escH doesn't cover quotes; needed for href/attributes).
 function escAttr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
+// Avatar initials from a doctor OR organization name — last two words' first
+// letters (e.g. "Kunal P Patel" -> "PP", "kunal center" -> "KC").
+function initialsFromName(name, fallback){
+  var parts = String(name || '').split(' ').filter(Boolean);
+  return parts.length >= 2
+    ? (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
+    : (String(name || '').slice(0, 2).toUpperCase() || fallback || 'DR');
+}
+
+// Sidebar top card + topbar avatar for an agency org — this is the ONLY identity
+// shown there. It is org-level (name, "Agency · X of Y doctors"), never the
+// last-scanned/opened doctor's — that would leak solo-user identity semantics
+// into agency accounts. The opened doctor's name still appears in the topbar
+// title (renderProfileDashboard) and the sidebar "DOCTORS" switcher, just not here.
+function renderOrgIdentity(ent){
+  var orgName = (ent && ent.orgName) || 'Your organization';
+  var used = ent ? ent.profilesUsed : 0;
+  var lim  = ent ? ent.profileLimit : 0;
+  var initials = initialsFromName(orgName, 'OR');
+  if (el('doc-av'))    el('doc-av').textContent   = initials;
+  if (el('doc-name'))  el('doc-name').textContent = orgName;
+  if (el('doc-spec'))  el('doc-spec').textContent = 'Agency · ' + used + ' of ' + lim + ' doctors';
+  if (el('topbar-av')) { el('topbar-av').textContent = initials; el('topbar-av').title = orgName; }
+}
+
 function agencyApi(method, path, body) {
   return fetch(path, {
     method: method,
@@ -1163,6 +1191,7 @@ async function populateAgency(ent, reports) {
 }
 
 function renderAgencyHeader(ent) {
+  renderOrgIdentity(ent);
   var used = ent.profilesUsed, lim = ent.profileLimit;
   var u = el('agency-usage'); if (u) u.textContent = used + ' / ' + lim + ' doctors';
   var addBtn = el('agency-add-btn'); if (!addBtn) return;
@@ -1196,21 +1225,29 @@ async function loadAgencyProfiles() {
   grid.innerHTML = profiles.map(agencyCardHtml).join('');
 }
 
+// Domain + "/…" for display (full URL stays in href + title). A long domain
+// with no path is left to the .agency-website CSS ellipsis to truncate.
+function shortWebsite(url) {
+  var clean  = String(url || '').replace(/^https?:\/\//i, '');
+  var domain = clean.split('/')[0];
+  return clean.length > domain.length ? domain + '/…' : domain;
+}
+
 function agencyCardHtml(p) {
   var last = _agencyReportsByProfile[p.id];
   var lastTxt  = last && last.date ? new Date(last.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : 'No audits yet';
   var scoreTxt = last && last.score != null ? (last.score + '/100') : '&mdash;';
   var meta = [p.speciality, p.city].filter(Boolean).map(escH).join(' · ');
   var site = p.website
-    ? '<a href="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--green-dark);font-size:12px;text-decoration:none">' + escH(p.website) + '</a>'
-    : '<span style="color:var(--slate-light);font-size:12px">No website</span>';
+    ? '<a class="agency-website" href="' + escAttr(p.website) + '" title="' + escAttr(p.website) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">' + escH(shortWebsite(p.website)) + '</a>'
+    : '<span class="agency-website-empty">No website</span>';
   // Clicking the card opens that doctor's dashboard (Mode 2); the buttons/link
   // stop propagation so they don't also trigger the open.
   return '<div class="agency-card" data-id="' + escAttr(p.id) + '"' +
       ' data-name="' + escAttr(p.name || '') + '" data-speciality="' + escAttr(p.speciality || '') + '" data-city="' + escAttr(p.city || '') + '"' +
       ' onclick="openProfile(\'' + escAttr(p.id) + '\')">' +
       '<div class="agency-card-top">' +
-        '<div><div class="agency-name">' + escH(p.name || 'Unnamed') + '</div>' +
+        '<div class="agency-card-info"><div class="agency-name">' + escH(p.name || 'Unnamed') + '</div>' +
           '<div class="agency-meta">' + (meta || '&mdash;') + '</div>' + site + '</div>' +
         '<button class="agency-archive" type="button" onclick="event.stopPropagation();archiveDoctor(\'' + escAttr(p.id) + '\')">Archive</button>' +
       '</div>' +
@@ -1657,17 +1694,14 @@ function renderProfileDashboard(profileId) {
   var specialty  = prof.speciality || (latest && latest.specialty) || '';
   var city       = prof.city || (latest && latest.city) || '';
 
-  var parts = doctorName.split(' ').filter(Boolean);
-  var initials = parts.length >= 2
-    ? (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
-    : (doctorName.slice(0, 2).toUpperCase() || 'DR');
+  var initials = initialsFromName(doctorName);
 
+  // Topbar shows which doctor is open; the sidebar top card stays the org's
+  // identity (renderOrgIdentity) — the doctor's name only ever appears here
+  // and in the "DOCTORS" switcher, never in the top card.
   if (el('practice-name')) el('practice-name').textContent = doctorName;
   if (el('practice-sub'))  el('practice-sub').textContent  = ([specialty, city].filter(Boolean).join(' · ') || 'Monitor') + ' · Monitor active';
   if (el('topbar-av'))     { el('topbar-av').textContent = initials; el('topbar-av').title = doctorName; }
-  if (el('doc-av'))   el('doc-av').textContent   = initials;
-  if (el('doc-name')) el('doc-name').textContent = doctorName;
-  if (el('doc-spec')) el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
 
   // Same population path as the solo dashboard, scoped to this profile's reports.
   try {
@@ -1757,21 +1791,24 @@ function initDashboard(profile, reports) {
   var city       = (latest && latest.city) || '';
 
   // Initials
-  var parts    = doctorName.split(' ').filter(Boolean);
-  var initials = parts.length >= 2
-    ? (parts[parts.length - 2][0] + parts[parts.length - 1][0]).toUpperCase()
-    : doctorName.slice(0, 2).toUpperCase() || 'DR';
+  var initials = initialsFromName(doctorName);
 
-  // Sidebar doctor info
-  el('doc-av').textContent   = initials;
-  el('doc-name').textContent = doctorName;
-  el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
+  // Sidebar + topbar identity — agency orgs render their org identity instead
+  // (renderOrgIdentity, called from the multi-profile init path below), never
+  // the last-scanned doctor's. Solo users are unchanged.
+  var isAgency = !!(profile.entitlement && profile.entitlement.isMultiProfile);
+  if (!isAgency) {
+    // Sidebar doctor info
+    el('doc-av').textContent   = initials;
+    el('doc-name').textContent = doctorName;
+    el('doc-spec').textContent = [specialty, city].filter(Boolean).join(' · ') || 'Monitor Plan';
 
-  // Topbar
-  el('practice-name').textContent = doctorName;
-  el('practice-sub').textContent  = [specialty, city].filter(Boolean).join(' · ') + ' · Monitor active';
-  el('topbar-av').textContent    = initials;
-  el('topbar-av').title          = doctorName;
+    // Topbar
+    el('practice-name').textContent = doctorName;
+    el('practice-sub').textContent  = [specialty, city].filter(Boolean).join(' · ') + ' · Monitor active';
+    el('topbar-av').textContent    = initials;
+    el('topbar-av').title          = doctorName;
+  }
   el('week-label').textContent   = today();
 
   // Settings

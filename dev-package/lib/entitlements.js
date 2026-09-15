@@ -53,6 +53,7 @@ const NONE = Object.freeze({
 // additional doctor profiles.
 const ORG_NONE = Object.freeze({
   orgId: null,
+  orgName: null,
   orgType: null,
   profileLimit: 1,
   profilesUsed: 0,
@@ -157,7 +158,7 @@ async function resolveOrgInfo(supabase, userId) {
 
     const { data: org, error: oErr } = await supabase
       .from('organizations')
-      .select('id, type, profile_limit')       // NOTE: plan deliberately not selected
+      .select('id, name, type, profile_limit')  // NOTE: plan deliberately not selected
       .eq('id', orgId)
       .maybeSingle();
     if (oErr || !org) return { ...ORG_NONE };
@@ -173,6 +174,7 @@ async function resolveOrgInfo(supabase, userId) {
 
     return {
       orgId,
+      orgName: org.name || null,
       orgType: org.type || null,
       profileLimit,
       profilesUsed,
@@ -190,7 +192,7 @@ async function resolveOrgInfo(supabase, userId) {
  * @param {string|null} userId  server-verified auth user id (never client-supplied)
  * @returns {Promise<{
  *   plan, tier, canGenerateReport, canDownloadPdf, hasMonitorFeatures, reason,
- *   orgId, orgType, profileLimit, profilesUsed, canCreateProfile, isMultiProfile
+ *   orgId, orgName, orgType, profileLimit, profilesUsed, canCreateProfile, isMultiProfile
  * }>}
  */
 async function getEntitlement(userId) {
