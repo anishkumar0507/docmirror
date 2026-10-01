@@ -143,6 +143,26 @@ body.tdm-modal-open{overflow:hidden}
        /api/client-config. Do not hand-write a card here. -->
   <div class="cards" id="cards"></div>
 
+  <!-- Buy-first, redeem-later report credit — a DIFFERENT purchase path from
+       the "Full audit report" card above (which requires running the free scan
+       first). Deliberately hand-written and outside #cards/plan-cards.js: it is
+       not one of the four shared plans, it needs a login, and it links to its
+       own checkout page, not the homepage scan tool. Price still comes from
+       /api/client-config (same report tier, filled by /js/pricing-display.js) —
+       never hardcoded. -->
+  <div style="max-width:640px;margin:2rem auto 0;padding:0 1.5rem">
+    <div class="plan-card" style="max-width:100%">
+      <span class="plan-badge badge-audit">One-time · Buy now, redeem later</span>
+      <div class="plan-name">PDF Report — one-time</div>
+      <div class="plan-tagline">Already know you want a report for a specific doctor, or buying for later? Pay now, choose the doctor whenever you're ready — no scan required upfront.</div>
+      <div class="plan-price">
+        <div class="plan-amount"><span data-price="report">—</span></div>
+      </div>
+      <div class="plan-note">Requires an account. Redeem any time — your credit never expires.</div>
+      <a href="/pages/report-credit-checkout.html" class="plan-cta cta-audit">Buy report</a>
+    </div>
+  </div>
+
   <div class="faq-section">
     <h2>Common questions</h2>
     <p>Everything you need to know before getting started.</p>
@@ -161,7 +181,7 @@ body.tdm-modal-open{overflow:hidden}
     </div>
     <div class="faq-row">
       <div class="faq-q">What payment methods are accepted?</div>
-      <div class="faq-a">All major credit/debit cards, UPI, net banking, and wallets via Razorpay. Fully secure checkout.</div>
+      <div class="faq-a" id="faq-payment-methods">All major credit/debit cards, UPI, net banking, and wallets via Razorpay. Fully secure checkout.</div>
     </div>
   </div>
 </main>
@@ -296,6 +316,19 @@ body.tdm-modal-open{overflow:hidden}
 // Same four plans, same copy, as the homepage — see /js/plan-cards.js.
 document.addEventListener('DOMContentLoaded', function () {
   if (window.TDMPlans) window.TDMPlans.render('cards', 'full');
+});
+// UPI/net banking are India-only Razorpay methods — never show them to a US
+// buyer (STEP 3: no UPI mentions for US users). Region comes from the same
+// /api/client-config load pricing-display.js already does.
+document.addEventListener('DOMContentLoaded', function () {
+  if (!window.TDMPricing || !window.TDMPricing.ready) return;
+  window.TDMPricing.ready.then(function (cfg) {
+    var el = document.getElementById('faq-payment-methods');
+    if (!el || !cfg || !cfg.region) return;
+    el.textContent = cfg.region === 'IN'
+      ? 'All major credit/debit cards, UPI, net banking, and wallets via Razorpay. Fully secure checkout.'
+      : 'All major credit/debit and international cards via Razorpay. Fully secure checkout.';
+  });
 });
 </script>
 <script src="/js/layout.js" defer></script>

@@ -26,34 +26,26 @@
 //   3. currency  — in the currency we quoted
 // plus a binding check that the subscription was created for THIS user.
 //
-// profile_limit is read from lib/pricing.js ORG_PLANS. It is never taken from
-// the request — a client cannot ask for a bigger org.
+// profile_limit and the price/plan-id itself are read from lib/pricing.js's
+// 'org_monthly' tier for the buyer's REGION (lib/payments/subscription-flow.js
+// does the actual create/verify — this file only decides region and provisions
+// the org). Never taken from the request — a client cannot ask for a bigger org
+// or a different currency than their resolved region charges.
 // ─────────────────────────────────────────────────────────────────────────────
 
 require('../lib/env');
 
-const pricing    = require('../lib/pricing');
-const payments   = require('../lib/payments');
-const planGuard  = require('../lib/payments/plan-guard');
+const { resolveRegionForUser } = require('../lib/region');
 const { getSupabaseClient } = require('../lib/supabase-client');
+const subscriptionFlow = require('../lib/payments/subscription-flow');
+const planGuard = require('../lib/payments/plan-guard');
+const { isMissingColumnError: isMissingColumn } = require('../lib/paid-reports');
 
-const AGENCY_PLAN_KEY = 'agency';
-const ORG_TYPE        = 'agency';
-const BILLING_CURRENCY = 'INR';   // the agency plan is INR-only this phase
+const ORG_TYPE = 'agency';
+const TIER_ID  = 'org_monthly';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD = 8;
-
-// Server-resolved price for the agency plan. Never accepts a client amount.
-function agencyPrice() {
-  const p = pricing.orgPlanPrice(AGENCY_PLAN_KEY, BILLING_CURRENCY);
-  if (!p) throw new Error(`agency plan has no ${BILLING_CURRENCY} price configured`);
-  return p;
-}
-
-function planId() {
-  return process.env.RAZORPAY_AGENCY_PLAN_ID || '';
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/agency/signup   { email, password, name? }
@@ -110,8 +102,10 @@ async function signup(req, res) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/agency/checkout    (requireAuth)
-// Creates the Razorpay subscription for the AUTHENTICATED user. The plan and the
-// amount come from env + lib/pricing.js; the request body is not read at all.
+// Creates the Razorpay subscription for the AUTHENTICATED user, in THEIR region
+// (a returning payer stays on their locked currency — see lib/region.js). The
+// plan and the amount come from lib/pricing.js's 'org_monthly' tier for that
+// region; the request body is not read at all.
 // ─────────────────────────────────────────────────────────────────────────────
 async function checkout(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -119,64 +113,44 @@ async function checkout(req, res) {
 
   const keyId  = process.env.RAZORPAY_KEY_ID;
   const secret = process.env.RAZORPAY_KEY_SECRET;
-  const plan   = planId();
-
   if (!keyId || !secret) return res.status(500).json({ error: 'RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET not configured' });
-  if (!plan) {
-    return res.status(500).json({ error: 'RAZORPAY_AGENCY_PLAN_ID not configured — create the agency plan in the Razorpay dashboard first' });
-  }
 
   const userId = req.user.id;
   const email  = req.user.email || '';
-  const price  = agencyPrice();
+  const region = await resolveRegionForUser(req, userId, getSupabaseClient());
+
+  const result = await subscriptionFlow.createTierSubscription({
+    region: region.tier, country: region.country, tierId: TIER_ID, userId, email, label: 'agency-checkout',
+  });
+
+  if (!result.ok) {
+    if (result.reason === 'plan_not_configured') {
+      return res.status(500).json({ error: `${result.planIdEnv} not configured — create the agency plan in the Razorpay dashboard first` });
+    }
+    return res.status(503).json({ error: planGuard.blockedMessage(result.reason), code: result.reason });
+  }
 
   console.log(
-    `[agency-checkout] userId=${userId} planSuffix=${plan.slice(-4)} ` +
-    `keyMode=${planGuard.keyMode()} expected=${price.amount} ${price.currency}`
+    `[agency-checkout] userId=${userId} region=${region.tier} source=${region.source} ` +
+    `planSuffix=${(result.tier.planId || '').slice(-4)} created subscription=${result.subscriptionId} ` +
+    `expected=${result.tier.amountMinor} ${result.tier.currency}`
   );
 
-  // Same guard the monitor checkout uses: prove the plan exists in this key's
-  // mode and bills exactly what we quote, BEFORE any subscription exists.
-  const check = await planGuard.verifyPlan(plan, price.amount, price.currency, 'agency-checkout');
-  if (!check.ok) {
-    return res.status(503).json({ error: planGuard.blockedMessage(check.reason), code: check.reason });
-  }
-
-  try {
-    const sub = await payments.get('razorpay').createSubscription({
-      email,
-      auditId:          null,
-      regionTier:       'IN',
-      country:          'IN',
-      planId:           plan,
-      expectedUnits:    price.amount,
-      expectedCurrency: price.currency,
-      // Binds the subscription to this user. The notes are written here,
-      // server-side, and read back FROM Razorpay at verification — a browser
-      // cannot forge them or claim someone else's subscription.
-      planKind:         'agency',
-      userId,
-    });
-
-    console.log(`[agency-checkout] created subscription=${sub.subscriptionId} userId=${userId}`);
-    return res.json({
-      subscriptionId: sub.subscriptionId,
-      shortUrl:       sub.shortUrl,
-      keyId,
-      amount:         price.amount,
-      currency:       price.currency,
-      display:        price.display,
-      profileLimit:   price.profileLimit,
-    });
-  } catch (err) {
-    console.error('[agency-checkout] error:', err.message);
-    return res.status(500).json({ error: 'Could not start the agency subscription. Please try again.' });
-  }
+  return res.json({
+    subscriptionId: result.subscriptionId,
+    shortUrl:       result.shortUrl,
+    keyId,
+    amount:         result.tier.amountMinor,
+    currency:       result.tier.currency,
+    display:        result.tier.displayPrice,
+    profileLimit:   result.tier.profileLimit,
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/agency/verify   { subscriptionId, paymentId, signature }   (requireAuth)
-// Verifies the payment three ways against Razorpay, then provisions the org.
+// Verifies the payment three ways against Razorpay (lib/payments/subscription-
+// flow.js), then provisions the org.
 // ─────────────────────────────────────────────────────────────────────────────
 async function verify(req, res) {
   res.setHeader('Content-Type', 'application/json');
@@ -191,73 +165,40 @@ async function verify(req, res) {
     return res.status(400).json({ error: 'subscriptionId, paymentId and signature are required' });
   }
 
-  const rz = payments.get('razorpay');
-
-  // ── 0. HMAC over `${paymentId}|${subscriptionId}` ──────────────────────────
-  const sig = await rz.verifySubscription({ subscriptionId, paymentId, signature });
-  if (!sig.ok) {
-    if (sig.reason === 'no_secret') return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
-    console.error(`[agency-verify] signature invalid subId=${subscriptionId} userId=${userId}`);
-    return res.status(400).json({ error: 'Payment signature invalid — possible tampered request' });
-  }
-
-  // ── Read the truth from Razorpay. Nothing below trusts the request body. ───
-  let sub, plan;
-  try {
-    sub  = await rz.fetchSubscription(subscriptionId);
-    plan = await rz.fetchPlan(sub.plan_id);
-  } catch (e) {
-    console.error(`[agency-verify] could not read subscription/plan from Razorpay: ${(e.error && e.error.description) || e.message}`);
-    return res.status(502).json({ error: 'Could not confirm the payment with Razorpay. Please refresh in a moment.' });
-  }
-
-  const expected = agencyPrice();
-
-  // ── Binding: this subscription must be the one WE created for THIS user ────
-  const notedUser = sub.notes && sub.notes.userId;
-  if (notedUser && notedUser !== userId) {
-    console.error(`[agency-verify] SUBSCRIPTION/USER MISMATCH subId=${subscriptionId} notes.userId=${notedUser} token.userId=${userId}`);
-    return res.status(403).json({ error: 'This subscription belongs to a different account.' });
-  }
-  if (sub.plan_id !== planId()) {
-    console.error(`[agency-verify] WRONG PLAN subId=${subscriptionId} plan=${sub.plan_id} expected=${planId()}`);
-    return res.status(400).json({ error: 'That payment is not for the agency plan.' });
-  }
-
-  // ── Three-factor check: status + amount + currency ─────────────────────────
-  const ACCEPTED = ['active', 'authenticated', 'charged'];
-  const factors = {
-    status:   ACCEPTED.includes(sub.status),
-    amount:   plan.item && plan.item.amount === expected.amount,
-    currency: plan.item && plan.item.currency === expected.currency,
-  };
-  console.log(
-    `[agency-verify] subId=${subscriptionId} userId=${userId} status=${sub.status} ` +
-    `planAmount=${plan.item && plan.item.amount} planCurrency=${plan.item && plan.item.currency} ` +
-    `expected=${expected.amount} ${expected.currency} factors=${JSON.stringify(factors)}`
-  );
-  if (!factors.status || !factors.amount || !factors.currency) {
-    const failed = Object.keys(factors).filter(k => !factors[k]);
-    console.error(`[agency-verify] REJECTED subId=${subscriptionId} failed=[${failed.join(',')}]`);
-    return res.status(400).json({
-      error: factors.status
-        ? 'The subscription does not match the agency plan price. Nothing has been provisioned — please contact support.'
-        : 'Your subscription is not active yet. If you were charged, refresh in a minute or contact support.',
-      code: 'VERIFICATION_FAILED',
-      failed,
-    });
-  }
-
-  // ── Provision. Every value below is server-derived. ────────────────────────
-  const result = await provisionAgencyOrg({
-    userId,
-    email: req.user.email || '',
-    subscriptionId,
-    razorpayPlanId: sub.plan_id,
-    profileLimit: expected.profileLimit,   // from ORG_PLANS, never the request
+  const result = await subscriptionFlow.verifyTierSubscription({
+    expectedTierId: TIER_ID, userId, subscriptionId, paymentId, signature,
   });
 
   if (!result.ok) {
+    console.error(`[agency-verify] REJECTED subId=${subscriptionId} userId=${userId} reason=${result.reason} failed=${(result.failed || []).join(',')}`);
+    if (result.reason === 'no_secret') return res.status(500).json({ error: 'RAZORPAY_KEY_SECRET not configured' });
+    if (result.reason === 'signature_mismatch') return res.status(400).json({ error: 'Payment signature invalid — possible tampered request' });
+    if (result.reason === 'razorpay_unreachable') return res.status(502).json({ error: 'Could not confirm the payment with Razorpay. Please refresh in a moment.' });
+    if (result.reason === 'user_mismatch') return res.status(403).json({ error: 'This subscription belongs to a different account.' });
+    if (result.reason === 'wrong_plan') return res.status(400).json({ error: 'That payment is not for the agency plan.' });
+    // 'verification_failed'
+    return res.status(400).json({
+      error: (result.failed || []).includes('status')
+        ? 'Your subscription is not active yet. If you were charged, refresh in a minute or contact support.'
+        : 'The subscription does not match the agency plan price. Nothing has been provisioned — please contact support.',
+      code: 'VERIFICATION_FAILED',
+      failed: result.failed,
+    });
+  }
+
+  console.log(`[agency-verify] subId=${subscriptionId} userId=${userId} verified tier=${result.tier.id} ${result.tier.currency}`);
+
+  // ── Provision. Every value below is server-derived. ────────────────────────
+  const provisionResult = await provisionAgencyOrg({
+    userId,
+    email: req.user.email || '',
+    subscriptionId,
+    razorpayPlanId: result.tier.planId,
+    profileLimit: result.tier.profileLimit,   // from lib/pricing.js, never the request
+    currency: result.tier.currency,           // locks profiles.billing_currency
+  });
+
+  if (!provisionResult.ok) {
     // The payment is real. Never pretend this succeeded, and never roll back a
     // step that DID land — a rollback would leave a paying customer with less
     // than they have now, and every step here is safe to re-run.
@@ -266,19 +207,19 @@ async function verify(req, res) {
       error: 'Payment confirmed, but we could not finish setting up your agency workspace. ' +
              'Your subscription is active — press Retry setup, or contact support with this id.',
       code: 'PROVISIONING_FAILED',
-      failedStep: result.failedStep,
+      failedStep: provisionResult.failedStep,
       subscriptionId,
-      completedSteps: result.completed,
+      completedSteps: provisionResult.completed,
       retryable: true,
     });
   }
 
   return res.json({
     ok: true,
-    orgId: result.orgId,
+    orgId: provisionResult.orgId,
     plan: 'agency',
-    profileLimit: expected.profileLimit,
-    steps: result.completed,
+    profileLimit: result.tier.profileLimit,
+    steps: provisionResult.completed,
     redirect: '/dashboard',
   });
 }
@@ -316,7 +257,7 @@ function logDbError(step, ctx, err) {
   );
 }
 
-async function provisionAgencyOrg({ userId, email, subscriptionId, razorpayPlanId, profileLimit }) {
+async function provisionAgencyOrg({ userId, email, subscriptionId, razorpayPlanId, profileLimit, currency = null }) {
   const supabase = getSupabaseClient();
   const ctx = `userId=${userId} subId=${subscriptionId}`;
   const completed = [];
@@ -370,12 +311,20 @@ async function provisionAgencyOrg({ userId, email, subscriptionId, razorpayPlanI
   // razorpay_subscription_id is UNIQUE, so a retry collides — which means the
   // row is already there. That is success.
   try {
-    const { error } = await supabase.from('subscriptions').insert({
+    const row = {
       user_id: userId, plan: 'agency', status: 'active',
       razorpay_subscription_id: subscriptionId,
       razorpay_plan_id: razorpayPlanId,
       start_date: new Date().toISOString(),
-    });
+    };
+    if (currency) { row.currency = currency; row.tier_id = 'org_monthly'; }
+    let { error } = await supabase.from('subscriptions').insert(row);
+    if (error && isMissingColumn(error)) {
+      // 028 not applied yet — retry without the add-on columns.
+      const { user_id, plan, status, razorpay_subscription_id, razorpay_plan_id, start_date } = row;
+      ({ error } = await supabase.from('subscriptions')
+        .insert({ user_id, plan, status, razorpay_subscription_id, razorpay_plan_id, start_date }));
+    }
     if (error && !/duplicate|unique|23505/i.test(`${error.code} ${error.message}`)) {
       return fail('subscriptions', error);
     }
@@ -383,18 +332,26 @@ async function provisionAgencyOrg({ userId, email, subscriptionId, razorpayPlanI
     console.log(`[agency-provision] ✓ subscription row ${error ? '(already present)' : 'inserted'} ${ctx}`);
   } catch (e) { return fail('subscriptions', e); }
 
-  // ── 4. profiles.plan — LAST, because this is the one that broke ───────────
+  // ── 4. profiles.plan (+ billing_currency lock) — LAST, because plan is the
+  //      one that broke before, and the currency lock is what stops a future
+  //      geo/switcher change from ever quoting this paying customer a different
+  //      currency than their live subscription actually bills.
   try {
-    const { data, error } = await supabase.from('profiles')
-      .update({ plan: 'agency', updated_at: new Date().toISOString() })
-      .eq('id', userId)
-      .select('id, plan');
+    const update = { plan: 'agency', updated_at: new Date().toISOString() };
+    if (currency) update.billing_currency = currency;
+    let { data, error } = await supabase.from('profiles').update(update).eq('id', userId).select('id, plan');
+    if (error && isMissingColumn(error) && currency) {
+      // 028 not applied yet — retry without the lock so plan activation itself
+      // (the part every deployment already has) never blocks on it.
+      ({ data, error } = await supabase.from('profiles')
+        .update({ plan: 'agency', updated_at: new Date().toISOString() }).eq('id', userId).select('id, plan'));
+    }
     if (error) return fail('profiles_plan', error);
     if (!data || !data.length) {
       return fail('profiles_plan', { message: `no profiles row matched id=${userId}` });
     }
     completed.push('profiles_plan');
-    console.log(`[agency-provision] ✓ profiles.plan=agency ${ctx}`);
+    console.log(`[agency-provision] ✓ profiles.plan=agency${currency ? ' billing_currency=' + currency : ''} ${ctx}`);
   } catch (e) { return fail('profiles_plan', e); }
 
   console.log(`[agency-provision] PROVISIONED orgId=${orgId} limit=${profileLimit} steps=[${completed.join(', ')}] ${ctx}`);

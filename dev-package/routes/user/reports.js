@@ -64,7 +64,7 @@ async function handler(req, res) {
       if (r.created_at) dateByAudit[r.audit_id] = r.created_at;
     });
 
-    // 1b. paid_reports for this user (by user_id OR email) — covers anonymous $19 buys
+    // 1b. paid_reports for this user (by user_id OR email) — covers anonymous $49 purchases
     //     and monitor first reports, and lets us backfill/link.
     const orFilter = userEmail
       ? `user_id.eq.${userId},email.ilike.${userEmail}`

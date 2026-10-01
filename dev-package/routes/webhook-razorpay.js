@@ -7,6 +7,21 @@ const { getSupabaseClient } = require('../lib/supabase-client');
 const auditCache  = require('../lib/audit-cache');
 const paidReports = require('../lib/paid-reports');
 const { afterResponse } = require('../lib/after-response');
+const payments = require('../lib/payments');
+const subscriptionFlow = require('../lib/payments/subscription-flow');
+const reportCredits = require('../lib/report-credits');
+const { provisionAgencyOrg } = require('./agency');
+const { provisionMonitor } = require('./checkout-monitor');
+
+// notes.plan (set at createSubscription time — see lib/payments/subscription-
+// flow.js createTierSubscription and, for the OLD anonymous Monitor flow,
+// routes/checkout-subscription.js) -> the tierId to provision. Legacy values
+// ('agency' from before routes/agency.js was made region-aware, 'monitor' from
+// the anonymous flow) map onto the same tierId their new equivalents use.
+const TIER_ID_FOR_NOTE_PLAN = {
+  org_monthly: 'org_monthly', agency: 'org_monthly',
+  single_doctor_monthly: 'single_doctor_monthly', monitor: 'single_doctor_monthly',
+};
 
 function verifySignature(rawBody, signature, secret) {
   const expected = crypto
@@ -23,7 +38,7 @@ function verifySignature(rawBody, signature, secret) {
 // retry, which payment.captured is allowed to re-drive.
 const CAPTURE_OWNED = new Set(['generating', 'delivered', 'generated']);
 
-// ── payment.captured (one-time ₹1,828 report) — verified-payment backstop ────
+// ── payment.captured (one-time report / report credit) — verified-payment backstop ──
 // The browser normally unlocks the report via /api/verify-payment. If the user
 // closes the tab right after paying, this webhook (signature already verified
 // above) is the reliable fallback: it maps the payment → auditId via the order
@@ -57,9 +72,28 @@ async function planPaymentCaptured(event) {
     return null;
   }
 
-  // Need the cached audit data to generate. If it is gone, support/reconcile path.
+  // Need the cached audit data to generate. If it is gone, this is either the
+  // buy-first report-credit purchase (routes/checkout.js never caches audit
+  // data for those — nothing to generate yet, no doctor chosen) or a genuinely
+  // lost order for the support/reconcile path.
   const cache = await auditCache.getDetailed(auditId);
   if (!cache.hit || !cache.data) {
+    if (row && row.tier_id === 'report_onetime' && row.user_id) {
+      // Same idempotent grant routes/verify-payment.js uses — payment_id is
+      // UNIQUE, so if the client callback already granted this, this is a
+      // harmless no-op, never a second credit for the same payment.
+      const grant = await reportCredits.grantCredit({
+        userId: row.user_id, paymentId: pay.id, orderAuditId: auditId,
+        currency: row.currency, amountUnits: row.amount_units,
+      });
+      if (grant.ok) {
+        await paidReports.updateStatus(auditId, { status: 'delivered', stripe_session_id: orderId, delivered_at: new Date().toISOString() });
+        console.log(`[rzp-webhook] payment.captured backstop → report credit granted auditId=${auditId} userId=${row.user_id} created=${grant.created}`);
+      } else {
+        console.error(`[rzp-webhook] payment.captured backstop credit grant FAILED auditId=${auditId} userId=${row.user_id} reason=${grant.reason}`);
+      }
+      return null;
+    }
     console.warn(`[rzp-webhook] payment.captured auditId=${auditId} but audit_cache MISS — cannot generate from webhook`);
     return null;
   }
@@ -124,7 +158,7 @@ async function handler(req, res) {
 
   const eventType = event.event;
 
-  // ── Payment events (one-time ₹1,828 report) ───────────────────────────────
+  // ── Payment events (one-time report / report credit) ─────────────────────
   if (eventType === 'payment.captured' || eventType === 'payment.failed') {
     try {
       if (eventType === 'payment.captured') {
@@ -141,20 +175,25 @@ async function handler(req, res) {
     return res.json({ received: true });
   }
 
-  // ── Subscription events ($49 Monitor) ─────────────────────────────────────
+  // ── Subscription events (Monitor + Agency, INR and USD) ────────────────────
   const payload   = event.payload?.subscription?.entity || {};
   const subId     = payload.id;
   const notes     = payload.notes || {};
-  const userId    = notes.user_id;
+  // notes.userId (camelCase) is what createSubscription actually writes (see
+  // lib/payments/razorpay.js) — notes.user_id (snake_case) was read here before
+  // and never matched anything, so this branch could never activate a plan; it
+  // silently relied on the client-callback verify route every time instead.
+  const userId    = notes.userId || '';
 
-  console.log(`[rzp-webhook] event=${eventType} subId=${subId} userId=${userId}`);
+  console.log(`[rzp-webhook] event=${eventType} subId=${subId} userId=${userId} notesPlan=${notes.plan || '?'}`);
 
   const supabase = getSupabaseClient();
 
   try {
     switch (eventType) {
       case 'subscription.activated': {
-        // Activate subscription + promote user plan to 'monitor'
+        // Activate subscription (provider-neutral state) unconditionally —
+        // idempotent, safe even if a plan/provisioning step below is skipped.
         await supabase.from('subscriptions')
           .update({
             status:       'active',
@@ -163,11 +202,40 @@ async function handler(req, res) {
           })
           .eq('razorpay_subscription_id', subId);
 
-        if (userId) {
-          await supabase.from('profiles')
-            .update({ plan: 'monitor', updated_at: new Date().toISOString() })
-            .eq('id', userId);
-          console.log(`[rzp-webhook] user ${userId} plan → monitor`);
+        // Full plan activation is a BACKSTOP here — the client-callback verify
+        // route (routes/agency.js / routes/checkout-monitor.js) is what
+        // normally does this, immediately after payment. This only matters when
+        // the tab closed before that call landed. Anonymous Monitor purchases
+        // (routes/checkout-subscription.js) carry no notes.userId and are
+        // deliberately left alone — that flow's OWN verify route
+        // (routes/verify-subscription-payment.js, not touched by this change)
+        // is still the only thing that activates them.
+        const tierId = TIER_ID_FOR_NOTE_PLAN[notes.plan];
+        if (userId && tierId) {
+          let plan;
+          try {
+            plan = await payments.get('razorpay').fetchPlan(payload.plan_id);
+          } catch (e) {
+            console.warn(`[rzp-webhook] could not fetch plan for backstop subId=${subId}: ${e.message}`);
+            break;
+          }
+          // Same three-factor check the verify routes run, minus the per-call
+          // HMAC (this whole payload is already signature-verified above).
+          const check = subscriptionFlow.matchAndCheckTier({ expectedTierId: tierId, sub: payload, plan });
+          if (!check.ok) {
+            console.warn(`[rzp-webhook] backstop declined to provision subId=${subId} userId=${userId} reason=${check.reason} failed=${(check.failed || []).join(',')}`);
+            break;
+          }
+          const result = tierId === 'org_monthly'
+            ? await provisionAgencyOrg({
+                userId, email: '', subscriptionId: subId, razorpayPlanId: payload.plan_id,
+                profileLimit: check.tier.profileLimit, currency: check.tier.currency,
+              })
+            : await provisionMonitor({
+                userId, subscriptionId: subId, razorpayPlanId: payload.plan_id, currency: check.tier.currency,
+              });
+          if (result.ok) console.log(`[rzp-webhook] backstop provisioned userId=${userId} tier=${tierId} subId=${subId}`);
+          else console.error(`[rzp-webhook] backstop provisioning FAILED userId=${userId} tier=${tierId} subId=${subId} failedStep=${result.failedStep}`);
         }
         break;
       }

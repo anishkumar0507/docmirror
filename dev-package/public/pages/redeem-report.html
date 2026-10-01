@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<meta name="theme-color" content="#0A2540">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redeem Your Report — The Doc Mirror</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0A2540;--green:#00A878;--green-light:#e6f7f2;--warm:#F7F6F3;--slate:#3D4D5C;--slate-light:#6B7A8D;--border:#E2E8F0;--red:#DC2626}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--slate);background:var(--warm);min-height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
+nav{background:#fff;border-bottom:1px solid var(--border);padding:0 clamp(1rem,4vw,2rem);height:60px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo-mark{width:32px;height:32px;background:var(--navy);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:18px;height:18px}
+.logo-word{font-size:16px;font-weight:700;color:var(--navy);letter-spacing:-.02em}
+.logo-word span{color:var(--green)}
+main{flex:1;max-width:640px;width:100%;margin:0 auto;padding:2.5rem clamp(1rem,4vw,2rem) 4rem}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:1.75rem;margin-bottom:1.5rem}
+.card h1{font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:.35rem}
+.card h2{font-size:1.05rem;font-weight:700;color:var(--navy);margin-bottom:.75rem}
+.sub{font-size:.88rem;color:var(--slate-light);margin-bottom:1.25rem}
+.credit-pill{display:inline-flex;align-items:center;gap:6px;background:var(--green-light);color:var(--navy);font-weight:700;font-size:.82rem;padding:6px 12px;border-radius:999px;margin-bottom:1rem}
+.field-label{font-size:.8rem;font-weight:600;color:var(--slate);margin-bottom:.4rem;display:block;margin-top:1rem}
+.field-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:8px;font-size:.93rem;font-family:inherit;color:var(--navy);outline:none}
+.field-input:focus{border-color:var(--navy)}
+.field-row{display:flex;gap:10px}
+.field-row .field-input{flex:1}
+.field-err{font-size:.78rem;color:var(--red);min-height:1.1em;margin-top:6px}
+.btn{padding:13px 22px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:.93rem;font-weight:700;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:8px;margin-top:1.25rem}
+.btn:hover:not(:disabled){background:#0e3060}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.btn-green{background:var(--green)}
+.btn-green:hover:not(:disabled){background:#007a57}
+.spinner{display:inline-block;width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{font-size:.88rem;color:var(--slate-light);text-align:center;padding:1.5rem 0}
+.hist-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-top:1px solid var(--border)}
+.hist-row:first-child{border-top:none}
+.hist-name{font-size:.9rem;font-weight:600;color:var(--navy)}
+.hist-meta{font-size:.75rem;color:var(--slate-light);margin-top:2px}
+.hist-dl{font-size:.82rem;font-weight:700;color:var(--green);text-decoration:none;background:none;border:none;cursor:pointer;font-family:inherit}
+.hist-dl:disabled{color:var(--slate-light);cursor:not-allowed}
+a.plain{color:var(--navy)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="/">
+    <div class="logo-mark"><svg viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="7.5" stroke="#00A878" stroke-width="1.3"/><path d="M5.5 9C5.5 7 7 5.5 9 5.5S12.5 7 12.5 9" stroke="#fff" stroke-width="1.3" stroke-linecap="round"/><circle cx="9" cy="12" r="1.3" fill="#00A878"/></svg></div>
+    <span class="logo-word">The Doc <span>Mirror</span></span>
+  </a>
+  <a class="back-link" style="font-size:.85rem;color:var(--slate-light);text-decoration:none" href="/pricing">Pricing</a>
+</nav>
+
+<main>
+  <div class="card" id="auth-gate" style="display:none">
+    <h1>Sign in to redeem your report</h1>
+    <p class="sub">You need to be logged in to use a report credit.</p>
+    <a class="btn" href="/pages/auth.html?return_to=report-credit" style="text-decoration:none">Log in</a>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="card" id="redeem-card">
+      <h1>Redeem your report credit</h1>
+      <p class="sub">Tell us which doctor this report is for — we'll run the audit and generate the PDF.</p>
+      <div class="credit-pill" id="credit-pill">— available</div>
+
+      <div id="no-credit-block" style="display:none">
+        <p class="empty">No available report credits on this account.</p>
+        <a class="btn btn-green" href="/pages/report-credit-checkout.html" style="text-decoration:none">Buy a report credit</a>
+      </div>
+
+      <form id="redeem-form" onsubmit="return false">
+        <div class="field-row">
+          <div>
+            <label class="field-label" for="fn">First name</label>
+            <input class="field-input" id="fn" placeholder="Jane">
+          </div>
+          <div>
+            <label class="field-label" for="ln">Last name</label>
+            <input class="field-input" id="ln" placeholder="Smith">
+          </div>
+        </div>
+        <label class="field-label" for="sp">Specialty (optional, improves matching)</label>
+        <input class="field-input" id="sp" placeholder="e.g. Dermatologist">
+        <label class="field-label" for="ct">City</label>
+        <input class="field-input" id="ct" placeholder="e.g. Austin, TX">
+        <div class="field-err" id="redeem-err"></div>
+        <button class="btn" id="redeem-btn" type="button" onclick="runRedeem()">Generate my report</button>
+      </form>
+
+      <div id="generating-block" style="display:none">
+        <p class="sub"><span class="spinner" style="border-color:rgba(10,37,64,.2);border-top-color:var(--navy)"></span> Generating your report — this usually takes under a minute. You can leave this page; it'll be waiting under "Your reports" below.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Your reports</h2>
+      <div id="history-list"><p class="empty">Loading…</p></div>
+    </div>
+  </div>
+</main>
+
+<script>
+var TOKEN = null;
+
+function authHeaders() { return { Authorization: 'Bearer ' + TOKEN }; }
+
+function fmtMoney(units, currency) {
+  var symbol = currency === 'INR' ? '₹' : '$';
+  return symbol + (units / 100).toFixed(2);
+}
+
+async function loadCredits() {
+  var res = await fetch('/api/report-credits', { headers: authHeaders() });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+async function refresh() {
+  var data = await loadCredits();
+  if (!data) return;
+
+  document.getElementById('credit-pill').textContent = data.availableCount + ' credit' + (data.availableCount === 1 ? '' : 's') + ' available';
+  document.getElementById('no-credit-block').style.display = data.availableCount === 0 ? '' : 'none';
+  document.getElementById('redeem-form').style.display = data.availableCount === 0 ? 'none' : '';
+
+  renderHistory(data.used || []);
+
+  // Poll while anything redeemed still has no PDF ready.
+  var pending = (data.used || []).some(function (c) { return c.redeemed_audit_id && !c.ready; });
+  return pending;
+}
+
+function renderHistory(used) {
+  var el = document.getElementById('history-list');
+  if (!used.length) { el.innerHTML = '<p class="empty">No reports yet.</p>'; return; }
+  el.innerHTML = '';
+  used.forEach(function (c) {
+    var row = document.createElement('div');
+    row.className = 'hist-row';
+    var when = c.used_at ? new Date(c.used_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+    row.innerHTML =
+      '<div><div class="hist-name">' + escapeHtml(c.doctor_ref || 'Unnamed') + '</div>' +
+      '<div class="hist-meta">' + when + ' · ' + fmtMoney(c.amount_units, c.currency) + '</div></div>' +
+      (c.ready
+        ? '<button class="hist-dl" data-audit="' + escapeHtml(c.redeemed_audit_id || '') + '">Download PDF</button>'
+        : '<button class="hist-dl" disabled>Generating…</button>');
+    el.appendChild(row);
+  });
+  el.querySelectorAll('.hist-dl').forEach(function (btn) {
+    btn.addEventListener('click', function () { downloadReport(btn.getAttribute('data-audit'), btn); });
+  });
+}
+
+function escapeHtml(s) {
+  return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+async function downloadReport(auditId, btn) {
+  if (!auditId) return;
+  var original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Preparing…';
+  try {
+    var res = await fetch('/api/report-credits/download/' + encodeURIComponent(auditId), { headers: authHeaders() });
+    var body = await res.json();
+    if (body.ready && body.url) {
+      window.location.href = body.url;
+    } else {
+      btn.textContent = 'Still generating — try again shortly';
+      setTimeout(function () { btn.textContent = original; btn.disabled = false; }, 3000);
+      return;
+    }
+  } catch (e) {
+    btn.textContent = 'Error — retry';
+  }
+  btn.disabled = false;
+  setTimeout(function () { btn.textContent = original; }, 1500);
+}
+
+function showRedeemErr(msg) { document.getElementById('redeem-err').textContent = msg; }
+
+async function runRedeem() {
+  showRedeemErr('');
+  var fn = document.getElementById('fn').value.trim();
+  var ln = document.getElementById('ln').value.trim();
+  var sp = document.getElementById('sp').value.trim();
+  var ct = document.getElementById('ct').value.trim();
+
+  if (!fn || !ln) { showRedeemErr('First and last name are required.'); return; }
+  if (!ct) { showRedeemErr('City is required to find the right doctor.'); return; }
+
+  var btn = document.getElementById('redeem-btn');
+  btn.disabled = true; btn.textContent = 'Running scan…';
+
+  try {
+    var auditRes = await fetch('/api/audit', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fn: fn, ln: ln, sp: sp, ct: ct }),
+    }).then(function (r) { return r.json(); });
+
+    if (auditRes.error) { showRedeemErr(auditRes.error); btn.disabled = false; btn.textContent = 'Generate my report'; return; }
+
+    btn.textContent = 'Redeeming credit…';
+    var redeemRes = await fetch('/api/report-credits/redeem', {
+      method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+      body: JSON.stringify({ auditData: auditRes }),
+    }).then(function (r) { return r.json(); });
+
+    if (!redeemRes.ok) { showRedeemErr(redeemRes.error || 'Could not redeem your credit.'); btn.disabled = false; btn.textContent = 'Generate my report'; return; }
+
+    document.getElementById('redeem-form').style.display = 'none';
+    document.getElementById('generating-block').style.display = '';
+    pollUntilReady();
+  } catch (e) {
+    showRedeemErr('Something went wrong. Please try again.');
+    btn.disabled = false; btn.textContent = 'Generate my report';
+  }
+}
+
+function pollUntilReady() {
+  var tries = 0;
+  var interval = setInterval(async function () {
+    tries++;
+    var pending = await refresh();
+    if (!pending || tries > 40) clearInterval(interval); // ~2 min ceiling
+  }, 3000);
+}
+
+async function init() {
+  TOKEN = localStorage.getItem('tdm_access_token');
+  if (!TOKEN) { document.getElementById('auth-gate').style.display = ''; return; }
+  var me = await fetch('/api/user/me', { headers: authHeaders() }).then(function (r) { return r.ok ? r.json() : null; }).catch(function () { return null; });
+  if (!me) { document.getElementById('auth-gate').style.display = ''; return; }
+  document.getElementById('app').style.display = '';
+  refresh();
+}
+
+init();
+</script>
+</body>
+</html>

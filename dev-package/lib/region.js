@@ -20,19 +20,20 @@ require('./env');
 //      never a lock. The explicit value is validated against the allowed tiers
 //      before it is trusted, so a bad/hostile value silently falls back to geo.
 //   4. FORCE_REGION_TIER — a hard override that beats ALL of the above,
-//      including an explicit ?region=. See below.
+//      including an explicit ?region=. NON-PRODUCTION ONLY — ignored outright
+//      when NODE_ENV === 'production'. See below.
 //
-// ── FORCE_REGION_TIER: the single-market switch ──────────────────────────────
-// While we sell in ONE market, every visitor must see that market's price and be
-// charged on that market's gateway — a US-priced order on the India Razorpay
-// account cannot settle, so quoting USD to anyone today is quoting a price we
-// cannot collect. Setting FORCE_REGION_TIER=IN makes resolveRegion ignore geo,
-// headers and ?region= entirely and answer IN for everyone.
+// ── FORCE_REGION_TIER: the single-market switch (non-production only) ────────
+// Before both markets were live, every visitor had to see one market's price and
+// be charged on that market's gateway — a US-priced order on the India Razorpay
+// account cannot settle. Setting FORCE_REGION_TIER=IN made resolveRegion ignore
+// geo, headers and ?region= entirely and answer IN for everyone.
 //
-// This is deliberately a KILL SWITCH, not a default: TIERS.US and TIERS.INTL,
-// their currencies and their provider routing are all still here and still
-// correct. Unsetting FORCE_REGION_TIER at US launch re-enables them with no code
-// change — which is the whole reason this is one env var and not a code edit.
+// NEVER honored when NODE_ENV === 'production' (see IS_PRODUCTION below) — both
+// markets are live now, so a production instance must always resolve region for
+// real; this var only remains useful for forcing a tier in local/staging testing.
+// If it's set in production anyway, it's ignored and a startup warning is logged
+// rather than silently mispricing/mischarging every visitor.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Country (ISO 3166-1 alpha-2) → pricing tier.
@@ -55,6 +56,12 @@ const COUNTRY_TIER = {
 // The tiers a client is allowed to force explicitly.
 const ALLOWED_TIERS = ['IN', 'US', 'INTL'];
 
+// profiles.billing_currency (migration 028) -> the tier a LOCKED customer stays
+// on. USD collapses to US (not INTL) — US and INTL charge identically today, and
+// a lock only needs to reproduce the currency/amount/plan the customer's live
+// subscription actually bills, not which of the two USD tiers first quoted them.
+const CURRENCY_TO_LOCKED_TIER = { INR: 'IN', USD: 'US' };
+
 // Read a tier from an env var, or null if unset/invalid. An invalid value is
 // ignored rather than throwing: a typo in config must not take the site down.
 function tierFromEnv(name) {
@@ -71,14 +78,26 @@ function tierFromEnv(name) {
 // localhost). India-first → IN. Override per environment with DEFAULT_REGION_TIER.
 const DEFAULT_TIER = tierFromEnv('DEFAULT_REGION_TIER') || 'IN';
 
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
 // Hard single-market override. When set, nothing else is consulted.
-const FORCED_TIER = tierFromEnv('FORCE_REGION_TIER');
+// NEVER honored in production — a single-market kill switch is a dev/staging
+// convenience for forcing a tier locally; in production it must never be able
+// to override a paying customer's locked currency or a real visitor's geo/
+// switcher-resolved region (that would silently misquote/mischarge them).
+const FORCED_TIER_RAW = tierFromEnv('FORCE_REGION_TIER');
+const FORCED_TIER = IS_PRODUCTION ? null : FORCED_TIER_RAW;
 
 // Announce both ONCE at load, not per request — a per-request line would bury
 // every other log on a busy instance. Each response still carries the reason in
 // its `source` field ('forced' | 'explicit' | 'geo' | 'default'), so any single
 // request can still be explained after the fact.
-if (FORCED_TIER) {
+if (IS_PRODUCTION && FORCED_TIER_RAW) {
+  console.warn(
+    `[region] WARNING: FORCE_REGION_TIER=${FORCED_TIER_RAW} is set but NODE_ENV=production — ` +
+    `IGNORING it. This env var must never override region resolution in production. Unset it to silence this warning.`
+  );
+} else if (FORCED_TIER) {
   console.log(
     `[region] FORCE_REGION_TIER=${FORCED_TIER} — every visitor is treated as ${FORCED_TIER}. ` +
     `Geo headers and ?region= are ignored. Unset this env var to re-enable region detection.`
@@ -133,7 +152,50 @@ function resolveRegion(req) {
   return { tier: DEFAULT_TIER, country, source: 'default' };
 }
 
+/**
+ * Read a user's locked billing currency, or null if they have none set yet
+ * (never paid, or paid before this migration/column existed). Never throws —
+ * a lookup failure degrades to "no lock" rather than blocking region resolution.
+ */
+async function lockedTierForUser(userId, supabase) {
+  if (!userId || !supabase) return null;
+  try {
+    const { data, error } = await supabase
+      .from('profiles').select('billing_currency').eq('id', userId).maybeSingle();
+    if (error || !data || !data.billing_currency) return null;
+    return CURRENCY_TO_LOCKED_TIER[data.billing_currency] || null;
+  } catch (e) {
+    console.warn(`[region] billing_currency lookup warn userId=${userId}: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * Resolve the buyer's pricing tier, honouring a paid customer's currency lock.
+ * Priority: FORCE_REGION_TIER > profiles.billing_currency (if userId is a
+ * logged-in user who has paid before) > explicit switcher (?region=/body.region,
+ * i.e. resolveRegion's own precedence) > geo > default.
+ *
+ * `userId` must come from a server-verified auth token (requireAuth/optionalAuth
+ * req.user.id) — never from the request body. `supabase` is passed in rather
+ * than re-imported here so this module has no hard dependency on the Supabase
+ * client existing (region resolution must never fail just because auth/db did).
+ *
+ * @returns {Promise<{ tier: 'IN'|'US'|'INTL', country: string|null, source: string }>}
+ *   source ∈ 'forced' | 'locked' | 'explicit' | 'geo' | 'default'
+ */
+async function resolveRegionForUser(req, userId, supabase) {
+  if (FORCED_TIER) {
+    return { tier: FORCED_TIER, country: countryFromRequest(req), source: 'forced' };
+  }
+  const locked = await lockedTierForUser(userId, supabase);
+  if (locked) {
+    return { tier: locked, country: countryFromRequest(req), source: 'locked' };
+  }
+  return resolveRegion(req);
+}
+
 module.exports = {
-  resolveRegion, countryFromRequest,
-  COUNTRY_TIER, ALLOWED_TIERS, DEFAULT_TIER, FORCED_TIER,
+  resolveRegion, resolveRegionForUser, countryFromRequest,
+  COUNTRY_TIER, ALLOWED_TIERS, DEFAULT_TIER, FORCED_TIER, CURRENCY_TO_LOCKED_TIER,
 };

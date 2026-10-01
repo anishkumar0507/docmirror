@@ -68,6 +68,11 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 .pay-btn:disabled{opacity:.65;cursor:not-allowed}
 .pay-secure{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:.85rem;font-size:.75rem;color:var(--slate-light)}
 .pay-logos{display:flex;align-items:center;gap:8px;margin-top:.65rem;justify-content:center;opacity:.5;font-size:.72rem;color:var(--slate-light)}
+.ghost-btn{width:100%;margin-top:.6rem;padding:12px;background:#fff;color:var(--navy);border:1.5px solid var(--border);border-radius:10px;font-size:.9rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none;display:block;text-align:center}
+.ghost-btn:hover{border-color:var(--navy)}
+.divider{display:flex;align-items:center;gap:10px;margin:1.25rem 0;color:var(--slate-light);font-size:.78rem}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.session-note{background:var(--green-light);color:var(--navy);border-radius:8px;padding:10px 12px;font-size:.82rem;margin-bottom:1rem}
 
 /* SUCCESS STATE */
 .success-state{text-align:center;padding:2rem 0}
@@ -159,25 +164,42 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
   <!-- PAYMENT FORM -->
   <div class="pay-card" id="pay-card">
     <h2>Start your subscription</h2>
-    <p class="subtitle">Create your account — your dashboard &amp; weekly reports live here. Your account is created only after payment.</p>
+    <p class="subtitle" id="subtitle">Sign in or create an account to subscribe — your dashboard &amp; weekly reports live here.</p>
 
-    <label class="field-label" for="email-input">Email address</label>
-    <input class="field-input" type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
+    <!-- SECURITY: an existing account's password is NEVER set or reset here.
+         An unauthenticated visitor can only create a NEW account (this calls
+         the same safe signup /api/checkout/signup uses everywhere else, which
+         409s on an existing email without touching it) or log in to their own
+         account — never both at once, and never by typing someone else's
+         email + a new password. See routes/checkout-monitor.js. -->
+    <div id="logged-out-block">
+      <a class="ghost-btn" id="login-link" href="/pages/auth.html?return_to=checkout-subscription">Log in</a>
+      <div class="divider">or create an account</div>
+      <label class="field-label" for="email-input">Email address</label>
+      <input class="field-input" type="email" id="email-input" placeholder="you@example.com" autocomplete="email">
+      <label class="field-label" for="pass-input" style="margin-top:1rem">Create a password</label>
+      <input class="field-input" type="password" id="pass-input" placeholder="Minimum 8 characters" autocomplete="new-password">
+      <div class="field-err" id="email-err"></div>
+      <button class="pay-btn" id="signup-btn" type="button" onclick="signupAndBuy()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Create account &amp; subscribe
+      </button>
+    </div>
 
-    <label class="field-label" for="pass-input" style="margin-top:1rem">Create a password</label>
-    <input class="field-input" type="password" id="pass-input" placeholder="Minimum 8 characters" autocomplete="new-password">
-    <div class="field-err" id="email-err"></div>
-
-    <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Subscribe — <span data-price="monitor">—</span>/month
-    </button>
+    <div id="logged-in-block" style="display:none">
+      <div class="session-note" id="session-note">Signed in as —</div>
+      <button class="pay-btn" id="pay-btn" type="button" onclick="startPayment()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        Subscribe — <span data-price="monitor">—</span>/month
+      </button>
+      <div class="field-err" id="pay-err"></div>
+    </div>
 
     <div class="pay-secure">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Secure payment via Razorpay · Cancel anytime
     </div>
-    <div class="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
+    <div class="pay-logos" id="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
   </div>
 
 </main>
@@ -192,17 +214,19 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 try { sessionStorage.setItem('tdm_selected_plan', 'monitor'); } catch(e){}
 var _session  = null;
 var auditData = null;
-var _auditId  = null;
 
-// ── No auth gate — account is created AFTER payment (anonymous until then) ──
+// ── AUTH-GATED: routes/checkout-monitor.js requires a logged-in account (see
+//    routes/agency.js's header comment for why — the same safe shape). No
+//    password is ever set or reset for an existing account from this page:
+//    signupAndBuy() only ever CREATES a brand-new account (409s untouched on a
+//    collision) or the visitor uses "Log in" for their own. ─────────────────
 async function initPage() {
-  // ── Read audit data from the free check (no login required) ───────────────
+  // ── Read audit data from the free check, for the summary card only ────────
   try {
     var raw = localStorage.getItem('docmirrorPreviewReport') || localStorage.getItem('tdm_audit_result');
     if (raw) auditData = JSON.parse(raw);
   } catch(_) {}
 
-  // Show doctor summary card if we have data
   if (auditData && auditData.doctorName) {
     var summaryEl = document.getElementById('doc-summary');
     var initialEl = document.getElementById('doc-initial');
@@ -215,17 +239,88 @@ async function initPage() {
     if (initialEl) initialEl.textContent = (auditData.doctorName || 'D').replace(/^Dr\.?\s*/i,'').charAt(0).toUpperCase();
   }
 
-  // ── Pre-fill email from session or previous entry ─────────────────────────
   var savedEmail = '';
   try { savedEmail = localStorage.getItem('tdm_checkout_email') || ''; } catch(_) {}
-  var emailVal = savedEmail || (_session && _session.user && _session.user.email) || '';
-  if (emailVal) document.getElementById('email-input').value = emailVal;
+  if (savedEmail) document.getElementById('email-input').value = savedEmail;
 
   // ── Upgrade context (arriving from a one-time Audit report) ───────────────
   if (/[?&]upgrade=1/.test(window.location.search)) {
-    var sub = document.querySelector('.subtitle');
+    var sub = document.getElementById('subtitle');
     if (sub) sub.innerHTML = 'You\'re upgrading to <strong>Doctor Visibility Monitor</strong>. ' +
-      'We\'ll reuse your existing email — no duplicate account. Set a password to access your dashboard.';
+      'Log in with your existing account, or create a new one, to continue.';
+  }
+
+  await initSession();
+}
+
+function showErr(msg) { document.getElementById('email-err').textContent = msg; }
+function showPayErr(msg) { var el = document.getElementById('pay-err'); if (el) el.textContent = msg; }
+
+// ── Session check — same pattern as report-credit-checkout.html ────────────
+async function initSession() {
+  var accessToken = localStorage.getItem('tdm_access_token');
+  if (!accessToken) return;
+  var me = await fetch('/api/user/me', { headers: { Authorization: 'Bearer ' + accessToken } })
+    .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  if (!me || !me.email) return;
+
+  _session = { access_token: accessToken, email: me.email };
+  document.getElementById('logged-out-block').style.display = 'none';
+  document.getElementById('logged-in-block').style.display = '';
+  document.getElementById('session-note').textContent = 'Signed in as ' + me.email;
+}
+
+async function signupAndBuy() {
+  var email = (document.getElementById('email-input').value || '').trim();
+  var pass  = document.getElementById('pass-input').value || '';
+  showErr('');
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showErr('Please enter a valid email address.'); return; }
+  if (!pass || pass.length < 8) { showErr('Create a password of at least 8 characters.'); return; }
+
+  try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
+
+  var btn = document.getElementById('signup-btn');
+  btn.disabled = true; btn.textContent = 'Creating account…';
+
+  try {
+    var signupRes = await fetch('/api/checkout/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, password: pass, name: (auditData && auditData.doctorName) || '' }),
+    }).then(function(r){ return r.json().then(function(b){ return { status: r.status, body: b }; }); });
+
+    if (signupRes.status === 409) {
+      showErr('An account with this email already exists — click Log in above instead.');
+      btn.disabled = false; btn.textContent = 'Create account & subscribe';
+      return;
+    }
+    if (!signupRes.body || !signupRes.body.ok) {
+      showErr((signupRes.body && signupRes.body.error) || 'Could not create the account.');
+      btn.disabled = false; btn.textContent = 'Create account & subscribe';
+      return;
+    }
+
+    var cfg = await fetch('/api/client-config').then(function(r){ return r.json(); });
+    var s = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    var signIn = await s.auth.signInWithPassword({ email: email, password: pass });
+    if (signIn.error || !signIn.data.session) {
+      showErr('Account created — please use "Log in" above.');
+      btn.disabled = false; btn.textContent = 'Create account & subscribe';
+      return;
+    }
+    var session = signIn.data.session;
+    localStorage.setItem('tdm_access_token', session.access_token);
+    localStorage.setItem('tdm_refresh_token', session.refresh_token);
+    localStorage.setItem('tdm_user_id', session.user.id);
+    localStorage.setItem('tdm_user_email', session.user.email);
+    _session = { access_token: session.access_token, email: session.user.email };
+
+    document.getElementById('logged-out-block').style.display = 'none';
+    document.getElementById('logged-in-block').style.display = '';
+    document.getElementById('session-note').textContent = 'Signed in as ' + _session.email;
+    startPayment();
+  } catch (e) {
+    showErr('Something went wrong. Please try again.');
+    btn.disabled = false; btn.textContent = 'Create account & subscribe';
   }
 }
 
@@ -237,12 +332,8 @@ function loadRzp(cb) {
   var s = document.createElement('script');
   s.src = 'https://checkout.razorpay.com/v1/checkout.js';
   s.onload = cb;
-  s.onerror = function() { showErr('Could not load payment SDK. Please refresh.'); };
+  s.onerror = function() { showPayErr('Could not load payment SDK. Please refresh.'); };
   document.head.appendChild(s);
-}
-
-function showErr(msg) {
-  document.getElementById('email-err').textContent = msg;
 }
 
 function setBtnLoading(text) {
@@ -261,10 +352,11 @@ function setBtnReady() {
   if (window.TDMPricing && window.TDM_PRICING) window.TDMPricing.apply(window.TDM_PRICING.prices);
 }
 
-// Currency toggle → override region, re-fetch prices, reflect active state.
+// Currency toggle → override region, re-fetch prices, reflect active state,
+// AND swap the payment-method text (issue 4) — UPI/NetBanking are India-only.
 function setCurrency(tier) {
   if (!window.TDMPricing) return;
-  window.TDMPricing.setRegion(tier).then(function(){
+  window.TDMPricing.setRegion(tier).then(function(cfg){
     var btns = document.querySelectorAll('#currency-toggle button');
     for (var i = 0; i < btns.length; i++) {
       var active = btns[i].getAttribute('data-region') === tier;
@@ -272,81 +364,67 @@ function setCurrency(tier) {
       btns[i].style.color        = active ? '#fff'    : '#0A2540';
       btns[i].style.borderColor  = active ? '#0A2540' : '#d5dce5';
     }
+    updatePaymentMethods((cfg && cfg.region) || tier);
   });
 }
 
+function updatePaymentMethods(region) {
+  var el = document.getElementById('pay-logos');
+  if (!el) return;
+  el.textContent = region === 'IN'
+    ? 'Visa · Mastercard · UPI · NetBanking'
+    : 'Visa · Mastercard · Amex · International cards';
+}
+
 document.addEventListener('DOMContentLoaded', function(){
+  if (window.TDMPricing && window.TDMPricing.ready) {
+    window.TDMPricing.ready.then(function (cfg) { if (cfg && cfg.region) updatePaymentMethods(cfg.region); });
+  }
   setTimeout(function(){
     var r = window.TDMPricing && window.TDMPricing.region();
     if (r === 'IN' || r === 'US') setCurrency(r);
   }, 400);
 });
 
-// ── Main payment flow ──────────────────────────────────────────────────────
+// ── Main payment flow — requires a session (see initSession/signupAndBuy) ──
 function startPayment() {
-  var emailEl = document.getElementById('email-input');
-  var passEl  = document.getElementById('pass-input');
-  var email   = (emailEl ? emailEl.value : '').trim();
-  var pass    = passEl ? passEl.value : '';
-
-  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    showErr('Please enter a valid email address.');
-    if (emailEl) emailEl.focus();
-    return;
-  }
-  if (!pass || pass.length < 8) {
-    showErr('Create a password of at least 8 characters for your account.');
-    if (passEl) passEl.focus();
-    return;
-  }
-  showErr('');
-
-  try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
-
+  if (!_session) { showPayErr('Please sign in first.'); return; }
+  showPayErr('');
   setBtnLoading('Creating subscription…');
 
-  // Step 1: Create Razorpay subscription on backend (anonymous — no account yet)
-  fetch('/api/checkout-subscription', {
+  // tierId only, resolved server-side against the caller's region (locked
+  // currency if they've paid before) — see routes/checkout-monitor.js.
+  fetch('/api/monitor/checkout', {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
-    // region is recorded on the subscription notes/logs; the charged amount still
-    // comes from the Razorpay plan until provider routing lands next phase.
-    body:    JSON.stringify({ email: email, auditData: auditData || null, region: (window.TDMPricing ? window.TDMPricing.region() : '') })
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + _session.access_token },
+    body:    JSON.stringify({ region: (window.TDMPricing ? window.TDMPricing.region() : '') })
   })
   .then(function(r) { return r.json(); })
   .then(function(subRes) {
-    if (subRes.error) { showErr(subRes.error); setBtnReady(); return; }
-
-    _auditId = subRes.auditId || null;
+    if (subRes.error) { showPayErr(subRes.error); setBtnReady(); return; }
 
     setBtnLoading('Opening payment…');
 
-    // Step 2: Open Razorpay subscription modal
     loadRzp(function() {
       var options = {
         key:             subRes.keyId,
         subscription_id: subRes.subscriptionId,
         name:            'The Doc Mirror',
-        description:     'Doctor Visibility Monitor — ' + (window.TDMPricing ? window.TDMPricing.get('monitor', true) : ''),
-        prefill:         { email: email },
+        description:     'Doctor Visibility Monitor — ' + (subRes.display || ''),
+        prefill:         { email: _session.email },
         theme:           { color: '#0A2540' },
 
-        // Step 3: Payment success — verify on backend then redirect
         handler: function(response) {
-          try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e){}  // clear plan only after successful payment
-          setBtnLoading('Creating your account…');
+          try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e){}
+          setBtnLoading('Activating your subscription…');
 
-          fetch('/api/verify-subscription-payment', {
+          fetch('/api/monitor/verify', {
             method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + _session.access_token },
             body:    JSON.stringify({
               subscriptionId: response.razorpay_subscription_id,
               paymentId:      response.razorpay_payment_id,
               signature:      response.razorpay_signature,
-              auditId:        _auditId,
-              email:          email,
-              password:       pass,
-              name:           (auditData && auditData.doctorName) ? auditData.doctorName : ''
             })
           })
           .then(function(r) {
@@ -357,26 +435,17 @@ function startPayment() {
           })
           .then(function(verifyRes) {
             if (verifyRes.ok) {
-              // Store the session created at payment so the dashboard opens logged in.
-              if (verifyRes.accessToken && verifyRes.refreshToken) {
-                try {
-                  localStorage.setItem('tdm_access_token',  verifyRes.accessToken);
-                  localStorage.setItem('tdm_refresh_token', verifyRes.refreshToken);
-                  if (verifyRes.userId) localStorage.setItem('tdm_user_id', verifyRes.userId);
-                  localStorage.setItem('tdm_user_email', email);
-                } catch(_) {}
-              }
-              showSuccess(email, verifyRes.needsLogin);
+              showSuccess(_session.email);
             } else if (verifyRes.isRateLimit) {
-              showErr(verifyRes.error || 'Subscription active — AI is busy. Report will arrive shortly.');
-              showSuccess(email, false);
+              showPayErr(verifyRes.error || 'Subscription active — AI is busy. Report will arrive shortly.');
+              showSuccess(_session.email);
             } else {
-              showErr(verifyRes.error || 'Verification failed. Contact support.');
+              showPayErr(verifyRes.error || 'Verification failed. Contact support.');
               setBtnReady();
             }
           })
           .catch(function() {
-            showErr('Verification failed. Email: thedocmirror@gmail.com');
+            showPayErr('Verification failed. Email: thedocmirror@gmail.com');
             setBtnReady();
           });
         },
@@ -385,6 +454,11 @@ function startPayment() {
           ondismiss: function() { setBtnReady(); }
         }
       };
+      // USD/INTL: cards only — UPI/NetBanking/wallets are India-only rails and
+      // must never be offered for a non-INR charge. INR is left unrestricted.
+      if (subRes.currency !== 'INR') {
+        options.method = { card: 1, netbanking: 0, upi: 0, wallet: 0, emi: 0, paylater: 0 };
+      }
 
       var rzp = new window.Razorpay(options);
       rzp.open();
@@ -392,20 +466,15 @@ function startPayment() {
     });
   })
   .catch(function() {
-    showErr('Something went wrong. Please try again.');
+    showPayErr('Something went wrong. Please try again.');
     setBtnReady();
   });
 }
 
 // ── Success state ──────────────────────────────────────────────────────────
-function showSuccess(email, needsLogin) {
+function showSuccess(email) {
   var card = document.getElementById('pay-card');
   if (!card) return;
-
-  var dest = needsLogin ? '/pages/auth.html?tab=login' : '/dashboard.html';
-  var note = needsLogin
-    ? 'This email already had an account — please log in to open your dashboard.'
-    : 'Your full report history and live data are available in the dashboard.';
 
   card.innerHTML =
     '<div class="success-state">' +
@@ -413,21 +482,18 @@ function showSuccess(email, needsLogin) {
     '<h2>Subscription Active!</h2>' +
     '<p>Your Doctor Visibility Monitor is now live.<br>' +
     'First weekly report will be sent to <strong>' + escH(email) + '</strong><br>within 60 seconds.</p>' +
-    '<a class="view-btn" href="' + dest + '">' + (needsLogin ? 'Log In →' : 'Open Dashboard →') + '</a>' +
-    '<p style="font-size:.75rem;color:var(--slate-light);margin-top:1rem">' + note + '</p>' +
+    '<a class="view-btn" href="/dashboard.html">Open Dashboard →</a>' +
     '</div>';
 
-  // Auto-redirect after 3 seconds (replace so back button goes home, not here)
   setTimeout(function() {
-    window.location.replace(dest);
+    window.location.replace('/dashboard.html');
   }, 3000);
 }
 
 function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-// Allow pressing Enter in email field
 document.getElementById('email-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') startPayment();
+  if (e.key === 'Enter') signupAndBuy();
 });
 </script>
 

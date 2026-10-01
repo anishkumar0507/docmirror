@@ -8,8 +8,9 @@ const paidReports = require('../lib/paid-reports');
 const reportsStore = require('../lib/reports-store');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { afterResponse } = require('../lib/after-response');
+const reportCredits = require('../lib/report-credits');
 
-// $19 Visibility Audit — anonymous, no account, no session, no dashboard
+// One-time visibility report ($49/₹999) — anonymous, no account, no session, no dashboard
 // Flow: payment verified → mark generating → trigger background worker → respond.
 // Report (Claude prompts + PDF + email) runs in /api/generate-report, NOT here,
 // so this request returns in a couple of seconds and never hits the Vercel 60s cap.
@@ -53,9 +54,81 @@ async function handler(req, res) {
     `[verify] payment verified ✓  orderId=${orderId}  auditId=${auditId}  email=${email}`
   );
 
+  // ── 2b. Three-factor check: status + amount + currency ─────────────────────
+  // The HMAC over orderId|paymentId proves Razorpay itself signed this payment
+  // for this order, but not that the order still matches what we quoted at
+  // checkout (lib/paid-reports.js records that at creation time — see
+  // routes/checkout.js). Re-read the payment from Razorpay directly rather than
+  // trusting anything in the request body, the same pattern routes/agency.js
+  // uses for subscriptions.
+  const sold = await paidReports.get(auditId);
+  if (sold && sold.currency && sold.amount_units != null) {
+    let payment;
+    try {
+      payment = await payments.get('razorpay').fetchPayment(paymentId);
+    } catch (e) {
+      console.error(`[verify] could not read payment from Razorpay: ${(e.error && e.error.description) || e.message}`);
+      return res.status(502).json({ error: 'Could not confirm the payment with Razorpay. Please refresh in a moment.' });
+    }
+    const factors = {
+      status:   payment.status === 'captured',
+      amount:   payment.amount === sold.amount_units,
+      currency: payment.currency === sold.currency,
+    };
+    console.log(
+      `[verify] three-factor auditId=${auditId} paymentStatus=${payment.status} ` +
+      `paymentAmount=${payment.amount} paymentCurrency=${payment.currency} ` +
+      `expected=${sold.amount_units} ${sold.currency} factors=${JSON.stringify(factors)}`
+    );
+    if (!factors.status || !factors.amount || !factors.currency) {
+      const failed = Object.keys(factors).filter((k) => !factors[k]);
+      console.error(`[verify] REJECTED auditId=${auditId} orderId=${orderId} failed=[${failed.join(',')}]`);
+      return res.status(400).json({
+        error: 'Payment does not match what was quoted at checkout — possible tampered request. Nothing has been unlocked.',
+        code: 'VERIFICATION_FAILED',
+        failed,
+      });
+    }
+  } else {
+    // No recorded expectation (row predates migration 028, or the table write
+    // was skipped) — the HMAC check above still holds; log so this is visible
+    // rather than silently skipping a check that should normally run.
+    console.warn(`[verify] auditId=${auditId} has no recorded tier/currency to compare — skipping three-factor check`);
+  }
+
   // ── 3. Confirm audit data is present before triggering PDF generation ──────
   const cacheResult = await auditCache.getDetailed(auditId);
   if (!cacheResult.hit || !cacheResult.data) {
+    // No scan data cached for this order — NOT an error if this is a report
+    // credit purchase (routes/checkout.js skips caching audit data for those:
+    // the buyer hasn't picked a doctor yet). Grant the credit instead of
+    // erroring. Anonymous purchases always have auditData at checkout, so they
+    // always hit the branch above this one; only an authenticated, no-scan-yet
+    // purchase reaches here.
+    if (sold && sold.tier_id === 'report_onetime' && sold.user_id) {
+      const grant = await reportCredits.grantCredit({
+        userId: sold.user_id, paymentId, orderAuditId: auditId,
+        currency: sold.currency, amountUnits: sold.amount_units,
+      });
+      if (!grant.ok) {
+        console.error(`[verify] credit grant FAILED auditId=${auditId} userId=${sold.user_id} reason=${grant.reason}`);
+        return res.status(503).json({
+          ok: false,
+          error: 'Payment verified, but we could not record your report credit. Please contact support with this reference.',
+          code: 'CREDIT_GRANT_FAILED',
+          reference: auditId,
+        });
+      }
+      await paidReports.updateStatus(auditId, { status: 'delivered', stripe_session_id: orderId, delivered_at: new Date().toISOString() });
+      console.log(`[verify] report credit granted (idempotent) auditId=${auditId} userId=${sold.user_id} created=${grant.created}`);
+      return res.json({
+        ok: true,
+        credited: true,
+        redirect: '/pages/redeem-report.html',
+        message: 'Payment verified — your report credit is ready. Tell us which doctor it\'s for to generate the PDF.',
+      });
+    }
+
     const diagnostic = auditCache.formatDiagnostic(cacheResult);
     console.error(
       '[verify] audit_cache MISS BEFORE report:',
