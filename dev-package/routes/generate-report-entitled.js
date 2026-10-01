@@ -32,7 +32,7 @@ function mintAuditId() {
 //
 // Two shapes are accepted, because the FREE homepage check never mints an auditId
 // (it is only minted at checkout):
-//   • { auditId }   — a report already cached (e.g. a $19 report the user re-opens)
+//   • { auditId }   — a report already cached (e.g. a $49 report the user re-opens)
 //   • { auditData }  — the raw audit object from the fresh free check; we mint the
 //                      id and cache it server-side here, mirroring checkout.js.
 // The response's `entitled` flag is what unlocks the preview. Generation is a

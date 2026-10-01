@@ -1,81 +1,102 @@
 'use strict';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Region-aware pricing — single source of truth for prices AND currency.
-//
-// The old model DISPLAYED USD but CHARGED INR, which fails US-card 3DS (the
-// issuer sees a foreign merchant charging INR). The fix is structural: price
-// and currency are now BOTH derived from the buyer's region tier, so the amount
-// shown always equals the amount charged.
+// Region-aware pricing — single source of truth for prices, currency AND the
+// Razorpay plan id each subscription tier charges against.
 //
 // AMOUNTS ARE STORED IN MINOR UNITS EVERYWHERE (paise for INR, cents for USD).
-// Provider modules are responsible for converting to whatever unit their API
-// wants: Razorpay takes MINOR units (paise), Cashfree takes MAJOR units
-// (rupees/dollars). Never pre-convert here — hand provider code the minor value.
+// Razorpay takes MINOR units directly for both orders.create and its Plans —
+// never pre-convert here, hand the checkout code the minor value as-is.
 //
-// Change prices without a redeploy via env overrides (see envAmount/envDisplay).
+// getTiersForRegion(region) / getTier(region, tierId) are the primary API: a
+// tierId identifies ONE product in ONE region ('single_doctor_monthly',
+// 'org_monthly', 'report_onetime'). Checkout/verify code should look products up by
+// tierId, never by re-deriving an amount from a product name + region.
+//
+// The older priceFor()/orgPlanPrice()/displayPrices() functions are kept
+// (unchanged call signatures and return shapes) as thin views over the SAME
+// tier list, so existing callers (routes/config.js, routes/checkout*.js,
+// routes/agency.js, lib/payments/cashfree.js) needed no changes for this phase.
+//
+// Change prices without a redeploy via env overrides — see envAmount/envDisplay.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Per-tier pricing. provider.oneTime / provider.subscription name the payment
-// provider that SHOULD handle each product for that tier. This phase does NOT
-// wire new providers — Razorpay stays the only live provider — but the mapping
-// is declared now so the next phase can route on it.
-const TIERS = {
+const CURRENCY_SYMBOL = { INR: '₹', USD: '$' };
+
+// Each tier entry's shape (STEP 1):
+//   id              stable product id, e.g. 'single_doctor_monthly'
+//   type            'subscription' | 'one_time'
+//   currency        ISO 4217
+//   amountMinor     paise/cents — env-overridable via envAmount()
+//   planIdEnv       (subscription only) env var name holding the Razorpay Plan id
+//   entitlementKey  the profiles.plan value this product grants ('monitor'/'agency');
+//                   'audit' for the one-time report (not a profiles.plan value —
+//                   see lib/entitlements.js — but the same "what did they buy" key)
+//   displayPrice    env-overridable via envDisplay()
+//   envKey          which PRICE_<TIER>_<envKey>_* override this entry reads
+//   profileLimit    (org tier only) doctor_profiles cap, from ORG_PLANS
+//
+// IN keeps the legacy env var names it shipped with (RAZORPAY_STARTER_AMOUNT_UNITS
+// etc.) as an ADDITIONAL fallback, tried before the entry's own default — see
+// envAmount(). US/INTL are new and have no legacy names to preserve.
+function buildTiers(currency, {
+  report, monitor, org,
+  monitorPlanEnv, orgPlanEnv,
+}) {
+  return [
+    {
+      id: 'report_onetime', type: 'one_time', currency,
+      amountMinor: report.amount, displayPrice: report.display,
+      entitlementKey: 'audit', envKey: 'REPORT',
+    },
+    {
+      id: 'single_doctor_monthly', type: 'subscription', currency,
+      amountMinor: monitor.amount, displayPrice: monitor.display,
+      entitlementKey: 'monitor', envKey: 'MONITOR',
+      planIdEnv: monitorPlanEnv, profileLimit: 1,
+    },
+    {
+      id: 'org_monthly', type: 'subscription', currency,
+      amountMinor: org.amount, displayPrice: org.display,
+      entitlementKey: 'agency', envKey: 'ORG',
+      planIdEnv: orgPlanEnv, profileLimit: 10,
+    },
+  ];
+}
+
+const TIER_DEFS = {
   // India — charged in INR via Razorpay (live mode today).
-  IN: {
-    currency: 'INR', symbol: '₹',
-    report:  { amount: 99900,  display: '₹999' },          // one-time report (paise)
-    monitor: { amount: 199900, display: '₹1,999/month' },  // subscription (paise)
-    provider: { oneTime: 'razorpay', subscription: 'razorpay' },
-  },
-  // US + Canada — charged in USD.
-  US: {
-    currency: 'USD', symbol: '$',
-    report:  { amount: 1900, display: '$19' },        // cents
-    monitor: { amount: 4900, display: '$49/month' },  // cents
-    provider: { oneTime: 'cashfree_intl', subscription: 'cashfree_intl' },
-  },
-  // Rest-of-world (non-EU, see lib/region.js). Same as US FOR NOW, but kept a
-  // SEPARATE tier on purpose so it can diverge later without touching US.
-  INTL: {
-    currency: 'USD', symbol: '$',
-    report:  { amount: 1900, display: '$19' },
-    monitor: { amount: 4900, display: '$49/month' },
-    provider: { oneTime: 'cashfree_intl', subscription: 'cashfree_intl' },
-  },
+  IN: buildTiers('INR', {
+    report:  { amount: 99900,  display: '₹999' },
+    monitor: { amount: 199900, display: '₹1,999/month' },
+    org:     { amount: 799900, display: '₹7,999/month' },
+    monitorPlanEnv: 'RAZORPAY_MONITOR_PLAN_ID',
+    orgPlanEnv:     'RAZORPAY_AGENCY_PLAN_ID',
+  }),
+  // US + Canada — charged in USD via Razorpay (international payment gateway).
+  US: buildTiers('USD', {
+    report:  { amount: 4900, display: '$49' },
+    monitor: { amount: 2900, display: '$29/month' },
+    org:     { amount: 9900, display: '$99/month' },
+    monitorPlanEnv: 'RAZORPAY_PLAN_USD_SINGLE',
+    orgPlanEnv:     'RAZORPAY_PLAN_USD_ORG',
+  }),
+  // Rest-of-world (non-EU, see lib/region.js). Same product/price as US FOR NOW,
+  // kept a SEPARATE tier on purpose so it can diverge later (its own plan ids,
+  // its own price) without touching the US tier. buildTiers() is a factory, so
+  // this is an independent set of objects, not a shared reference to US's.
+  INTL: buildTiers('USD', {
+    report:  { amount: 4900, display: '$49' },
+    monitor: { amount: 2900, display: '$29/month' },
+    org:     { amount: 9900, display: '$99/month' },
+    monitorPlanEnv: 'RAZORPAY_PLAN_USD_SINGLE',
+    orgPlanEnv:     'RAZORPAY_PLAN_USD_ORG',
+  }),
 };
 
-const PRODUCTS = ['report', 'monitor'];
-
-// ── Organization plan tiers (multi-doctor) — CONSTANTS ONLY ──────────────────
-// profileLimit = how many doctor_profiles an org on this plan may hold.
-// NOT wired to any checkout, route or UI yet — nothing reads these. The report /
-// monitor flows (TIERS above) are untouched. The agency checkout is a later phase;
-// this block exists so the price has ONE home when that phase arrives.
-//
-// SAME SHAPE AND UNITS AS TIERS: keyed by currency, { amount, display }, amount in
-// MINOR units (paise/cents). This used to be `{ usd: 450, inr: 35999 }` in MAJOR
-// units — two shapes for the same concept is how a display/charge mismatch gets
-// in, so the two now match and a value can move between them without conversion.
-//
-// INR is HAND-SET, never converted from USD — display currency must equal the
-// charged currency (a USD-priced-but-INR-charged order fails 3DS on US banks).
-// USD is still the PLACEHOLDER $450/month from before, unchanged in value and
-// pending the next phase; only its units were normalised (450 → 45000 cents).
-//
-// clinic + agency each SPREAD a FRESH copy (clinicPricing() is a factory, not a
-// shared object) — separate objects, so editing one plan's price or limit can
-// never leak into the other, which `agency: ORG_PLANS.clinic` would.
-const clinicPricing = () => ({
-  INR: { amount: 799900, display: '₹7,999/month' },  // ₹7,999/month (paise)
-  USD: { amount:  45000, display: '$450/month'  },   // PLACEHOLDER, TBD (cents)
-});
-const ORG_PLANS = {
-  solo:     { profileLimit: 1,  INR: null, USD: null, label: 'Solo' },      // existing free/solo
-  clinic:   { profileLimit: 10, ...clinicPricing(), label: 'Clinic' },
-  hospital: { profileLimit: 25, INR: null, USD: null, label: 'Hospital' },  // Phase 4
-  agency:   { profileLimit: 10, ...clinicPricing(), label: 'Agency' },      // same price as clinic, own objects
-};
+// Legacy product name -> tierId, for the priceFor()/providerFor() shims below.
+const LEGACY_PRODUCT_TO_TIER_ID = { report: 'report_onetime', monitor: 'single_doctor_monthly' };
+const PRODUCTS = Object.keys(LEGACY_PRODUCT_TO_TIER_ID);
 
 /** First positive integer among the given env var names, else null. */
 function envUnits(...names) {
@@ -86,53 +107,94 @@ function envUnits(...names) {
   return null;
 }
 
-// Env override for a charged amount (minor units). A generic per-tier name works
-// for every tier; the legacy Razorpay/India names are preserved so an existing
-// deployment mid-rollout keeps working without renaming env vars.
-function envAmount(tier, product) {
-  const generic = envUnits(`PRICE_${tier}_${product.toUpperCase()}_UNITS`);
-  if (generic) return generic;
-  if (tier === 'IN' && product === 'report')  return envUnits('RAZORPAY_STARTER_AMOUNT_UNITS', 'RAZORPAY_AMOUNT_UNITS');
-  if (tier === 'IN' && product === 'monitor') return envUnits('RAZORPAY_MONITOR_AMOUNT_UNITS');
-  return null;
+// Env override for a charged amount (minor units). Generic `PRICE_<TIER>_<envKey>_UNITS`
+// works for every tier/product; the legacy India-only Razorpay names are tried
+// FIRST for report/monitor so an existing deployment's env vars keep working
+// unchanged (RAZORPAY_STARTER_AMOUNT_UNITS, RAZORPAY_MONITOR_AMOUNT_UNITS).
+function envAmount(tier, envKey) {
+  if (tier === 'IN' && envKey === 'REPORT') {
+    const legacy = envUnits('RAZORPAY_STARTER_AMOUNT_UNITS', 'RAZORPAY_AMOUNT_UNITS');
+    if (legacy) return legacy;
+  }
+  if (tier === 'IN' && envKey === 'MONITOR') {
+    const legacy = envUnits('RAZORPAY_MONITOR_AMOUNT_UNITS');
+    if (legacy) return legacy;
+  }
+  return envUnits(`PRICE_${tier}_${envKey}_UNITS`);
 }
 
 // Optional env override for the display string, so an emergency price change can
 // keep the shown text in sync with the charged amount without a redeploy.
-function envDisplay(tier, product) {
-  return process.env[`PRICE_${tier}_${product.toUpperCase()}_DISPLAY`] || null;
+function envDisplay(tier, envKey) {
+  return process.env[`PRICE_${tier}_${envKey}_DISPLAY`] || null;
 }
 
 function assertTier(tier) {
-  if (!TIERS[tier]) throw new Error(`unknown pricing tier: ${tier}`);
+  if (!TIER_DEFS[tier]) throw new Error(`unknown pricing tier: ${tier}`);
 }
 
 /**
- * Price for one product in one tier.
+ * Every product available in one region, env overrides applied and the
+ * subscription plan id resolved from its env var. Never cached — an env change
+ * (and restart) takes effect on the next call, same as every other price read.
+ * @returns {Array<{id,type,currency,amountMinor,displayPrice,entitlementKey,planId?,planIdEnv?,profileLimit?}>}
+ */
+function getTiersForRegion(region) {
+  assertTier(region);
+  return TIER_DEFS[region].map((t) => {
+    const out = {
+      id:             t.id,
+      type:           t.type,
+      currency:       t.currency,
+      symbol:         CURRENCY_SYMBOL[t.currency] || '',
+      amountMinor:    envAmount(region, t.envKey) || t.amountMinor,
+      displayPrice:   envDisplay(region, t.envKey) || t.displayPrice,
+      entitlementKey: t.entitlementKey,
+    };
+    if (t.planIdEnv) {
+      out.planId = process.env[t.planIdEnv] || null;
+      out.planIdEnv = t.planIdEnv; // kept for error messages ("set X in env")
+    }
+    if (t.profileLimit) out.profileLimit = t.profileLimit;
+    return out;
+  });
+}
+
+/**
+ * One product in one region, by tierId. Throws if the region or tierId is
+ * unknown — callers pass a tierId from a trusted source (their own request
+ * validation against this same list), never directly from an unchecked client
+ * value without first confirming it exists.
+ */
+function getTier(region, tierId) {
+  const tier = getTiersForRegion(region).find((t) => t.id === tierId);
+  if (!tier) throw new Error(`unknown tierId "${tierId}" for region ${region}`);
+  return tier;
+}
+
+/**
+ * Price for one legacy product name ('report' | 'monitor') in one tier.
  * @returns {{ amount:number, display:string, currency:string, symbol:string }}
  *   amount is in MINOR units (paise/cents) — hand this straight to Razorpay.
  */
 function priceFor(tier, product) {
-  assertTier(tier);
   if (!PRODUCTS.includes(product)) throw new Error(`unknown product: ${product}`);
-  const t = TIERS[tier];
-  return {
-    amount:   envAmount(tier, product)  || t[product].amount,
-    display:  envDisplay(tier, product) || t[product].display,
-    currency: t.currency,
-    symbol:   t.symbol,
-  };
+  const t = getTier(tier, LEGACY_PRODUCT_TO_TIER_ID[product]);
+  return { amount: t.amountMinor, display: t.displayPrice, currency: t.currency, symbol: t.symbol };
 }
 
 /**
  * Which provider handles this product for this tier.
+ *   IN is always Razorpay. US/INTL default to Cashfree (lib/payments/cashfree.js,
+ *   on hold) unless INTL_PAYMENT_PROVIDER=razorpay routes them to Razorpay too —
+ *   the single switch lib/payments/index.js's providerNameForRegion() also reads.
  * @param {string} kind 'oneTime' (report) | 'subscription' (monitor)
  */
 function providerFor(tier, kind) {
   assertTier(tier);
-  const p = TIERS[tier].provider[kind];
-  if (!p) throw new Error(`unknown provider kind: ${kind}`);
-  return p;
+  if (kind !== 'oneTime' && kind !== 'subscription') throw new Error(`unknown provider kind: ${kind}`);
+  if (tier === 'IN') return 'razorpay';
+  return (process.env.INTL_PAYMENT_PROVIDER || '').toLowerCase() === 'razorpay' ? 'razorpay' : 'cashfree_intl';
 }
 
 /**
@@ -141,70 +203,75 @@ function providerFor(tier, kind) {
  * separately.
  */
 function displayPrices(tier) {
-  assertTier(tier);
-  const report  = priceFor(tier, 'report');
-  const monitor = priceFor(tier, 'monitor');
+  const list = getTiersForRegion(tier);
+  const byId = Object.fromEntries(list.map((t) => [t.id, t]));
+  const report  = byId.report_onetime;
+  const monitor = byId.single_doctor_monthly;
+  const agency  = byId.org_monthly;
   const out = {
     tier,
-    currency: TIERS[tier].currency,
-    symbol:   TIERS[tier].symbol,
-    report:  { amount: report.amount,  display: report.display,  bare: report.display.split('/')[0] },
-    monitor: { amount: monitor.amount, display: monitor.display, bare: monitor.display.split('/')[0] },
+    currency: report.currency,
+    symbol:   report.symbol,
+    report:  { amount: report.amountMinor,  display: report.displayPrice,  bare: report.displayPrice.split('/')[0] },
+    monitor: { amount: monitor.amountMinor, display: monitor.displayPrice, bare: monitor.displayPrice.split('/')[0] },
   };
-  // Agency (multi-doctor) plan, in this tier's currency, straight from ORG_PLANS
-  // so the pricing page never hardcodes it. Omitted for a currency the plan has
-  // no price in yet — the card then keeps its in-HTML default rather than
-  // showing a wrong or empty number.
-  const agency = orgPlanPrice('agency', TIERS[tier].currency);
   if (agency) {
     out.agency = {
-      amount:       agency.amount,
-      display:      agency.display,
-      bare:         agency.display.split('/')[0],
-      profileLimit: ORG_PLANS.agency.profileLimit,
+      amount:       agency.amountMinor,
+      display:      agency.displayPrice,
+      bare:         agency.displayPrice.split('/')[0],
+      profileLimit: agency.profileLimit,
     };
   }
   return out;
 }
 
 /**
- * Price of an org (multi-doctor) plan in one currency, or null if that plan has
- * no price set for it. Same { amount, display } shape as priceFor(); amount is
- * in MINOR units. This is the ONLY way anything outside this file should read an
- * ORG_PLANS price — checkout and UI both go through it, so the number has one home.
+ * Price of the org (multi-doctor) plan in one currency, or null if no region
+ * charges the org plan in that currency. Same { amount, display } shape as
+ * priceFor(); amount is in MINOR units. `plan` must be 'agency' (the only org
+ * plan wired to a checkout) — anything else throws, so a typo fails loudly
+ * instead of silently returning no price.
  */
 function orgPlanPrice(plan, currency) {
-  const p = ORG_PLANS[plan];
-  if (!p) throw new Error(`unknown org plan: ${plan}`);
-  const price = p[currency];
-  if (!price || typeof price.amount !== 'number') return null;
-  return { amount: price.amount, display: price.display, currency, profileLimit: p.profileLimit };
+  if (plan !== 'agency') throw new Error(`unknown org plan: ${plan}`);
+  // IN is checked first so an INR result is preferred when (hypothetically) more
+  // than one region shared a currency — today only one region maps to INR anyway.
+  for (const region of ['IN', 'US', 'INTL']) {
+    if (TIER_DEFS[region][0].currency !== currency) continue;
+    const t = getTier(region, 'org_monthly');
+    return { amount: t.amountMinor, display: t.displayPrice, currency, profileLimit: t.profileLimit };
+  }
+  return null;
 }
 
 // ── Backward-compat shims ────────────────────────────────────────────────────
-// Existing callers (routes/checkout.js, routes/checkout-subscription.js) used
-// the old India-only exports. Keep them working, resolved against the IN tier,
-// so nothing breaks in this commit. New code should use priceFor()/providerFor().
+// toMinorUnits/reportAmountUnits/monitorAmountUnits/billingCurrency are kept for
+// any script or log line still calling them; nothing in the checkout/verify path
+// uses billingCurrency() to decide a charge currency any more — that always
+// comes from the resolved tier (see getTier()/priceFor() above).
 function toMinorUnits(rupees) { return Math.round(rupees * 100); }
 function reportAmountUnits()  { return priceFor('IN', 'report').amount; }
 function monitorAmountUnits() { return priceFor('IN', 'monitor').amount; }
-function billingCurrency()    { return process.env.RAZORPAY_CURRENCY || TIERS.IN.currency; }
+function billingCurrency()    { return TIER_DEFS.IN[0].currency; }
 
 module.exports = {
-  // new region-aware API
-  TIERS,
-  ORG_PLANS,          // multi-doctor org plan constants (not wired yet)
+  // new region-aware API — use this for anything new
+  getTiersForRegion,
+  getTier,
+  // previous API — unchanged call signatures/return shapes, now views over the
+  // same tier list above
   priceFor,
   providerFor,
   orgPlanPrice,
   displayPrices,
   envUnits,
   // backward-compatible shims (India tier)
-  DISPLAY_REPORT_PRICE:  TIERS.IN.report.display,
-  DISPLAY_MONITOR_PRICE: TIERS.IN.monitor.display,
-  REPORT_AMOUNT_INR:     TIERS.IN.report.amount / 100,
-  MONITOR_AMOUNT_INR:    TIERS.IN.monitor.amount / 100,
-  BILLING_CURRENCY:      TIERS.IN.currency,
+  DISPLAY_REPORT_PRICE:  TIER_DEFS.IN[0].displayPrice,
+  DISPLAY_MONITOR_PRICE: TIER_DEFS.IN[1].displayPrice,
+  REPORT_AMOUNT_INR:     TIER_DEFS.IN[0].amountMinor / 100,
+  MONITOR_AMOUNT_INR:    TIER_DEFS.IN[1].amountMinor / 100,
+  BILLING_CURRENCY:      TIER_DEFS.IN[0].currency,
   toMinorUnits,
   reportAmountUnits,
   monitorAmountUnits,

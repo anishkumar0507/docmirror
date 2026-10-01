@@ -187,6 +187,7 @@ function storeTokens(session) {
 function intentDestination() {
   if (_returnTo === 'checkout' || _plan === 'audit')   return '/pages/checkout.html';
   if (_returnTo === 'checkout-subscription' || _plan === 'monitor') return '/pages/checkout-subscription.html';
+  if (_returnTo === 'report-credit') return '/pages/report-credit-checkout.html';
   return null;
 }
 

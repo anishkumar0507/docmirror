@@ -142,7 +142,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
         <div class="price-note">One-time · No subscription</div>
       </div>
       <div style="text-align:right">
-        <div class="price-amount"><span data-price="report">$19</span></div>
+        <div class="price-amount"><span data-price="report">—</span></div>
         <div class="price-note">Instant PDF delivery</div>
       </div>
     </div>
@@ -165,14 +165,14 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 
     <button class="pay-btn" id="pay-btn" onclick="startPayment()">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      Unlock Full Report — <span data-price="report">$19</span>
+      Unlock Full Report — <span data-price="report">—</span>
     </button>
 
     <div class="pay-secure">
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
       Secure payment via Razorpay
     </div>
-    <div class="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
+    <div class="pay-logos" id="pay-logos">Visa · Mastercard · UPI · NetBanking</div>
   </div>
 
 </main>
@@ -183,7 +183,7 @@ main{flex:1;display:flex;align-items:flex-start;justify-content:center;padding:2
 <div class="trust-bar" data-company-row hidden style="margin-top:.5rem">The Doc Mirror is a product of <span data-company="legalEntity"></span>.</div>
 
 <script>
-// $19 Visibility Audit — no login required, anonymous payment flow
+// Visibility Audit (one-time) — no login required, anonymous payment flow
 // Plan safety: this page is the Audit checkout, so keep the stored plan consistent.
 try { sessionStorage.setItem('tdm_selected_plan', 'audit'); } catch(e){}
 var auditData = null;
@@ -256,7 +256,7 @@ function setBtnReady() {
   btn.innerHTML =
     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' +
-    ' Unlock Full Report — <span data-price="report">$19</span>';
+    ' Unlock Full Report — <span data-price="report">—</span>';
   // Re-fill the freshly rebuilt price span with the current region's price.
   if (window.TDMPricing && window.TDM_PRICING) window.TDMPricing.apply(window.TDM_PRICING.prices);
 }
@@ -264,7 +264,7 @@ function setBtnReady() {
 // Currency toggle → override region, re-fetch prices, reflect active state.
 function setCurrency(tier) {
   if (!window.TDMPricing) return;
-  window.TDMPricing.setRegion(tier).then(function(){
+  window.TDMPricing.setRegion(tier).then(function(cfg){
     var btns = document.querySelectorAll('#currency-toggle button');
     for (var i = 0; i < btns.length; i++) {
       var active = btns[i].getAttribute('data-region') === tier;
@@ -272,11 +272,25 @@ function setCurrency(tier) {
       btns[i].style.color        = active ? '#fff'    : '#0A2540';
       btns[i].style.borderColor  = active ? '#0A2540' : '#d5dce5';
     }
+    updatePaymentMethods((cfg && cfg.region) || tier);
   });
+}
+
+// UPI/NetBanking are India-only Razorpay methods — never show them to a USD
+// buyer (issue 4). Swaps with the currency toggle, same as pricing.html's FAQ.
+function updatePaymentMethods(region) {
+  var el = document.getElementById('pay-logos');
+  if (!el) return;
+  el.textContent = region === 'IN'
+    ? 'Visa · Mastercard · UPI · NetBanking'
+    : 'Visa · Mastercard · Amex · International cards';
 }
 
 // Reflect the geo-resolved region on the toggle once prices first load.
 document.addEventListener('DOMContentLoaded', function(){
+  if (window.TDMPricing && window.TDMPricing.ready) {
+    window.TDMPricing.ready.then(function (cfg) { if (cfg && cfg.region) updatePaymentMethods(cfg.region); });
+  }
   setTimeout(function(){
     var r = window.TDMPricing && window.TDMPricing.region();
     if (r === 'IN' || r === 'US') setCurrency(r);
@@ -303,9 +317,16 @@ function startPayment() {
   // Save email for convenience
   try { localStorage.setItem('tdm_checkout_email', email); } catch(_) {}
 
+  // Provider routing: USD / international regions pay via Cashfree (display
+  // currency == charge currency), India via Razorpay. The provider is decided
+  // server-side by the single region→provider map and surfaced on
+  // /api/client-config as window.TDM_PRICING.provider.
+  var provider = (window.TDM_PRICING && window.TDM_PRICING.provider) || 'razorpay';
+  if (provider === 'cashfree') { startCashfreePayment(email); return; }
+
   setBtnLoading('Creating order…');
 
-  // Step 1: Create Razorpay order on backend (no auth required for $19)
+  // Step 1: Create Razorpay order on backend (no auth required for the one-time report)
   fetch('/api/checkout', {
     method:  'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -331,7 +352,7 @@ function startPayment() {
         prefill:     { email: email },
         theme:       { color: '#0A2540' },
 
-        // Step 3: Payment success — verify on backend (no auth required for $19)
+        // Step 3: Payment success — verify on backend (no auth required for the one-time report)
         handler: function(response) {
           try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e){}  // clear plan only after successful payment
           setBtnLoading('Verifying payment…');
@@ -380,6 +401,11 @@ function startPayment() {
           ondismiss: function() { setBtnReady(); }
         }
       };
+      // USD/INTL: cards only — UPI/NetBanking/wallets are India-only rails and
+      // must never be offered for a non-INR charge. INR is left unrestricted.
+      if (orderRes.currency !== 'INR') {
+        options.method = { card: 1, netbanking: 0, upi: 0, wallet: 0, emi: 0, paylater: 0 };
+      }
 
       var rzp = new window.Razorpay(options);
       rzp.open();
@@ -390,6 +416,73 @@ function startPayment() {
     showErr('Something went wrong. Please try again.');
     setBtnReady();
   });
+}
+
+// ── Cashfree (USD / international) payment flow ────────────────────────────
+// Mirrors the Razorpay flow: create order on the backend (amount + currency come
+// from server-side pricing), open the Cashfree JS SDK with the payment session
+// id, then verify SERVER-SIDE. Verification is authoritative — the SDK result is
+// never trusted to unlock the report.
+function loadCashfree(cb) {
+  if (window.Cashfree) { cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://sdk.cashfree.com/js/v3/cashfree.js';
+  s.onload = cb;
+  s.onerror = function() { showErr('Could not load payment SDK. Please refresh.'); setBtnReady(); };
+  document.head.appendChild(s);
+}
+
+function startCashfreePayment(email) {
+  setBtnLoading('Creating order…');
+
+  fetch('/api/payments/cashfree/create-order', {
+    method:  'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ email: email, auditData: auditData, region: (window.TDMPricing ? window.TDMPricing.region() : '') })
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(res) {
+    if (res.error) { showErr(res.error); setBtnReady(); return; }
+
+    setBtnLoading('Opening payment…');
+    loadCashfree(function() {
+      var mode = (window.TDM_PRICING && window.TDM_PRICING.cashfreeMode) || 'sandbox';
+      var cf;
+      try { cf = window.Cashfree({ mode: mode }); }
+      catch (e) { showErr('Payment SDK failed to initialise. Please retry.'); setBtnReady(); return; }
+
+      cf.checkout({ paymentSessionId: res.sessionId, redirectTarget: '_modal' })
+        .then(function() {
+          // Whatever the SDK returns, confirm the payment on our server.
+          verifyCashfree(res.providerOrderId, email);
+        })
+        .catch(function() {
+          // Modal dismissed or SDK error — let the user retry.
+          setBtnReady();
+        });
+    });
+  })
+  .catch(function() { showErr('Something went wrong. Please try again.'); setBtnReady(); });
+}
+
+function verifyCashfree(orderId, email) {
+  try { sessionStorage.removeItem('tdm_selected_plan'); } catch(e) {}
+  setBtnLoading('Verifying payment…');
+
+  fetch('/api/payments/cashfree/verify?order_id=' + encodeURIComponent(orderId))
+    .then(function(r) { return r.json(); })
+    .then(function(v) {
+      if (v.ok && v.paid) {
+        showSuccess(email, v.auditId);
+      } else if (v.ok && !v.paid) {
+        showErr('Payment not completed. If you were charged, contact support.');
+        setBtnReady();
+      } else {
+        showErr(v.error || 'Verification failed. Contact support.');
+        setBtnReady();
+      }
+    })
+    .catch(function() { showErr('Verification failed. Email: thedocmirror@gmail.com'); setBtnReady(); });
 }
 
 // ── Success state — thank you page, no dashboard (not a SaaS product) ──────

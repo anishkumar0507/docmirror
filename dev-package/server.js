@@ -40,8 +40,21 @@ const cancelSubHandler            = require('./routes/cancel-subscription');
 const webhookRazorpayHandler      = require('./routes/webhook-razorpay');
 const generateReportHandler       = require('./routes/generate-report');
 const generateReportEntitledHandler = require('./routes/generate-report-entitled');
+const reportCreditsRoute          = require('./routes/report-credits');
 const profilesRoute               = require('./routes/profiles');
 const agencyRoute                 = require('./routes/agency');
+const checkoutMonitorRoute        = require('./routes/checkout-monitor');
+// Cashfree is WIP/on hold (see docs/cashfree/) and not part of every deploy —
+// loaded lazily so a deploy that omits these route files still boots; routes
+// below are only registered if the files are actually present.
+let cashfreeCreateOrderHandler, cashfreeVerifyHandler, cashfreeWebhookHandler;
+try {
+  cashfreeCreateOrderHandler = require('./routes/cashfree-create-order');
+  cashfreeVerifyHandler      = require('./routes/cashfree-verify');
+  cashfreeWebhookHandler     = require('./routes/cashfree-webhook');
+} catch (e) {
+  console.warn(`[server] Cashfree routes unavailable (${e.message}) — fine as long as INTL_PAYMENT_PROVIDER=razorpay`);
+}
 const renderPdfHandler            = require('./routes/render-pdf');
 const sendReportEmailHandler      = require('./routes/send-report-email');
 const reconcileHandler            = require('./routes/reconcile');
@@ -73,6 +86,12 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), stripeWebhoo
 
 // Razorpay subscription webhook needs raw body too
 app.post('/api/webhook-razorpay', express.raw({ type: 'application/json' }), webhookRazorpayHandler);
+
+// Cashfree webhook — raw body required for HMAC verification, so it is
+// registered BEFORE express.json() like the other webhooks.
+if (cashfreeWebhookHandler) {
+  app.post('/api/payments/cashfree/webhook', express.raw({ type: 'application/json' }), cashfreeWebhookHandler);
+}
 
 app.use(express.json({ limit: '2mb' }));
 
@@ -184,6 +203,8 @@ app.get('/api/doctors/autocomplete',      doctorAutocompleteHandler);
 app.get('/api/monthly-content',           monthlyContentHandler);
 app.post('/api/checkout',                 checkoutHandler);
 app.post('/api/verify-payment',           verifyPaymentHandler);
+if (cashfreeCreateOrderHandler) app.post('/api/payments/cashfree/create-order', cashfreeCreateOrderHandler); // USD one-time (Cashfree); webhook registered above (raw body)
+if (cashfreeVerifyHandler)      app.get('/api/payments/cashfree/verify',        cashfreeVerifyHandler);      // called after Cashfree return redirect
 app.get('/api/payment-status',            paymentStatusHandler);   // backend-verified paid status (no URL/localStorage trust)
 app.post('/api/download-pdf',             downloadPdfHandler);
 app.post('/api/report',                   reportHandler);
@@ -216,6 +237,17 @@ app.get('/api/profiles',                  requireAuth, profilesRoute.list);
 app.post('/api/agency/signup',            agencyRoute.signup);
 app.post('/api/agency/checkout',          requireAuth, agencyRoute.checkout);
 app.post('/api/agency/verify',            requireAuth, agencyRoute.verify);
+
+// Single-doctor Monitor plan, region-aware (IN ₹1,999/mo, US/INTL $29/mo) — the
+// authenticated replacement flow (routes/checkout-monitor.js) alongside the
+// existing anonymous/INR-only /api/checkout-subscription below, which is left
+// exactly as it is. Signup reuses agencyRoute.signup: it has nothing
+// agency-specific about it (email+password -> a 'free'-plan account), so a new
+// single-doctor customer creates their account the same safe way an agency
+// customer does, then checks out from a logged-in dashboard.
+app.post('/api/checkout/signup',          agencyRoute.signup);
+app.post('/api/monitor/checkout',         requireAuth, checkoutMonitorRoute.checkout);
+app.post('/api/monitor/verify',           requireAuth, checkoutMonitorRoute.verify);
 app.patch('/api/profiles/:id',            requireAuth, profilesRoute.update);
 app.delete('/api/profiles/:id',           requireAuth, profilesRoute.archive);
 app.get('/api/weekly-update',             weeklyCheckHandler);      // alias for the weekly cron
@@ -225,6 +257,15 @@ app.post('/api/verify-subscription-payment', verifySubPaymentHandler);
 app.post('/api/cancel-subscription',          cancelSubHandler);        // stop auto-pay now, keep access until cycle end
 app.post('/api/generate-report',              generateReportHandler);  // pipeline stage 1: insights
 app.post('/api/generate-report-entitled',     generateReportEntitledHandler);  // auth + entitlement-gated generation (subscribers; no order)
+
+// Buy-first, redeem-later report credit: purchase goes through the SAME
+// /api/checkout + /api/verify-payment as every other report_onetime order
+// (grants a credit instead of generating, when no scan was cached at
+// checkout — see routes/checkout.js / routes/verify-payment.js). These three
+// are redeem + delivery only, all requireAuth-gated to req.user.id.
+app.get('/api/report-credits',                requireAuth, reportCreditsRoute.list);
+app.post('/api/report-credits/redeem',        requireAuth, reportCreditsRoute.redeem);
+app.get('/api/report-credits/download/:auditId', requireAuth, reportCreditsRoute.download);
 app.post('/api/render-pdf',                   renderPdfHandler);        // pipeline stage 2: pdf
 app.post('/api/send-report-email',            sendReportEmailHandler);  // pipeline stage 3: email
 app.get('/api/reconcile',                     reconcileHandler);        // safety-net (Vercel cron)
@@ -354,6 +395,29 @@ async function runStartupChecks() {
       '[startup] Gmail SMTP ✗  GMAIL_USER or GMAIL_APP_PASSWORD missing — ' +
       'PDF delivery will fail for every paid order'
     );
+  }
+
+  // 5. Razorpay LIVE-mode plan var disclosure. Never prints a secret — only env
+  // var NAMES and the last 4 characters of each plan id — but makes it obvious
+  // at boot, from the logs alone, exactly which plans a live-mode deploy will
+  // actually charge against, so a stale/test plan id is caught before a real
+  // customer hits checkout rather than after.
+  const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
+  if (razorpayKeyId.startsWith('rzp_live_')) {
+    const pricing = require('./lib/pricing');
+    console.log(`[startup] Razorpay LIVE mode  key=...${razorpayKeyId.slice(-4)}`);
+    for (const region of ['IN', 'US', 'INTL']) {
+      let tiers;
+      try { tiers = pricing.getTiersForRegion(region); } catch (e) { continue; }
+      for (const tier of tiers) {
+        if (!tier.planIdEnv) continue;
+        const val = process.env[tier.planIdEnv] || '';
+        console.log(
+          `[startup]   ${region} ${tier.id}: ${tier.planIdEnv}=` +
+          (val ? `...${val.slice(-4)}` : '(NOT SET)')
+        );
+      }
+    }
   }
 }
 

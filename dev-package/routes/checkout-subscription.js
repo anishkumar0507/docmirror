@@ -8,7 +8,7 @@ const { resolveRegion } = require('../lib/region');
 const auditCache = require('../lib/audit-cache');
 const planGuard  = require('../lib/payments/plan-guard');
 
-// $49 Monitor subscription — ANONYMOUS at this stage.
+// Monitor subscription ($29/₹1,999/month) — ANONYMOUS at this stage.
 // No account is created before payment. The account is created in
 // verify-subscription-payment.js only after the payment signature is confirmed.
 async function handler(req, res) {

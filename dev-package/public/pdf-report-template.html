@@ -372,11 +372,15 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
 .alert-mock strong{color:var(--navy)}
 .alert-delta-up{color:var(--green-dark);font-weight:700}
 .alert-delta-down{color:var(--red);font-weight:700}
-.monitor-cta{background:var(--green);color:#fff;border-radius:12px;padding:18px 22px;text-align:center;position:relative;margin-top:14px}
-.monitor-cta-price{font-size:24pt;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1;margin-bottom:4px}
-.monitor-cta-period{font-size:11pt;font-weight:500;opacity:.85}
-.monitor-cta-sub{font-size:9.5pt;color:rgba(255,255,255,.85);margin-top:8px;line-height:1.5}
-.monitor-cta-button{display:inline-block;background:#fff;color:var(--green-dark);padding:10px 24px;border-radius:8px;font-size:11pt;font-weight:700;margin-top:12px;text-decoration:none}
+.monitor-cta-row{display:flex;gap:14px;margin-top:14px}
+.monitor-cta{background:var(--green);color:#fff;border-radius:12px;padding:18px 22px;text-align:center;position:relative;flex:1}
+.monitor-cta.alt{background:var(--navy,#0A2540)}
+.monitor-cta-tag{font-size:8.5pt;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.85;margin-bottom:6px}
+.monitor-cta-price{font-size:22pt;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-.02em;line-height:1;margin-bottom:4px}
+.monitor-cta-period{font-size:10pt;font-weight:500;opacity:.85}
+.monitor-cta-sub{font-size:9pt;color:rgba(255,255,255,.85);margin-top:8px;line-height:1.5}
+.monitor-cta-button{display:inline-block;background:#fff;color:var(--green-dark);padding:10px 20px;border-radius:8px;font-size:10.5pt;font-weight:700;margin-top:12px;text-decoration:none}
+.monitor-cta.alt .monitor-cta-button{color:var(--navy,#0A2540)}
 
 /* ── METHODOLOGY ─────────────────────────────────────────────────────────── */
 .method-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
@@ -1158,10 +1162,19 @@ body{font-family:'DM Sans',Arial,sans-serif;color:var(--slate);background:#fff;f
     </div>
   </div>
 
-  <div class="monitor-cta">
-    <div class="monitor-cta-price">{{CURRENCY_SYMBOL}}49<span class="monitor-cta-period">/month</span></div>
-    <div class="monitor-cta-sub">Cancel anytime · No annual contract · First weekly report runs next Monday</div>
-    <a class="monitor-cta-button" href="https://www.thedocmirror.com/#pricing">Activate Monitor →</a>
+  <div class="monitor-cta-row">
+    <div class="monitor-cta">
+      <div class="monitor-cta-tag">Single doctor</div>
+      <div class="monitor-cta-price">{{MONITOR_PRICE_DISPLAY}}</div>
+      <div class="monitor-cta-sub">Doctor Visibility Monitor · Cancel anytime · First weekly report runs next Monday</div>
+      <a class="monitor-cta-button" href="{{MONITOR_CHECKOUT_URL}}">Activate Monitor →</a>
+    </div>
+    <div class="monitor-cta alt">
+      <div class="monitor-cta-tag">Clinic / Organization</div>
+      <div class="monitor-cta-price">{{ORG_PRICE_DISPLAY}}</div>
+      <div class="monitor-cta-sub">Running a clinic? Monitor up to {{ORG_PROFILE_LIMIT}} doctors from one dashboard.</div>
+      <a class="monitor-cta-button" href="{{ORG_CHECKOUT_URL}}">Activate for my clinic →</a>
+    </div>
   </div>
 
   </div>

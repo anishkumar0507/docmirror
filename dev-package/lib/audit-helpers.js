@@ -1,5 +1,7 @@
 'use strict';
 
+const pricing = require('./pricing');
+
 // ── HTML escape ────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -361,12 +363,44 @@ function buildMethodologySourcesHtml(d) {
   ].map(s => `<li>${esc(s)}</li>`).join('');
 }
 
+// currency (ISO) -> lib/pricing.js region. Used ONLY to pick which tier prices
+// the Monitor/Clinic upsell shows — see buildUpsellPlaceholders() below.
+const CURRENCY_TO_PRICING_REGION = { INR: 'IN', USD: 'US' };
+
+/**
+ * The Monitor + Clinic upsell block's price/link tokens, region-resolved from
+ * lib/pricing.js — never a hardcoded number (issue: the block used to read a
+ * flat "$49/month" regardless of doctor or buyer).
+ *
+ * `currencyOverride` (ISO code, e.g. from paid_reports.currency /
+ * report_credits.currency for the actual order this report was generated
+ * from — see routes/report.js) wins when known, so "the currency must match
+ * the currency the report was bought in" holds exactly. Falls back to the
+ * doctor's detected region (same detectRegion() used for the rest of the
+ * PDF) only when no purchase context exists (a free/preview report).
+ */
+function buildUpsellPlaceholders(currencyOverride, doctorRegion) {
+  const pricingRegion = CURRENCY_TO_PRICING_REGION[currencyOverride] || doctorRegion || 'US';
+  const monitor = pricing.getTier(pricingRegion, 'single_doctor_monthly');
+  const org     = pricing.getTier(pricingRegion, 'org_monthly');
+  const qs       = '?upgrade=1&tier=single_doctor_monthly&region=' + pricingRegion;
+  const qsOrg    = '?region=' + pricingRegion;
+  return {
+    '{{MONITOR_PRICE_DISPLAY}}':  monitor.displayPrice,
+    '{{MONITOR_CHECKOUT_URL}}':   'https://www.thedocmirror.com/pages/checkout-subscription.html' + qs,
+    '{{ORG_PRICE_DISPLAY}}':      org.displayPrice,
+    '{{ORG_PROFILE_LIMIT}}':      String(org.profileLimit || 10),
+    '{{ORG_CHECKOUT_URL}}':       'https://www.thedocmirror.com/pages/agency-signup.html' + qsOrg,
+  };
+}
+
 // ── buildPdfPlaceholders (main mapper) ─────────────────────────────────────
-function buildPdfPlaceholders(audit, totalPages = 15) {
+function buildPdfPlaceholders(audit, totalPages = 15, opts = {}) {
   const city       = audit.city  || (audit.cityState || '').split(',')[0].trim();
   const state      = audit.state || (audit.cityState || '').split(',')[1]?.trim() || '';
   const region     = audit.region || detectRegion(city, state);
   const regionDef  = regionDefaults(region);
+  const upsell     = buildUpsellPlaceholders(opts.currency, region);
   const verdict    = verdictFromScore(audit.score || 0);
   const nameClean  = audit.doctorNameClean || cleanDoctorName(audit.doctorName || '');
   const loss       = audit.patientLoss || computePatientLoss({ ...audit, city, state }, regionDef);
@@ -495,6 +529,7 @@ function buildPdfPlaceholders(audit, totalPages = 15) {
     // ── Monitor upsell ─────────────────────────────────────────────────────
     '{{MONITOR_SAMPLE_ALERT_HTML}}': buildSampleAlertHtml({ ...audit, doctorNameClean: nameClean }),
     '{{MONITOR_SAMPLE_TREND_HTML}}': `<div class="trend-bar-wrap"><div class="trend-bar-fill" style="width:${Math.min(100, audit.score || 0)}%"></div></div>`,
+    ...upsell,
 
     // ── Methodology ────────────────────────────────────────────────────────
     '{{METHODOLOGY_SOURCES_HTML}}': buildMethodologySourcesHtml({ ...audit, city, state, region }),

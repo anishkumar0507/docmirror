@@ -160,6 +160,7 @@ function pad(s, n) {
       subscriptionId: sub.id,
       razorpayPlanId: sub.plan_id,
       profileLimit: expected.profileLimit,
+      currency: expected.currency,
     });
     line(r.ok
       ? '     OK   orgId=' + r.orgId + ' steps=[' + r.completed.join(', ') + ']'

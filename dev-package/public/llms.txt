@@ -33,13 +33,13 @@ The free check needs no login and no credit card.
 Pricing is region-based — the amount shown is the amount charged.
 
 - **Free check** — $0. Doctor Visibility Score and top issues. No login.
-- **Full Audit (one-time)** — $19 in the US and rest of world; ₹1,828 in India.
+- **Full Audit (one-time)** — $49 in the US and rest of world; ₹999 in India.
   Full 7-pillar audit, competitor analysis, and AI-written fixes, delivered as a
   PDF.
-- **Monitor (monthly)** — $49/month in the US and rest of world; ₹4,715/month in
+- **Monitor (monthly)** — $29/month in the US and rest of world; ₹1,999/month in
   India. Weekly automated checks, dashboard, rank tracking, and alerts.
-- **Clinic / Agency (multi-doctor)** — higher profile limits for practices
-  managing several doctors. Pricing is being finalised.
+- **Clinic / Agency (multi-doctor, up to 10 doctors)** — $99/month in the US and
+  rest of world; ₹7,999/month in India.
 
 Charging currency: India is billed in INR (Razorpay); the US and rest of world
 are billed in USD.

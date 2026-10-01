@@ -36,7 +36,7 @@
     "pricing": {
       "anchor": "/#pricing",
       "isRealRoute": false,
-      "_pricingNote": "Tier NAMES, not a universal USD price: India is charged INR (report ₹1,828 / monitor ₹4,715), US & rest-of-world USD ($19 / $49/mo). A '$19 & $49' title would be factually wrong for Indian traffic and cannot show two currencies in 60 chars, so we name the tiers instead. Offer schema (Step 4) carries both currencies.",
+      "_pricingNote": "Tier NAMES, not a universal USD price: India is charged INR (report ₹999 / monitor ₹1,999 / org ₹7,999), US & rest-of-world USD ($49 / $29mo / $99mo). A title with a single price would be factually wrong for Indian traffic and cannot show two currencies in 60 chars, so we name the tiers instead. Offer schema (Step 4) carries both currencies. See lib/pricing.js for the actual values — this note is documentation only, not read by any code.",
       "title": "Pricing — Free, Full Audit & Monthly Monitor Plans",
       "ogTitle": "Pricing — Free, Full Audit & Monthly Monitor Plans | The Doc Mirror",
       "description": "Choose the plan that fits your practice: start free, unlock the full 7-pillar visibility audit, or monitor your Google and AI ranking every month."

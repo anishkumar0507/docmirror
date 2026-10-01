@@ -90,7 +90,7 @@ async function maybeExpireMonitor(supabase, profile, user) {
   return profile;
 }
 
-// A user who paid for a $19 audit (often anonymously, then signed up later) should be
+// A user who paid for a $49 report (often anonymously, then signed up later) should be
 // on the 'audit' plan so login routes them to their audit history — not pricing.
 // Upgrades free → audit when any paid_reports row exists for their id or email.
 async function maybeUpgradeAuditPlan(supabase, profile, user) {

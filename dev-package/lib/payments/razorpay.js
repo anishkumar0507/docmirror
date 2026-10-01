@@ -105,6 +105,18 @@ async function createSubscription({ email, auditId, regionTier, country, planId,
   return { subscriptionId: sub.id, shortUrl: sub.short_url || null, raw: sub };
 }
 
+// ── fetch an order / a payment (read-only) ───────────────────────────────────
+// Used by the one-time-report verify route to run the same three-factor check
+// (status + amount + currency) agency-verify already runs for subscriptions —
+// re-read from Razorpay itself, never trusted from the request or re-derived
+// from a live region lookup that could differ from what was actually charged.
+async function fetchOrder(orderId) {
+  return client().orders.fetch(orderId);
+}
+async function fetchPayment(paymentId) {
+  return client().payments.fetch(paymentId);
+}
+
 // ── fetch a subscription plan (read-only) ────────────────────────────────────
 // Used by the checkout pre-flight to prove the configured plan exists in the
 // CURRENT key's mode and bills what we think it bills. Razorpay test and live
@@ -201,6 +213,8 @@ module.exports = {
   name,
   createOrder,
   verifyOrder,
+  fetchOrder,
+  fetchPayment,
   fetchPlan,
   fetchSubscription,
   createSubscription,

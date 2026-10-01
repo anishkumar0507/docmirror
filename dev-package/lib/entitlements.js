@@ -21,7 +21,7 @@
 //                                   are deliberately identical to monitor's.
 //   monitor (active subscription) → unlimited generation + full PDF + Monitor
 //                                   features. Never a payment prompt.
-//   audit   (one-time $19 buyer)  → download access to their purchased report(s);
+//   audit   (one-time $49 report buyer)  → download access to their purchased report(s);
 //                                   NOT unlimited generation.
 //   free                          → existing paywall.
 //
@@ -119,7 +119,7 @@ async function resolvePlanEntitlement(supabase, userId) {
   }
 
   // plan === 'free' — but a paid report may exist that hasn't upgraded the plan yet
-  // (anonymous $19 buy linked by user_id but plan still 'free'). Treat as audit tier.
+  // (anonymous $49 purchase linked by user_id but plan still 'free'). Treat as audit tier.
   const { data: paid } = await supabase
     .from('paid_reports')
     .select('id')

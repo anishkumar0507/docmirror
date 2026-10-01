@@ -60,6 +60,7 @@ input.err{border-color:var(--red);background:var(--red-light)}
 .ok-state h2{color:var(--navy);font-size:1.2rem;margin-bottom:8px}
 .ok-state p{font-size:.88rem;color:var(--slate-light);line-height:1.6;margin-bottom:16px}
 .ok-state a{display:inline-block;background:var(--green);color:#fff;text-decoration:none;padding:12px 26px;border-radius:10px;font-weight:700;font-size:.9rem}
+.session-note{background:var(--green-light);color:var(--navy);border-radius:8px;padding:10px 12px;font-size:.82rem;margin-bottom:1rem}
 @media(max-width:900px){main{flex-direction:column-reverse;align-items:center}}
 </style>
 </head>
@@ -76,34 +77,47 @@ input.err{border-color:var(--red);background:var(--red-light)}
 <main>
   <div class="col">
     <div class="card" id="form-card">
-      <h1>Create your agency account</h1>
-      <p class="subtitle">One login for your whole practice. You&rsquo;ll add each doctor after checkout &mdash; no scan needed to get started.</p>
+      <h1 id="form-title">Create your agency account</h1>
+      <p class="subtitle" id="form-subtitle">One login for your whole practice. You&rsquo;ll add each doctor after checkout &mdash; no scan needed to get started.</p>
 
       <div class="err-box" id="err-box" role="alert"></div>
       <button class="pay-btn" id="retry-btn" type="button" onclick="retryAgencySetup()"
               style="display:none;margin-bottom:12px">Retry setup</button>
 
-      <div class="field">
-        <label for="ag-name">Practice or clinic name</label>
-        <input type="text" id="ag-name" placeholder="e.g. Sunrise Multispeciality" autocomplete="organization">
-      </div>
-      <div class="field">
-        <label for="ag-email">Work email</label>
-        <input type="email" id="ag-email" placeholder="you@clinic.com" autocomplete="email">
-      </div>
-      <div class="field">
-        <label for="ag-pass">Password</label>
-        <input type="password" id="ag-pass" placeholder="At least 8 characters" autocomplete="new-password">
-        <div class="hint">You&rsquo;ll use this to sign in to your dashboard.</div>
+      <!-- Shown when a session already exists (e.g. arriving from the dashboard
+           of an existing logged-in account) — skips signup entirely, uses that
+           account's own token, never re-collects a password. -->
+      <div id="logged-in-block" style="display:none">
+        <div class="session-note" id="session-note">Signed in as —</div>
+        <button class="pay-btn" id="session-pay-btn" type="button" onclick="startAgencyCheckout()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Continue to payment
+        </button>
       </div>
 
-      <button class="pay-btn" id="pay-btn" type="button" onclick="startAgencySignup()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-        Continue to payment
-      </button>
-      <div class="foot">
-        Already have an account? <a href="/pages/auth.html?return_to=dashboard">Sign in</a><br>
-        Secure payment by Razorpay · Cancel anytime
+      <div id="logged-out-block">
+        <div class="field">
+          <label for="ag-name">Practice or clinic name</label>
+          <input type="text" id="ag-name" placeholder="e.g. Sunrise Multispeciality" autocomplete="organization">
+        </div>
+        <div class="field">
+          <label for="ag-email">Work email</label>
+          <input type="email" id="ag-email" placeholder="you@clinic.com" autocomplete="email">
+        </div>
+        <div class="field">
+          <label for="ag-pass">Password</label>
+          <input type="password" id="ag-pass" placeholder="At least 8 characters" autocomplete="new-password">
+          <div class="hint">You&rsquo;ll use this to sign in to your dashboard.</div>
+        </div>
+
+        <button class="pay-btn" id="pay-btn" type="button" onclick="startAgencySignup()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+          Continue to payment
+        </button>
+        <div class="foot">
+          Already have an account? <a href="/pages/auth.html?return_to=dashboard">Sign in</a><br>
+          Secure payment by Razorpay · Cancel anytime
+        </div>
       </div>
     </div>
 
@@ -121,6 +135,13 @@ input.err{border-color:var(--red);background:var(--red-light)}
       <h2>Clinic / Agency</h2>
       <div class="price"><span data-price="agency">—</span></div>
       <div class="per">per month · cancel anytime</div>
+      <!-- Currency toggle: region-aware pricing (lib/pricing.js) — this page had
+           no way to pick USD before, so /api/agency/checkout always fell back to
+           the server default region regardless of what a US buyer wanted. -->
+      <div id="currency-toggle" role="group" aria-label="Currency" style="display:flex;gap:6px;margin-bottom:14px">
+        <button type="button" data-region="US" onclick="setCurrency('US')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">USD $</button>
+        <button type="button" data-region="IN" onclick="setCurrency('IN')" style="font:inherit;font-size:12px;font-weight:700;padding:4px 10px;border:1px solid #d5dce5;border-radius:6px;background:#fff;color:#0A2540;cursor:pointer">INR ₹</button>
+      </div>
       <ul>
         <li><span class="tick">✓</span> Add up to <span data-plan-limit="agency">—</span> doctors</li>
         <li><span class="tick">✓</span> Each doctor gets their own dashboard</li>
@@ -150,12 +171,18 @@ var _lastPayment = null;
 function el(id){ return document.getElementById(id); }
 function showErr(html){ var b = el('err-box'); b.innerHTML = html || ''; b.classList.toggle('on', !!html); }
 function showRetry(on){ el('retry-btn').style.display = on ? 'block' : 'none'; }
+// Targets whichever "Continue to payment" button is actually visible — the
+// logged-out form's, or the logged-in session shortcut's — so proceedToCheckout()
+// (shared by both paths) always resets the button the visitor can see.
+function activeBtn() {
+  return el('logged-in-block').style.display !== 'none' ? el('session-pay-btn') : el('pay-btn');
+}
 function busy(text){
-  var b = el('pay-btn'); b.disabled = true;
+  var b = activeBtn(); b.disabled = true;
   b.innerHTML = '<span class="spinner"></span> ' + text;
 }
 function ready(){
-  var b = el('pay-btn'); b.disabled = false;
+  var b = activeBtn(); b.disabled = false;
   b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">' +
     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Continue to payment';
 }
@@ -222,6 +249,54 @@ async function retryAgencySetup() {
   }
 }
 
+// ── Session check — same pattern as checkout-subscription.html /
+//    report-credit-checkout.html: a signed-in visitor (e.g. arriving from the
+//    dashboard's "Start agency plan" CTA) skips signup entirely and pays with
+//    their own token — never asked for a password again. ───────────────────
+async function initSession() {
+  var accessToken = localStorage.getItem('tdm_access_token');
+  if (!accessToken) return;
+  var me = await fetch('/api/user/me', { headers: { Authorization: 'Bearer ' + accessToken } })
+    .then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; });
+  if (!me || !me.email) return;
+
+  _token = accessToken;
+  el('form-title').textContent = 'Start the Clinic / Agency plan';
+  el('form-subtitle').textContent = 'You’ll add each doctor after checkout — no scan needed to get started.';
+  el('logged-out-block').style.display = 'none';
+  el('logged-in-block').style.display = '';
+  el('session-note').textContent = 'Signed in as ' + me.email;
+}
+
+// Currency toggle → override region, re-fetch prices, reflect active state.
+function setCurrency(tier) {
+  if (!window.TDMPricing) return;
+  window.TDMPricing.setRegion(tier).then(function(){
+    var btns = document.querySelectorAll('#currency-toggle button');
+    for (var i = 0; i < btns.length; i++) {
+      var active = btns[i].getAttribute('data-region') === tier;
+      btns[i].style.background  = active ? '#0A2540' : '#fff';
+      btns[i].style.color       = active ? '#fff'    : '#0A2540';
+      btns[i].style.borderColor = active ? '#0A2540' : '#d5dce5';
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', function(){
+  setTimeout(function(){
+    var r = window.TDMPricing && window.TDMPricing.region();
+    if (r === 'IN' || r === 'US') setCurrency(r);
+  }, 400);
+});
+
+initSession();
+
+// Already-logged-in path: straight to checkout with the existing session.
+// proceedToCheckout() has its own try/catch and resets the button itself
+// (via ready()/activeBtn()) on failure — nothing extra needed here.
+function startAgencyCheckout() {
+  proceedToCheckout(localStorage.getItem('tdm_user_email') || '');
+}
+
 async function startAgencySignup() {
   var name  = el('ag-name').value.trim();
   var email = el('ag-email').value.trim().toLowerCase();
@@ -266,11 +341,27 @@ async function startAgencySignup() {
       localStorage.setItem('tdm_user_email', email);
     } catch (_) {}
 
+    await proceedToCheckout(email);
+  } catch (e) {
+    showErr('Something went wrong. Please try again, or email <a href="mailto:thedocmirror@gmail.com">thedocmirror@gmail.com</a>.');
+    ready();
+  }
+}
+
+// ── Steps 3+4, shared by the already-logged-in path and the fresh-signup
+//    path: create the subscription (server picks plan + amount for the
+//    caller's region — tierId only, never a plan id from the client), then
+//    open Razorpay. `region` is what makes /api/agency/checkout pick
+//    RAZORPAY_PLAN_USD_ORG vs RAZORPAY_AGENCY_PLAN_ID — this page had no way
+//    to send it before, so it always fell back to the server's default region.
+async function proceedToCheckout(email) {
+  try {
     // ── 3. Create the subscription (server picks plan + amount) ─────────────
     busy('Creating subscription…');
     var cres = await fetch('/api/agency/checkout', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token }
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _token },
+      body: JSON.stringify({ region: (window.TDMPricing ? window.TDMPricing.region() : '') })
     });
     var sub = await cres.json().catch(function(){ return {}; });
     if (!cres.ok || !sub.subscriptionId) { showErr(sub.error || 'Could not start the subscription.'); ready(); return; }
@@ -278,7 +369,7 @@ async function startAgencySignup() {
     // ── 4. Razorpay ─────────────────────────────────────────────────────────
     busy('Opening payment…');
     loadRzp(function () {
-      var rzp = new Razorpay({
+      var options = {
         key:             sub.keyId,
         subscription_id: sub.subscriptionId,
         name:            'The Doc Mirror',
@@ -333,7 +424,13 @@ async function startAgencySignup() {
           });
         },
         modal: { ondismiss: function(){ showErr('Payment cancelled — your account is saved, you can pay any time.'); ready(); } }
-      });
+      };
+      // USD/INTL: cards only — UPI/NetBanking/wallets are India-only rails and
+      // must never be offered for a non-INR charge. INR is left unrestricted.
+      if (sub.currency !== 'INR') {
+        options.method = { card: 1, netbanking: 0, upi: 0, wallet: 0, emi: 0, paylater: 0 };
+      }
+      var rzp = new Razorpay(options);
       rzp.open();
     });
   } catch (e) {

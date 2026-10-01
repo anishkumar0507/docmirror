@@ -6,6 +6,7 @@ require('../lib/env');
 
 const auditCache            = require('../lib/audit-cache');
 const paidReports           = require('../lib/paid-reports');
+const reportCredits         = require('../lib/report-credits');
 const reportsStore          = require('../lib/reports-store');
 const { getSupabaseClient } = require('../lib/supabase-client');
 const { runClaudePrompt, RateLimitError, getQueueStats } = require('../lib/claude-client');
@@ -201,8 +202,13 @@ function extractInsights(ai) {
   };
 }
 
-/** Render the PDF from already-enriched data + already-generated AI content. */
-async function renderPdfFromAi(d, ai) {
+/**
+ * Render the PDF from already-enriched data + already-generated AI content.
+ * `currency` (ISO code, optional) is what THIS report was actually bought in —
+ * see resolveReportCurrency() — and drives the Monitor/Clinic upsell prices so
+ * they match the currency the report was bought in, not a guess.
+ */
+async function renderPdfFromAi(d, ai, currency = null) {
   const full = {
     ...d,
     ...ai,
@@ -213,7 +219,7 @@ async function renderPdfFromAi(d, ai) {
 
   const templatePath = path.join(__dirname, '../public/pdf-report-template.html');
   let html = fs.readFileSync(templatePath, 'utf8');
-  const placeholders = buildPdfPlaceholders(full, 15);
+  const placeholders = buildPdfPlaceholders(full, 15, { currency });
   for (const [token, value] of Object.entries(placeholders)) {
     html = html.split(token).join(value);
   }
@@ -353,6 +359,21 @@ async function loadEnrichedAudit(canonicalId) {
   return { d: enrichAuditData(cacheResult.data), raw: cacheResult.data, source: cacheResult.source };
 }
 
+/**
+ * What currency THIS report was actually bought in, or null (a free/preview
+ * report with no purchase). Checked in two places because a report-credit
+ * redemption mints a NEW auditId distinct from the order it was paid under
+ * (see lib/report-credits.js) — the anonymous scan-first flow uses the same
+ * id for both, so the first check alone covers it.
+ */
+async function resolveReportCurrency(canonicalId) {
+  const order = await paidReports.get(canonicalId);
+  if (order && order.currency) return order.currency;
+  const credit = await reportCredits.findByRedeemedAuditId(canonicalId);
+  if (credit && credit.currency) return credit.currency;
+  return null;
+}
+
 /** True once the AI insights have actually been generated for this audit. */
 function hasInsights(raw) {
   const ins = raw && raw.insights;
@@ -447,7 +468,8 @@ async function runPdfStage({ auditId, email }) {
   } else {
     // On render failure, leave status 'generating' (not terminal) so reconcile retries.
     console.log('[stage:pdf] rendering PDF (Puppeteer)...');
-    pdfBuffer = await renderPdfFromAi(d, insights);
+    const currency = await resolveReportCurrency(canonicalId);
+    pdfBuffer = await renderPdfFromAi(d, insights, currency);
     console.log(`[stage:pdf] PDF ready — ${Math.round(pdfBuffer.length / 1024)} KB`);
     if (supabase) {
       pdfUrl = await uploadPdfBuffer(supabase, canonicalId, pdfBuffer);
@@ -484,7 +506,8 @@ async function runEmailStage({ auditId, email }) {
   let pdfBuffer = supabase ? await downloadPdfBuffer(supabase, canonicalId) : null;
   if (!pdfBuffer) {
     console.warn('[stage:email] no stored PDF — re-rendering before send');
-    pdfBuffer = await renderPdfFromAi(d, raw.insights || extractInsights({}));
+    const currency = await resolveReportCurrency(canonicalId);
+    pdfBuffer = await renderPdfFromAi(d, raw.insights || extractInsights({}), currency);
   }
 
   let emailSent = false;
@@ -606,5 +629,6 @@ module.exports.buildPdfBuffer    = buildPdfBuffer;
 module.exports.renderPdf         = renderPdf;
 module.exports.runAllPrompts     = runAllPrompts;
 module.exports.verifyReportsBucket = verifyReportsBucket;
+module.exports.downloadPdfBuffer   = downloadPdfBuffer;
 module.exports.RateLimitError    = RateLimitError;
 module.exports.computePillars    = computePillarsV5;

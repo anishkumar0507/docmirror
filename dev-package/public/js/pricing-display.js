@@ -92,10 +92,25 @@
     stored: storedRegion,
   };
 
+  // A `?region=` link param (e.g. from the PDF's Monitor/Clinic upsell buttons,
+  // so a $49 report's reader lands on the subscription checkout with USD
+  // already selected) beats a stale stored choice for THIS page load, and is
+  // persisted so it also survives the hop to the next checkout page.
+  function urlRegion() {
+    try {
+      var r = new URLSearchParams(window.location.search).get('region');
+      return (r === 'IN' || r === 'US' || r === 'INTL') ? r : '';
+    } catch (e) { return ''; }
+  }
+
   // Resolves once prices have loaded (or failed). Pages that build markup at load
   // time can wait on it before calling refresh(), instead of racing the fetch.
   window.TDMPricing.ready = null;
-  function boot() { window.TDMPricing.ready = load(storedRegion()); }
+  function boot() {
+    var fromUrl = urlRegion();
+    if (fromUrl) setStoredRegion(fromUrl);
+    window.TDMPricing.ready = load(fromUrl || storedRegion());
+  }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', boot);
   } else {
